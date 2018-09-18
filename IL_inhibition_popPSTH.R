@@ -10,110 +10,12 @@
 ### data from external source: separated.by '.'
 ### variable: separated_by '_'
 
+library(tidyverse)
 
-### notebook wd path (RUN ON NOTEBOOK):
+### source files from the utilities folder
+walk(dir("utilities"), ~source(file.path("utilities", .x)))
 
-wd_path <- file.path('c:',
-                     'Users',
-                     'Viktor',
-                     'Documents',
-                     'R_WD'
-                     )
-
-setwd(wd_path_NB)
-
-
-file_path <- file.path('c:',
-                       'Users',
-                       'Viktor',
-                       'OneDrive - MTA KOKI',
-                       'professional',
-                       '_R_WD',
-                       '_data_frames',
-                       'IL_juxta_GlyT2_fiber_stim',
-                       'cell21_13_right_IL_t3_3030_stim_control.mat')
-
-
-### lab PC wd path (RUN ON lab PC):
-
-wd_path <- file.path('f:',
-                     '_R_WD'
-                     )
-
-setwd(wd_path)
-
-
-file_path <- file.path('f:',
-                       '_R_WD',
-                       '_data_frames',
-                       'folder',
-                       '*.mat'
-                       )
-
-
-### loading packages
-library(R.matlab)
-
-
-### reading data from file
-raw.rec <- readMat(file_path)
-
-
-
-### exploring the list names
-names(raw.rec)
-
-### renaming lists (to make it easier to work with later). Different mat files can have different list names (each needs to be identified)
-names(raw.rec) <- c('unit','level','stim','eeg') 
-names(raw.rec) <- c('k','na','level','stim','unit','eeg')
-names(raw.rec) <- c('level', 'stim', 'unit', 'unit2', 'eeg')
-
-
-
-### AP: stores the time of action potentials in a matrix
-AP = raw.rec$unit[[12]] 
-
-
-### stim: stores the time of the stimuli in a matrix
-stim = raw.rec$stim[[5]] 
-
-
-### LFP: Stores the amplitude values of the cortical oscillation in a matrix. Amplitude changes over time and it is sampled at 20 kHz (can be handled as a time series object)
-### scale function: standardization (mean = 0, SD = 1)
-LFP = scale(raw.rec$eeg[[9]]) 
-
-
-### calculates the sampling rate of the LFP from the time between two data points stored in raw.rec$eeg[[3]]. Stores the value in a vector
-samp.rate.lfp <- c(1/raw.rec$eeg[[3]])
-
-
-### calculates the sampling rate of the unit from the time between two data points stored in raw.rec$unit[[4]]. Stores the value in a vector
-samp.rate.unit <- c(1/raw.rec$unit[[4]])
-
-
-### calculates the length of the recording from the number of data points of the eeg and the sampling rate. Stores it in a vector
-rec.length <- length(raw.rec$eeg[[9]]) / samp.rate.lfp
-
-
-### creates a matrix from AP times (repeats them)
-mat_AP <- matrix(AP, 
-                 nrow = length(stim), 
-                 ncol = length(AP), byrow = T
-)
-dim(mat_AP)
-
-
-
-### creates a matrix from stim times (repeats them)
-mat_stim <- matrix(stim, 
-                   nrow = length(stim),
-                   ncol = length(AP)
-)
-dim(mat_stim)
-
-
-### subtracts the two matrices to calculate the times of every action potentials relative to each stimuli
-mat_reltimes <- mat_AP - mat_stim
+ReadMatFile('cell21_13_right_IL_t3_3030_stim_control.mat')
 
 
 ### calculates the time difference between stimuli
@@ -157,11 +59,7 @@ colnames(mat_reltimes) = c('HZ',
 mat_reltimes_df <- as.data.frame(t(mat_reltimes))
 
 # run code on every cell, save results in R.Data file 
-named.list <- function(...) { 
-  l <- list(...)
-  names(l) <- sapply(substitute(list(...)), deparse)[-1]
-  l 
-}
+
 
 cell02 = named.list(mat_reltimes, d1, stim_freq)
 
@@ -194,21 +92,14 @@ save(cell01,
 ############################################################################
 ################################ Plotting ##################################
 ############################################################################
+path <- file.path('r_course_data')
 
-load_path <- file.path('f:',
-                       '_R_WD',
-                       '_data_frames',
-                       'IL_juxta_GlyT2_fiber_stim',
-                       'IL_inhibition_popPSTH.RData'
-)
+load(file.path(path,
+               'IL_inhibition_popPSTH.RData'
+               )
+     )
 
-load(load_path)
 
-named.list <- function(...) { 
-  l <- list(...)
-  names(l) <- sapply(substitute(list(...)), deparse)[-1]
-  l 
-}
 
 all.cell <- named.list(cell01$mat_reltimes[cell01$mat_reltimes > -1 & cell01$mat_reltimes < 1],
                        cell02$mat_reltimes[cell02$mat_reltimes > -1 & cell02$mat_reltimes < 1],
@@ -270,7 +161,7 @@ rm(list = ls(pattern = "cell1"))
 rm(list = ls(pattern = "cell2")) 
 
 all.cell.vector <- unlist(all.cell)
-
+all.cell.vector <- all.cell.vector + 0.0005
 
 
 # numbers <- formatC(seq(1,24), width = 2, flag = 0)
@@ -292,9 +183,9 @@ all.cell.vector <- unlist(all.cell)
 
 hist_range_lower <- - 0.01
 hist_range_upper <- 0.02
-binsize <- 15
+binsize <- 30
 X_lim <- c(-0.01,0.02)
-Y_lim <- c(0,250)
+Y_lim <- c(0,140)
 
 par(mfrow = c(1,2))
 
