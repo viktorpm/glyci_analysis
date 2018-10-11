@@ -375,3 +375,73 @@ with(subset(allCells, allCells$pinch == F & allCells$firing == 'regular'),
      col = colorMatrix['blue','light']
      )
 )
+
+
+
+### ggplot2 -------------------------------------------------------------
+
+load(file = "f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/allCells.RData")
+load(file = "f:/_R_WD/useful_to_load/colorMatrix.RData")
+library(tidyverse)
+
+
+#filter_condititon <- quote(pinch == F, firing == 'regular')
+filter_condititon <- "pinch == T" #& firing == 'irregular'"
+
+
+### transforming allCells data frame
+allCells_for_plot <- allCells %>%
+  filter(eval(parse(text = filter_condititon))) %>% 
+  mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
+  mutate(No.AP_p_stimLength = No.AP / stimLength) %>%
+  dplyr::group_by(condition, cell) %>%
+  summarise(mean_No.AP = mean(No.AP_p_stimLength))
+
+### select cells to highlight on plot
+cells_to_highlight <- allCells %>%
+  filter(eval(parse(text = filter_condititon))) %>% 
+  mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
+  mutate(No.AP_p_stimLength = No.AP / stimLength) %>%
+  dplyr::group_by(condition, cell) %>%
+  summarise(mean_No.AP = mean(No.AP_p_stimLength)) %>%
+  filter(cell == "cell01" |
+           cell == "cell06" |
+           cell == "cell07" |
+           cell == "cell08" |
+           cell == "cell09" |
+           cell == "cell11" |
+           cell == "cell16")
+
+
+
+### plotting transformed allCells data frame
+ggplot(data = allCells_for_plot,
+       mapping = aes(x = forcats::fct_relevel(condition, "b", "d", "a"),
+                     y = mean_No.AP)) +
+  #theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 10)) +
+  geom_boxplot(width = 0.1, alpha = 0.5) +
+  geom_point(#shape = 21, 
+             color = "#EB8104", 
+             #color = "white",
+             size = 2) +
+             #stroke = 2) +
+  geom_point(data = cells_to_highlight, 
+             #shape = 21, 
+             color = "#1D4871", 
+             #color = "white",  
+             size = 2) +
+             #stroke = 2) +
+  geom_line(aes(group = cell), color = "#EB8104") +
+  geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell)) +
+  # geom_text(data = cells_to_highlight, 
+  #           aes(label = cell),
+  #           color = "#1D4871",
+  #           hjust = -0.2, vjust = -0.2) +
+  scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
+  labs(y = "Mean firing rate") 
+# scale_y_continuous(sec.axis = sec_axis(~.*2, name = "proba axis"))
+
+#1D4871
+#EB8104
