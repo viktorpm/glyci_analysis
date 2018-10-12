@@ -107,10 +107,15 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### csak akkor jÃ³ a waveletnek, ha mÃ
 
 ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(80,250) + 
+  xlim(80,150) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple")
+  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple") +
+  geom_point(data = ap_peaks %>% 
+               filter(value > 80, value < 150), 
+             mapping = aes(x = value, y = 7),
+             shape = "|",
+             color = "black", size = 4)
 
 
   
