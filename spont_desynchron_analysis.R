@@ -2,7 +2,7 @@ library(R.matlab)
 library(tidyverse)
 
 
-raw.rec <- readMat(file.path("x:","extra32","_Projects","Glyci_II","DATA","ELPHYS","juxta","GII-25","08_right_PnO_t5_4083_baseline1_wake.mat"))
+raw.rec <- readMat(file.path("data","08_right_PnO_t5_4083_baseline1_wake.mat"))
 
 
 raw.rec$ap[,,1]$interval
@@ -224,7 +224,11 @@ ggplot() +
                 filter(value > 250.1, value < 290), 
              mapping = aes(x = value, y = 100),
              shape = "|",
-             color = "white", size = 4) 
+             color = "white", size = 4)
+  # geom_line(data = EEG_ds_df %>% 
+  #             dplyr::slice(plot_from:plot_to), 
+  #           mapping = aes(x = times, y = -3*levels+5), color = "white") 
+  
 
   
 
