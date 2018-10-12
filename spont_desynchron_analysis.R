@@ -93,20 +93,24 @@ slide_mean_rep <- c(slide_mean_rep, rep(slide_mean_rep[length(slide_mean_rep)],
 )
 
 
-EEG_ds_df <- EEG_ds_scaled %>% 
+EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### csak akkor jó a waveletnek, ha mátrix!!!!
   ts(start = 0, 
      end = rec_length-interval_ds, 
      deltat = 1/samp_rate_ds) %>% 
-  as.data.frame() %>% 
+  data.frame() %>% 
+  rename(eeg_values = Series.1) %>% 
   mutate(times) %>%
   mutate(sd = slide_sd_rep) %>% 
-  mutate(mean = slide_mean_rep)
+  mutate(mean = slide_mean_rep) %>% 
+  mutate(levels = 1) %>% 
+  mutate(levels = replace(levels, sd < 1.8, 0))
 
-ggplot(data = EEG_ds_df, mapping = aes(x = times, y = x)) +
+ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(100,200) + 
+  xlim(80,250) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue")
+  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
+  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple")
 
 
   
@@ -131,7 +135,7 @@ EEG_ds_df %>%
 
 library(WaveletComp)
 wave <- analyze.wavelet(EEG_ds_df %>% 
-                          dplyr::filter(times > 250, times < 290), "Series.1", 
+                          dplyr::filter(times > 250, times < 290), "eeg_values", 
                         loess.span = 0,
                         dt = 1/40,
                         ###1/sampling rate (number of intervals/time unit)  
@@ -215,7 +219,7 @@ ggplot() +
   scale_fill_distiller(palette = "RdGy", name = "Power") +
   geom_line(data = EEG_ds_df %>% 
               dplyr::slice(plot_from:plot_to), 
-            mapping = aes(x = times, y = -2*Series.1+20), color = "white") + 
+            mapping = aes(x = times, y = -2*eeg_values+20), color = "white") + 
   geom_point(data = ap_peaks %>% 
                 filter(value > 250.1, value < 290), 
              mapping = aes(x = value, y = 100),
