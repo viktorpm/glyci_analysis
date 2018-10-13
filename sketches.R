@@ -4,9 +4,9 @@ a <- a[-(seq(2, length(a), 2))]
 
 
 source((file.path("downSamp.R")))
-eeg.ds.new <- downSamp(data = EEG, 512)
+eeg.ds.new <- downSamp(data = EEG, ds_factor = 100, 20000)
 
-
+rm(eeg.ds.new)
 log2(9) %>% round()
 
 log2(10) %% 1 == 0
