@@ -47,6 +47,14 @@ samp_rate <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
 rec_length <- (raw.rec$EEG[,,1]$length/samp_rate) %>% as.double()
 EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,1]$offset)
 
+### downsampling in R
+source(file.path("downSamp.R"))
+EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000)
+samp_rate_ds <- 11676/298.9031
+rec_length <- 298.9031
+interval_ds <- 1/samp_rate_ds
+
+
 ### EEG_ds (downsampled) --------------------------------------------------------
 EEG_ds <- raw.rec$eeg.ds[,,1]$values %>% as.double()
 raw.rec$eeg.ds[,,1]$length/40

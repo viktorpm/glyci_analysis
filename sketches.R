@@ -4,7 +4,10 @@ a <- a[-(seq(2, length(a), 2))]
 
 
 source((file.path("downSamp.R")))
-eeg.ds.new <- downSamp(data = EEG, ds_factor = 100, 20000)
+eeg.ds.new <- downSamp(data = EEG, ds_factor = 512, 20000)
+
+plot(EEG_ds[1:100], type = "l")
+points(eeg.ds.new[1:100], type = "l", col = "red")
 
 rm(eeg.ds.new)
 log2(9) %>% round()
