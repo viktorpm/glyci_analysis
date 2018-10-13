@@ -152,7 +152,7 @@ wave <- analyze.wavelet(EEG_ds_df %>%
                         n.sim = 1)
 
 ### calculate frequency from period
-wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
+#wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
 
 
 wt.image(wave, color.key = "interval", n.levels = 150,
