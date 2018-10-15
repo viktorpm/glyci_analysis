@@ -88,11 +88,14 @@ source("slideFunct.R")
 slide_sd <- slideFunct(data = EEG_ds_scaled, 
                        window = 1*round(samp_rate_ds), 
                        step = 1*round(samp_rate_ds/2), 
-                       type = "sd")
+                       type = "sd") #%>% scale()
+#slide_sd <- slide_sd/max(slide_sd)
+
 slide_mean <- slideFunct(data = EEG_ds_scaled,
                          window = 1*round(samp_rate_ds),
                          step = 1*round(samp_rate_ds/2), 
-                         type = "mean")
+                         type = "mean") #%>% scale()
+#slide_mean <- slide_mean/max(slide_mean)
 
 ### No. datapoints the sd/mean was calculated from
 (length(EEG_ds_scaled) / length(slide_sd)) %>% round()
