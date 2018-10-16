@@ -2,7 +2,7 @@ library(R.matlab)
 library(tidyverse)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","01_right_PnO_t1_4058_baseline1_felebredos.mat"))
+raw.rec <- readMat(file.path("data","08_t1_4332_baseline2_gv120.mat"))
 
 raw.rec$ap[,,1]$interval
 ### contents of ap channel  
@@ -53,8 +53,8 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
 EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 16766/429.1965
-rec_length <- 429.1965
+samp_rate_ds <- 10944/280.1527
+rec_length <- 280.1527
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
@@ -97,7 +97,7 @@ source("slideFunct.R")
 slide_sd <- slideFunct(data = EEG_ds_scaled, 
                        window = 1*round(samp_rate_ds), 
                        step = 1*round(samp_rate_ds/2), 
-                       type = "sd") #%>% scale()
+                       type = "sd") %>% scale()
 #slide_sd <- slide_sd/max(slide_sd)
 
 slide_mean <- slideFunct(data = EEG_ds_scaled,
@@ -134,13 +134,13 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### csak akkor jÃ³ a waveletnek, ha mÃ
   mutate(sd = slide_sd_rep) %>% 
   mutate(mean = slide_mean_rep) %>% 
   mutate(levels = 1) %>% 
-  mutate(levels = replace(levels, sd < 1, 0)) %>% 
+  mutate(levels = replace(levels, sd < -1, 0)) %>% 
   mutate(ID = "gv120")
 
 ### plot eeg with sync desync periods
 ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(0,150) + 
+  xlim(80,110) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple") +
