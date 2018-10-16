@@ -2,7 +2,7 @@ library(R.matlab)
 library(tidyverse)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","04_t1_4316_baseline3_gv121.mat"))
+raw.rec <- readMat(file.path("data","01_right_PnO_t1_4058_baseline1_felebredos.mat"))
 
 raw.rec$ap[,,1]$interval
 ### contents of ap channel  
@@ -50,20 +50,21 @@ samp_rate <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
 rec_length <- (raw.rec$EEG[,,1]$length/samp_rate) %>% as.double()
 EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,1]$offset)
 
-### downsampling in R
+### downsampling and standardizing in R
 source(file.path("downSamp.R"))
-EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000)
-samp_rate_ds <- 14340/367.0889
-rec_length <- 367.0889
+EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
+samp_rate_ds <- 16766/429.1965
+rec_length <- 429.1965
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
 
+### n:order, W:freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
 ButterHP = butter(n = 3, 
                   W = c(1/(samp_rate_ds/2), 10/(samp_rate_ds/2) ),
                   type = 'pass',
-                  plane = "z") # n:order, W:freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
-EEG_ds_scaled <- signal::filter(ButterHP,EEG_ds_scaled) %>% as.double()
+                  plane = "z") 
+EEG_ds_scaled <- signal::filter(ButterHP,EEG_ds_scaled) %>% as.double() %>% scale()
 
 
 
@@ -133,18 +134,18 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### csak akkor jÃ³ a waveletnek, ha mÃ
   mutate(sd = slide_sd_rep) %>% 
   mutate(mean = slide_mean_rep) %>% 
   mutate(levels = 1) %>% 
-  mutate(levels = replace(levels, sd < 0.5, 0)) %>% 
+  mutate(levels = replace(levels, sd < 1, 0)) %>% 
   mutate(ID = "gv120")
 
 ### plot eeg with sync desync periods
 ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(100,150) + 
+  xlim(0,150) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple") +
   geom_point(data = ap_peaks %>% 
-               dplyr::filter(peak_times > 100, peak_times < 150), 
+               dplyr::filter(peak_times > 0, peak_times < 150), 
              mapping = aes(x = peak_times, y = 7),
              shape = "|",
              color = "black", size = 4)
@@ -300,7 +301,7 @@ AC <- rbind(sync_AC,desync_AC) %>% ### DOES NOT WORK WITH bind_rows
 ggplot(data = AC %>% 
          dplyr::filter(time > -1, time < 1), 
        mapping = aes(x = time, fill = eeg_state)) +
-  geom_histogram(bins = 50) +
+  geom_histogram(bins = 500) +
   scale_fill_brewer(type = "div", palette = "Paired")
   
 
