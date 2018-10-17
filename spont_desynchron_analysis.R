@@ -175,6 +175,57 @@ eeg_periods <- tibble(
   sync_end = lead$times[seq(1,length(lag$levels)+1,2)]
 )
 
+eeg_periods <- eeg_periods %>% 
+  mutate(desync_length = desync_end - desync_start ,
+         sync_length  = sync_end - sync_start)
+
+eeg_periods$desync_length %>% sum(na.rm = T)
+eeg_periods$sync_length %>% sum(na.rm = T)
+
+time_v_list 
+cut(EEG_ds_df %>% pull(times), rle(EEG_ds_df$levels)$lengths %>% as.vector() )
+
+
+
+
+sync_times <- EEG_ds_df %>% 
+  dplyr::filter(levels == 1) %>% 
+  pull(times)
+desync_times <- EEG_ds_df %>% 
+  dplyr::filter(levels == 0) %>% 
+  pull(times)
+
+ap_peaks <- ap_peaks %>% 
+  mutate(egg_period = "desync") %>% 
+  mutate(egg_period = replace(
+    egg_period, 
+    peak_times == sync_times, 
+    values = "sync"))
+
+
+index_vector <- list()
+for(i in 1:54) {
+  index_vector[[i]] <- which(ap_peaks$peak_times > eeg_periods$sync_start[i] & 
+                             ap_peaks$peak_times < eeg_periods$sync_end[i])
+} 
+index_vector <- index_vector %>% unlist()
+
+
+ap_peaks <- ap_peaks %>% 
+  mutate(egg_period = "desync") %>% 
+  mutate(egg_period = replace(
+    egg_period, 
+    peak_times == all(unlist(sync_ap)), 
+    values = "sync"))
+    
+
+ap_peaks %>% 
+  group_by(egg_period) %>% 
+  summarise(length(peak_times)) 
+
+
+
+
 
 # level_lengths <- rle(EEG_ds_df$levels)
 # 
