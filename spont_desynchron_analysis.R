@@ -159,7 +159,21 @@ lag <- EEG_ds_df %>%
   dplyr::filter(EEG_ds_df$levels != dplyr::lag(EEG_ds_df$levels)) %>% 
   select(times,levels) %>% 
   as.vector()
+
+
   
+starts <- which(EEG_ds_df %>% pull(levels) - (EEG_ds_df %>% pull(levels) %>% lag()) != 0)
+starts <- c(1,starts)
+
+ends <- which(EEG_ds_df %>% pull(levels) - (EEG_ds_df %>% pull(levels) %>% lag()) != 0) - 1
+ends <- c(ends, length(EEG_ds_df$levels)) 
+
+starts_ends <- cbind(starts, ends) %>% 
+  as.tibble() %>% 
+  mutate(eeg_period = rep(c("sync","desync"), length(starts_ends$starts))[1:length(starts_ends$starts)])
+
+
+
 ### every last (last 0s, last 1s in levels)
 lead <- EEG_ds_df %>% 
   dplyr::filter(EEG_ds_df$levels != dplyr::lead(EEG_ds_df$levels)) %>% 
