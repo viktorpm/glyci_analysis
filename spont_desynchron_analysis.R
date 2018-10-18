@@ -2,7 +2,7 @@ library(R.matlab)
 library(tidyverse)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","08_right_PnO_t5_4083_baseline1_wake.mat"))
+raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
 
 raw.rec$ap[,,1]$interval
 ### contents of ap channel  
@@ -54,8 +54,8 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
 EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 11676/298.9031
-rec_length <- 298.9031
+samp_rate_ds <- 5978/153.0243
+rec_length <- 153.0243
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
@@ -180,27 +180,26 @@ eeg_periods <- tibble(
 
 
 ap_peaks <- ap_peaks %>% 
-    dplyr::mutate(egg_period = ifelse(test =  peak_times > eeg_periods$sync_start[1] & 
-                                        peak_times < eeg_periods$sync_end[1], 
-                                      yes = "sync",
-                                      no = "desync"))
-
-
-ap_peaks <- ap_peaks %>% 
-  dplyr::mutate(egg_period = "desync") %>% 
-  dplyr::mutate(isi = c(diff(peak_times), NA))
+  dplyr::mutate(eeg_period = "desync") %>% 
+  dplyr::mutate(isi = c(diff(peak_times), NA)) %>% 
+  dplyr::mutate(burst = 0) %>% 
+  dplyr::mutate(burst = replace(burst, isi > 0.18, 1))
 
 for (i in 1:length(eeg_periods$sync_start)){
 ap_peaks <- ap_peaks %>% 
-  dplyr::mutate(egg_period = replace(
-      egg_period,
+  dplyr::mutate(eeg_period = replace(
+      eeg_period,
       peak_times > eeg_periods$sync_start[i] & peak_times < eeg_periods$sync_end[i],
       values = "sync"))
 }    
 
 ap_peaks %>% 
-  group_by(egg_period) %>% 
+  group_by(eeg_period) %>% 
   summarise(length(peak_times)) 
+
+ap_peaks %>% 
+  group_by(eeg_period) %>% 
+  summarise(sum(burst)) 
 
 
 eeg_periods$desync_length %>% sum(na.rm = T)
