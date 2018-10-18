@@ -2,7 +2,7 @@ library(R.matlab)
 library(tidyverse)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
+raw.rec <- readMat(file.path("data","08_right_PnO_t5_4083_baseline1_wake.mat"))
 
 raw.rec$ap[,,1]$interval
 ### contents of ap channel  
@@ -54,8 +54,8 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
 EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 5978/153.0243
-rec_length <- 153.0243
+samp_rate_ds <- 11676/298.9031
+rec_length <- 298.9031
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
@@ -134,12 +134,12 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### csak akkor jÃ³ a waveletnek, ha mÃ
 ### plot eeg with sync desync periods
 ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(0,rec_length) + 
+  xlim(rec_length-50,rec_length) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple") +
   geom_point(data = ap_peaks %>% 
-               dplyr::filter(peak_times > 0, peak_times < rec_length), 
+               dplyr::filter(peak_times > rec_length-50, peak_times < rec_length), 
              mapping = aes(x = peak_times, y = 7),
              shape = "|",
              color = "black", size = 4)
@@ -187,7 +187,8 @@ ap_peaks <- ap_peaks %>%
 
 
 ap_peaks <- ap_peaks %>% 
-  dplyr::mutate(egg_period = "desync") 
+  dplyr::mutate(egg_period = "desync") %>% 
+  dplyr::mutate(isi = c(diff(peak_times), NA))
 
 for (i in 1:length(eeg_periods$sync_start)){
 ap_peaks <- ap_peaks %>% 
@@ -202,8 +203,10 @@ ap_peaks %>%
   summarise(length(peak_times)) 
 
 
-591/eeg_periods$desync_length %>% sum(na.rm = T)
-2978/eeg_periods$sync_length %>% sum(na.rm = T)
+eeg_periods$desync_length %>% sum(na.rm = T)
+eeg_periods$sync_length %>% sum(na.rm = T)
+
+
 
 # level_lengths <- rle(EEG_ds_df$levels)
 
