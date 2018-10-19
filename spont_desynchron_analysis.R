@@ -3,7 +3,7 @@ library(tidyverse)
 library(reshape2)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
+raw.rec <- readMat(file.path("data","08_right_PnO_t5_4083_baseline1_wake.mat"))
 
 ### Action potentials ----------------------------------------------------------------
 
@@ -53,8 +53,8 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
 EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 5978/153.0243
-rec_length <- 153.0243
+samp_rate_ds <- 11676/298.9031
+rec_length <- 298.9031
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
@@ -238,7 +238,7 @@ ap_peaks <- ap_peaks %>%
   dplyr::mutate(isi = c(diff(peak_times), NA)) %>% 
   dplyr::mutate(burst = 0) 
 ap_peaks <- ap_peaks %>% 
-  dplyr::mutate(burst = replace(burst, isi > burst_threshold, 1))
+  dplyr::mutate(burst = replace(burst, isi > burst_threshold[1], 1))
 
 for (i in 1:length(eeg_periods$sync_start)){
   ap_peaks <- ap_peaks %>% 
@@ -265,7 +265,8 @@ hist(ap_peaks$isi[ap_peaks$eeg_state == "desync"],breaks = 150, col = "red", add
 hist(ap_peaks$isi,breaks = 150)
 
 ggplot(data = ap_peaks, aes(isi, fill = eeg_state)) +
-  geom_histogram(bins = 150, na.rm = T, position = "dodge")
+  geom_histogram(bins = 150, na.rm = T, position="identity")+
+  guides(fill = guide_legend(reverse = TRUE))
  
 
 
@@ -321,13 +322,15 @@ hist(AC %>%
 hist(AC %>% 
        dplyr::filter(eeg_state == "desync") %>% 
        dplyr::filter(time > -1, time <1) %>% 
-       pull(time), breaks = 500)
+       pull(time), breaks = 500, 
+     border  = "red", 
+     add = T)
 
 
 ggplot(data = AC %>% 
          dplyr::filter(time > -1, time <1),
        mapping = aes(x = time, fill = eeg_state)) + 
-  geom_histogram(bins = 500, position = "dodge") +
+  geom_histogram(bins = 500, position="identity") +
   scale_fill_brewer(type = "div", palette = "Paired")
 
 # sync_AC <- lapply(sync_ap, RTM_creator) %>% 
