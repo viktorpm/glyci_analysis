@@ -53,8 +53,8 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
 EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 11676/298.9031
-rec_length <- 298.9031
+samp_rate_ds <- 5978/153.0243
+rec_length <- 153.0243
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
