@@ -3,7 +3,7 @@ library(tidyverse)
 library(reshape2)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","08_right_PnO_t5_4083_baseline1_wake.mat"))
+raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
 
 ### Action potentials ----------------------------------------------------------------
 
@@ -264,12 +264,18 @@ hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"],breaks = 150)
 hist(ap_peaks$isi[ap_peaks$eeg_state == "desync"],breaks = 150, col = "red", add = T)
 hist(ap_peaks$isi,breaks = 150)
 
-ggplot(data = ap_peaks, aes(isi, fill = eeg_state)) +
-  geom_histogram(bins = 150, na.rm = T, position="identity")+
-  guides(fill = guide_legend(reverse = TRUE))
+# ggplot(data = ap_peaks, aes(isi, fill = eeg_state)) +
+#   geom_histogram(bins = 150, na.rm = T, position="identity")+
+#   guides(fill = guide_legend(reverse = F))
  
-
-
+ggplot() +
+  geom_histogram(data = ap_peaks %>% 
+                   dplyr::filter(eeg_state == "sync"),
+                 mapping = aes(x = isi, fill = eeg_state), bins = 150, na.rm = T) +
+  geom_histogram(data = ap_peaks %>% 
+                   dplyr::filter(eeg_state == "desync"),
+                 mapping = aes(x = isi, fill = eeg_state), bins = 150, na.rm = T) 
+  
 
 # isihist$counts %>% sort(decreasing = T) %>% `[[`(2)
 
@@ -327,10 +333,21 @@ hist(AC %>%
      add = T)
 
 
-ggplot(data = AC %>% 
-         dplyr::filter(time > -1, time <1),
-       mapping = aes(x = time, fill = eeg_state)) + 
-  geom_histogram(bins = 500, position="identity") +
+# ggplot(data = AC %>% 
+#          dplyr::filter(time > -1, time <1),
+#        mapping = aes(x = time, fill = eeg_state)) + 
+#   geom_histogram(bins = 500, position="identity") +
+#   scale_fill_brewer(type = "div", palette = "Paired")
+
+ggplot() + 
+  geom_histogram(data = AC %>% 
+                   dplyr::filter(eeg_state == "sync") %>% 
+                   dplyr::filter(time > -1, time <1),
+                 mapping = aes(x = time, fill = eeg_state), bins = 500) +
+  geom_histogram(data = AC %>% 
+                   dplyr::filter(eeg_state == "desync") %>% 
+                   dplyr::filter(time > -1, time <1),
+                 aes(x = time, fill = eeg_state), bins = 500) +
   scale_fill_brewer(type = "div", palette = "Paired")
 
 # sync_AC <- lapply(sync_ap, RTM_creator) %>% 
