@@ -61,8 +61,10 @@ rec_length <- ds_fun_out$r_length
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
+### function parameters:
+  ### n: order
+  ### W: freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
 
-### n:order, W:freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
 ButterHP = butter(n = 3, 
                   W = c(1/(samp_rate_ds/2), 10/(samp_rate_ds/2) ),
                   type = 'pass',
@@ -137,7 +139,7 @@ ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
 
 ### Analyzing firing based on EEG periods --------------------------------------------------
 
-### finding starts and ends of sync/desync eeg periods
+### finding start and end indices of sync/desync eeg periods
 starts <- which(EEG_ds_df %>% pull(levels) - (EEG_ds_df %>% pull(levels) %>% lag()) != 0)
 starts <- c(1,starts)
 
@@ -186,50 +188,8 @@ if(starts_ends$starts %>% length() %% 2 == 0){
 }
 
 
-
-# level_lengths <- rle(EEG_ds_df$levels)
-
-
-### list of ap times during sync and desync eeg periods
-# sync_ap <- list()
-# for (i in 1:length(eeg_periods$sync_start)){
-#   sync_ap[[i]] = ap_peaks$peak_times[ap_peaks$peak_times > eeg_periods$sync_start[i] & 
-#                                   ap_peaks$peak_times < eeg_periods$sync_end[i]]
-# }
-# 
-# desync_ap <- list()
-# for (i in 1:length(eeg_periods$sync_start)){
-#   desync_ap[[i]] = ap_peaks$peak_times[ap_peaks$peak_times > eeg_periods$desync_start[i] & 
-#                                          ap_peaks$peak_times < eeg_periods$desync_end[i]]
-# }
-
-### calculating and plotting inter spike intervals during sync and desync eeg periods
-# desync_isi <- lapply(desync_ap, diff) %>% 
-#   unlist() %>% 
-#   as.data.frame() %>% 
-#   rename(desync_ISI = ".") %>% 
-#   melt() %>% 
-#   na.omit()
-#   
-# sync_isi <- lapply(sync_ap, diff) %>% 
-#   unlist() %>% 
-#   as.data.frame() %>% 
-#   rename(sync_ISI = ".") %>% 
-#   melt() %>% 
-#   na.omit()
-# 
-# 
-# ISI <- rbind(sync_isi,desync_isi) %>% ### DOES NOT WORK WITH bind_rows 
-#   rename(time = value, eeg_state = variable) %>% 
-#   mutate(ID = "gv25")
-# 
-# ggplot(data = ISI, mapping = aes(x = time, fill = eeg_state)) +
-#   geom_histogram(bins = 150) +
-#   scale_fill_brewer(type = "div", palette = "Paired") 
-#   scale_y_continuous(trans='log10')
-
-
 ### detecting AP clusters ("bursts") based on ISI (distance between local maxima / 2)
+### HANDLE MULTIPLE PEAKS
 BurstThresholdDetect <- function(hist_data, histbreaks){
   isihist <- hist(hist_data, breaks = histbreaks, plot = F)
   max1 = which(
@@ -283,14 +243,6 @@ ap_peaks %>%
 eeg_periods$desync_length %>% sum(na.rm = T)
 eeg_periods$sync_length %>% sum(na.rm = T)
 
-hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"],breaks = 250)
-hist(ap_peaks$isi[ap_peaks$eeg_state == "desync"],breaks = 250, col = "red", add = T)
-hist(ap_peaks$isi,breaks = 150)
-
-# ggplot(data = ap_peaks, aes(isi, fill = eeg_state)) +
-#   geom_histogram(bins = 150, na.rm = T, position="identity")+
-#   guides(fill = guide_legend(reverse = F))
- 
 ggplot() +
   geom_histogram(data = ap_peaks %>% 
                    dplyr::filter(eeg_state == "sync"),
@@ -343,25 +295,6 @@ AC %>%
   group_by(eeg_state) %>% 
   summarise(length(time))
 
-hist(AC %>% 
-       dplyr::filter(eeg_state == "sync") %>% 
-       dplyr::filter(time > -1, time <1) %>% 
-       pull(time), breaks = 500)
-
-hist(AC %>% 
-       dplyr::filter(eeg_state == "desync") %>% 
-       dplyr::filter(time > -1, time <1) %>% 
-       pull(time), breaks = 500, 
-     border  = "red", 
-     add = T)
-
-
-# ggplot(data = AC %>% 
-#          dplyr::filter(time > -1, time <1),
-#        mapping = aes(x = time, fill = eeg_state)) + 
-#   geom_histogram(bins = 500, position="identity") +
-#   scale_fill_brewer(type = "div", palette = "Paired")
-
 ggplot() + 
   geom_histogram(data = AC %>% 
                    dplyr::filter(eeg_state == "sync") %>% 
@@ -372,24 +305,6 @@ ggplot() +
                    dplyr::filter(time > -1, time <1),
                  aes(x = time, fill = eeg_state), bins = 500) +
   scale_fill_brewer(type = "div", palette = "Paired")
-
-# sync_AC <- lapply(sync_ap, RTM_creator) %>% 
-#   unlist() %>% 
-#   as.data.frame() %>% 
-#   rename(sync_AC = ".") %>% 
-#   melt()
-#   
-# 
-# desync_AC <- lapply(desync_ap, RTM_creator) %>% 
-#   unlist() %>% 
-#   as.data.frame() %>% 
-#   rename(desync_AC = ".") %>%   
-#   melt()
-# 
-# AC <- rbind(sync_AC,desync_AC) %>% ### DOES NOT WORK WITH bind_rows 
-#   rename(time = value) %>% 
-#   mutate(ID = "gv03")
-
 
 
 ### Wavelet -------------------------------------------------------------------
