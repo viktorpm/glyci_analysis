@@ -2,9 +2,11 @@ library(R.matlab)
 library(tidyverse)
 library(reshape2)
 library(signal)
+
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
-raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
+file_to_load <- "gv05_05_3940_stim_CSD_toltes.mat"
+raw.rec <- readMat(file.path("data",file_to_load))
 
 ### Action potentials ----------------------------------------------------------------
 
@@ -46,8 +48,8 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[,,1]$interval*points_to_peak)
   ### values:
 EEG <- raw.rec$EEG[,,1]$values
 
-samp_rate <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
-rec_length <- (raw.rec$EEG[,,1]$length/samp_rate) %>% as.double()
+# samp_rate <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
+# rec_length <- (raw.rec$EEG[,,1]$length/samp_rate) %>% as.double()
 
 EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,1]$offset)
 
@@ -109,6 +111,7 @@ slide_mean_rep <- c(slide_mean_rep, rep(slide_mean_rep[length(slide_mean_rep)],
 )
 
 ### constructing data frame with eeg values, moving SDs and means
+SD_THRESHOLD <- -1
 EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
   ts(start = 0, 
      end = rec_length-interval_ds, 
@@ -119,7 +122,7 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a
   mutate(sd = slide_sd_rep) %>% 
   mutate(mean = slide_mean_rep) %>% 
   mutate(levels = 1) %>% 
-  mutate(levels = replace(levels, sd < -1, 0)) %>% 
+  mutate(levels = replace(levels, sd < SD_THRESHOLD, 0)) %>% 
   mutate(ID = "gv120")
 
 ### plot eeg with sync desync periods
@@ -231,17 +234,24 @@ for (i in 1:length(eeg_periods$sync_start)){
       values = "sync"))
 }    
 
-ap_peaks %>% 
+EEG_STATE_ap <- ap_peaks %>% 
   group_by(eeg_state) %>% 
-  summarise(length(peak_times)) 
+  summarise(length(peak_times)) %>% 
+  rename(No_APs = "length(peak_times)")
 
-ap_peaks %>% 
+
+EEG_STATE_cluster <- ap_peaks %>% 
   group_by(eeg_state) %>% 
-  summarise(sum(burst)) 
+  summarise(sum(burst)) %>% 
+  rename(No_clusters = "sum(burst)")
+  
 
+EEG_STATE_length <- tibble(
+  eeg_state = c("desync","sync"),
+  state_lenght = c(eeg_periods$desync_length %>% sum(na.rm = T),
+             eeg_periods$sync_length %>% sum(na.rm = T))
+)
 
-eeg_periods$desync_length %>% sum(na.rm = T)
-eeg_periods$sync_length %>% sum(na.rm = T)
 
 ggplot() +
   geom_histogram(data = ap_peaks %>% 
@@ -339,12 +349,12 @@ powers <- powers %>%
 #mutate(freq = rep(freqs, 801))
 
 
-wt.image(wave, color.key = "interval", n.levels = 150,
-         legend.params = list(lab = "wavelet power levels", mar = 4.7),
-         plot.coi = F,
-         plot.contour = F,
-         plot.ridge = F
-)
+# wt.image(wave, color.key = "interval", n.levels = 150,
+#          legend.params = list(lab = "wavelet power levels", mar = 4.7),
+#          plot.coi = F,
+#          plot.contour = F,
+#          plot.ridge = F
+# )
 
 
 ### Plotting wavelet --------------------------------------------------------------
@@ -387,4 +397,47 @@ ggplot() +
                dplyr::filter(times > time_window[1], times < time_window[2]), 
              mapping = aes(x = times, y = -3*levels+5), color = "white") 
   
+### write data to csv 
+file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
 
+write_csv(as.tibble(left_join(EEG_STATE_ap,EEG_STATE_cluster) %>% 
+                      left_join(EEG_STATE_length) %>% 
+                      mutate(ID = file_to_load) %>% 
+                      mutate(sd_threshold = SD_THRESHOLD)),
+          file.path("output_data","sync_desync_data.csv"), 
+          append = T, 
+          col_names = !file_exist_test)
+
+read_csv(file.path("output_data", "sync_desync_data.csv")) %>% View()
+
+# WriteToFile <- function(){
+#   append_parameter = T
+#   
+#   file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
+#   
+#   if (file_exist_test == T) {
+#     read_output_file <- read_csv(file.path("output_data", "sync_desync_data.csv"))
+#   } else {
+#     read_file_info <- data.frame()
+#   }
+#   
+#   file_processed_test <- str_detect(
+#     read_output_file$ID,
+#     regex(paste0(file_to_load))
+#   )
+#   
+#   if (any(file_processed_test == T)) {
+#     append_parameter == F
+#     warning("File has already been processed")
+#   }
+#   
+#   
+#   write_csv(as.tibble(left_join(EEG_STATE_ap,EEG_STATE_cluster) %>% 
+#                         left_join(EEG_STATE_length) %>% 
+#                         mutate(ID = file_to_load) %>% 
+#                         mutate(sd_threshold = SD_THRESHOLD)),
+#             file.path("output_data","sync_desync_data.csv"), append = append_parameter)
+#   
+#   
+# }
+# WriteToFile()
