@@ -1,6 +1,7 @@
 library(R.matlab)
 library(tidyverse)
 library(reshape2)
+library(signal)
 load(file.path("f:","_R_WD","useful_to_load","colorMatrix.RData"))
 
 raw.rec <- readMat(file.path("data","07_4294_gv03.mat"))
@@ -52,9 +53,11 @@ EEG_scaled <- (EEG*as.double(raw.rec$EEG[,,1]$scale)) + as.double(raw.rec$EEG[,,
 
 ### downsampling and standardizing in R
 source(file.path("downSamp.R"))
-EEG_ds_scaled <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000) %>% scale()
-samp_rate_ds <- 5978/153.0243
-rec_length <- 153.0243
+
+ds_fun_out <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000)
+EEG_ds_scaled <- ds_fun_out$data %>% scale()
+samp_rate_ds <- ds_fun_out$data_points/ds_fun_out$r_length 
+rec_length <- ds_fun_out$r_length
 interval_ds <- 1/samp_rate_ds
 
 ### Filtering 
@@ -120,12 +123,12 @@ EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a
 ### plot eeg with sync desync periods
 ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line() + 
-  xlim(rec_length-20,rec_length) + 
+  xlim(50,100) + 
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels+5), color = "purple") +
   geom_point(data = ap_peaks %>% 
-               dplyr::filter(peak_times > rec_length-20, peak_times < rec_length), 
+               dplyr::filter(peak_times > 50, peak_times < 100), 
              mapping = aes(x = peak_times, y = 7),
              shape = "|",
              color = "black", size = 4)
@@ -153,16 +156,36 @@ if (EEG_ds_df$levels[1] == 1){
                             length(starts))[1:length(starts)])
 }
 
+starts_ends %>% 
+  group_by(eeg_period) %>% 
+  summarise(length(starts))
+
+
 ### constructing eeg_periods tibble to store start/end times of sync/desync periods
-eeg_periods <- tibble(
-  sync_start = EEG_ds_df$times[starts_ends$starts[seq(1,length(starts_ends$starts),2)]],
-  sync_end = EEG_ds_df$times[starts_ends$ends[seq(1,length(starts_ends$starts),2)]],
-  desync_start = c(EEG_ds_df$times[starts_ends$starts[seq(2,length(starts_ends$starts),2)]],NA),
-  desync_end = c(EEG_ds_df$times[starts_ends$ends[seq(2,length(starts_ends$starts),2)]],NA)
-) %>% 
-  mutate(
-    sync_length  = sync_end - sync_start,
-    desync_length = desync_end - desync_start)
+
+if(starts_ends$starts %>% length() %% 2 == 0){
+  eeg_periods <- tibble(
+    sync_start = EEG_ds_df$times[starts_ends$starts[seq(1,length(starts_ends$starts),2)]],
+    sync_end = EEG_ds_df$times[starts_ends$ends[seq(1,length(starts_ends$starts),2)]],
+    desync_start = EEG_ds_df$times[starts_ends$starts[seq(2,length(starts_ends$starts),2)]],
+    desync_end = EEG_ds_df$times[starts_ends$ends[seq(2,length(starts_ends$starts),2)]]
+  ) %>% 
+    mutate(
+      sync_length  = sync_end - sync_start,
+      desync_length = desync_end - desync_start)
+} else {
+  eeg_periods <- tibble(
+    sync_start = EEG_ds_df$times[starts_ends$starts[seq(1,length(starts_ends$starts),2)]],
+    sync_end = EEG_ds_df$times[starts_ends$ends[seq(1,length(starts_ends$starts),2)]],
+    desync_start = c(EEG_ds_df$times[starts_ends$starts[seq(2,length(starts_ends$starts),2)]],NA),
+    desync_end = c(EEG_ds_df$times[starts_ends$ends[seq(2,length(starts_ends$starts),2)]],NA)
+  ) %>% 
+    mutate(
+      sync_length  = sync_end - sync_start,
+      desync_length = desync_end - desync_start)
+}
+
+
 
 # level_lengths <- rle(EEG_ds_df$levels)
 
@@ -250,7 +273,7 @@ for (i in 1:length(eeg_periods$sync_start)){
 
 ap_peaks %>% 
   group_by(eeg_state) %>% 
-  summarise(length(isi)) 
+  summarise(length(peak_times)) 
 
 ap_peaks %>% 
   group_by(eeg_state) %>% 
@@ -260,8 +283,8 @@ ap_peaks %>%
 eeg_periods$desync_length %>% sum(na.rm = T)
 eeg_periods$sync_length %>% sum(na.rm = T)
 
-hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"],breaks = 150)
-hist(ap_peaks$isi[ap_peaks$eeg_state == "desync"],breaks = 150, col = "red", add = T)
+hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"],breaks = 250)
+hist(ap_peaks$isi[ap_peaks$eeg_state == "desync"],breaks = 250, col = "red", add = T)
 hist(ap_peaks$isi,breaks = 150)
 
 # ggplot(data = ap_peaks, aes(isi, fill = eeg_state)) +
@@ -271,10 +294,10 @@ hist(ap_peaks$isi,breaks = 150)
 ggplot() +
   geom_histogram(data = ap_peaks %>% 
                    dplyr::filter(eeg_state == "sync"),
-                 mapping = aes(x = isi, fill = eeg_state), bins = 150, na.rm = T) +
+                 mapping = aes(x = isi, fill = eeg_state), bins = 150) +
   geom_histogram(data = ap_peaks %>% 
                    dplyr::filter(eeg_state == "desync"),
-                 mapping = aes(x = isi, fill = eeg_state), bins = 150, na.rm = T) 
+                 mapping = aes(x = isi, fill = eeg_state),alpha = 0.5, bins = 150) 
   
 
 # isihist$counts %>% sort(decreasing = T) %>% `[[`(2)
@@ -395,9 +418,6 @@ powers %>% dim()
 freqs <- (1/wave$Period) %>% round(2)
 period <- (wave$Period) %>%  round(2)
 
-
-library(reshape2)
-library(ggplot2)
 
 powers <- powers %>% 
   melt() #%>% 
