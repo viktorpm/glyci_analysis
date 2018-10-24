@@ -9,7 +9,7 @@ load(file.path("f:", "_R_WD", "useful_to_load", "colorMatrix.RData"))
 file_list <- list.files(path = "data", 
                         pattern = "*.mat", full.names = F, recursive = F) 
 
-SyncDesyncAnalysis <- function(file) {
+SyncDesyncAnalysis <- function(file, sd_threshold) {
   file_to_load <- file
   raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -136,7 +136,7 @@ SyncDesyncAnalysis <- function(file) {
   ))
 
   ### constructing data frame with eeg values, moving SDs and means
-  SD_THRESHOLD <- -1
+  SD_THRESHOLD <- sd_threshold %>% as.numeric()
   EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
     ts(
       start = 0,
@@ -562,7 +562,7 @@ SyncDesyncAnalysis <- function(file) {
   col_names = !file_exist_test
   )
 }
-lapply(file_list, SyncDesyncAnalysis)
+lapply(file_list, SyncDesyncAnalysis, sd_threshold = -0.7)
 
 
 
