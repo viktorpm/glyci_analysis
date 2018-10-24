@@ -31,7 +31,8 @@ SyncDesyncAnalysis <- function(file) {
   ### codes: marker codes of the APs
   ### values: matrix containing the waveforms of the APs (described by a given No. points)
 
-  points_to_peak <- which(raw.rec$ap[, , 1]$values[150, ] == max(raw.rec$ap[, , 1]$values[150, ])) %>%
+  points_to_peak <- which(raw.rec$ap[, , 1]$values[150, ] == 
+                            max(raw.rec$ap[, , 1]$values[150, ])) %>%
     as.numeric()
   raw.rec$ap[, , 1]$interval * points_to_peak ### time of the peak of the APs after the first point
 
@@ -72,15 +73,26 @@ SyncDesyncAnalysis <- function(file) {
   ### n: order
   ### W: freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
 
-  ButterHP <- butter(
+  ButterBP <- butter(
     n = 3,
     W = c(1 / (samp_rate_ds / 2), 10 / (samp_rate_ds / 2)),
     type = "pass",
     plane = "z"
   )
-  EEG_ds_scaled <- signal::filter(ButterHP, EEG_ds_scaled) %>% as.double() %>% scale()
-
-
+  
+  # ButterHP <- butter(
+  #   n = 3,
+  #   W = 200 / (samp_rate / 2),
+  #   type = "high",
+  #   plane = "z"
+  # )
+  
+  EEG_ds_scaled <- signal::filter(ButterBP, EEG_ds_scaled) %>% as.double() %>% scale()
+  # EEG_hp <- signal::filter(ButterHP, EEG_scaled) %>% as.double() %>% scale() 
+  
+  # ds_fun_out_hp <- downSamp(data = EEG_hp, ds_factor = 8, samp_rate = 20000)
+  # plot(ds_fun_out_hp$data[(6*2500):(11*2500)], type = "l")
+  
 
   ### times of data points
   times <- seq(from = 0, to = rec_length - interval_ds, by = interval_ds)
@@ -139,7 +151,32 @@ SyncDesyncAnalysis <- function(file) {
     mutate(levels = 1) %>%
     mutate(levels = replace(levels, sd < SD_THRESHOLD, 0)) %>%
     mutate(ID = "gv120")
+  
+  
+  
+  ### power spectrum to find burst_threshold
+  library(bspec)
+  PSD <- welchPSD(EEG_ds_df %>% dplyr::filter(levels == 1) %>% pull(eeg_values) ,
+           seglength = 256, windowfun = hannwindow)
+  source("findpeaks.R")
+  peaks <- FindPeaks(PSD$power, bw = 5)
+  plot(PSD$power, type = "h")
+  points(peaks[[1]],peaks[[2]], col = "red")
+  
+  second_peak <- (PSD$frequency*samp_rate_ds)[peaks[[1]][2]]
+  
+  plot(
+    PSD$frequency*samp_rate_ds, 
+    PSD$power,
+    type = "h",
+    lwd = 2,
+    xlim = c(0,20)
+  )
+  abline(v = second_peak, col = "red")
+  
+  burst_threshold_power <- 1000/second_peak/1000
 
+  
   ### plot eeg with sync desync periods
   ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
     geom_line() +
@@ -254,9 +291,12 @@ SyncDesyncAnalysis <- function(file) {
   ap_peaks <- ap_peaks %>%
     dplyr::mutate(eeg_state = "desync") %>%
     dplyr::mutate(isi = c(diff(peak_times), NA)) %>%
-    dplyr::mutate(burst = 0)
+    dplyr::mutate(burst = 0) %>% 
+    dplyr::mutate(burst_PSD = 0)
   ap_peaks <- ap_peaks %>%
-    dplyr::mutate(burst = replace(burst, isi > burst_threshold[1], 1))
+    dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold[1]), 1)) %>% 
+    dplyr::mutate(burst_PSD = replace(burst_PSD, lag(isi > burst_threshold_power), 1))
+  # lag() burst starts
 
   for (i in 1:length(eeg_periods$sync_start)) {
     ap_peaks <- ap_peaks %>%
@@ -277,6 +317,12 @@ SyncDesyncAnalysis <- function(file) {
     group_by(eeg_state) %>%
     summarise(sum(burst)) %>%
     rename(No_clusters = "sum(burst)")
+  
+  EEG_STATE_cluster_PSD <- ap_peaks %>%
+    group_by(eeg_state) %>%
+    summarise(sum(burst_PSD)) %>%
+    rename(No_clusters_PSD = "sum(burst_PSD)")
+  
 
 
   EEG_STATE_length <- tibble(
@@ -298,7 +344,9 @@ SyncDesyncAnalysis <- function(file) {
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "desync"),
       mapping = aes(x = isi, fill = eeg_state), alpha = 0.5, bins = 150
-    )
+    ) 
+    # geom_vline(xintercept =  burst_threshold_power) + 
+    # geom_vline(xintercept =  burst_threshold[1], color = "red")
   
   ggsave(file.path("output_data",paste0(file, c("_ISI.png"))),
          width = 24,
@@ -461,13 +509,35 @@ SyncDesyncAnalysis <- function(file) {
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]),
       mapping = aes(x = peak_times, y = 100),
       shape = "|",
-      color = "white", size = 4
+      color = "white", size = 5
     ) +
+    
+    ### cluster starts defined by PSD
+    geom_point(
+      data = ap_peaks %>%
+        dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
+        dplyr::filter(burst_PSD == 1),
+      mapping = aes(x = peak_times, y = 96),
+      shape = "ˇ",
+      color = "green", size = 7
+    ) +
+    
+    ### cluster starts defined by ISI
+    geom_point(
+      data = ap_peaks %>%
+        dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
+        dplyr::filter(burst == 1),
+      mapping = aes(x = peak_times, y = 100),
+      shape = "|",
+      color = "red", size = 7
+    ) +
+    
     geom_line(
       data = EEG_ds_df %>%
         dplyr::filter(times > time_window[1], times < time_window[2]),
       mapping = aes(x = times, y = -3 * levels + 5), color = "white"
     )
+    
   
   
   ggsave(file.path("output_data",paste0(file, c("_wavelet.png"))),
@@ -480,9 +550,12 @@ SyncDesyncAnalysis <- function(file) {
   file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
 
   write_csv(as.tibble(left_join(EEG_STATE_ap, EEG_STATE_cluster) %>%
+    left_join(EEG_STATE_cluster_PSD) %>%                     
     left_join(EEG_STATE_length) %>%
     mutate(ID = file_to_load) %>%
     mutate(sd_threshold = SD_THRESHOLD)) %>%
+    mutate(burst_threshold = burst_threshold[1]) %>% 
+    mutate(burst_threshold_PSD = burst_threshold_power) %>% 
     mutate(MFR = No_APs / state_length),
   file.path("output_data", "sync_desync_data.csv"),
   append = T,
@@ -500,21 +573,56 @@ result_tibble <- result_tibble %>%
   mutate(No_clusters_norm = No_clusters/state_length) 
 
 
+y_axis <- "No_clusters_norm"
+
+ggplot() +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 10)) +
+  
+  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                           y = eval(parse(text = y_axis))),
+             color = "#EB8104") +
+  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                          y = eval(parse(text = y_axis)),
+                          group = ID),
+            color = "#EB8104") + 
+  
+  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
+             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                           y = eval(parse(text = y_axis)))) +
+  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
+            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                          y = eval(parse(text = y_axis)),
+                          group = ID)) +
+  
+  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -1),
+             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                           y = eval(parse(text = y_axis))),
+             color = "green") +
+  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -1),
+            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                          y = eval(parse(text = y_axis)),
+                          group = ID),
+            color = "green") +
+  scale_x_discrete(name = "EEG state",labels = c("Synchronous", "Deynchronous")) +
+  labs(y = y_axis) 
+
 
 ggplot(data = result_tibble,
        mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                     y = No_clusters_norm)) +
+                     y = eval(parse(text = y_axis)),
+                     color = as.factor(sd_threshold),
+                     )
+       ) +
   theme_minimal() +
   theme(axis.text = element_text(size = 10)) +
-  #geom_boxplot(width = 0.1, alpha = 0.5) +
-  geom_point(#shape = 21, 
-    color = "#EB8104", 
-    size = 2) +
-  geom_line(aes(group = ID), color = "#EB8104") 
+  geom_point() +  
+  scale_x_discrete(name = "EEG state",labels = c("Synchronous", "Deynchronous")) +
+  labs(y = y_axis) +
+  labs(color = "SD threshold")
   
-  scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
-  labs(y = "Mean firing rate") 
-
 # WriteToFile <- function(){
 #   append_parameter = T
 #
