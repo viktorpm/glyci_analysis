@@ -143,17 +143,24 @@ SyncDesyncAnalysis <- function(file) {
   ### plot eeg with sync desync periods
   ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
     geom_line() +
-    xlim(50, 100) +
+    xlim(times[length(times)]-80, times[length(times)]) +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels + 5), color = "purple") +
     geom_point(
       data = ap_peaks %>%
-        dplyr::filter(peak_times > 50, peak_times < 100),
+        dplyr::filter(peak_times > times[length(times)]-80, 
+                      peak_times < times[length(times)]),
       mapping = aes(x = peak_times, y = 7),
       shape = "|",
       color = "black", size = 4
     )
+  
+  ggsave(file.path("output_data",paste0(file, c("_sync_desync_periods.png"))),
+         width = 24,
+         height = 18,
+         units = "cm",
+         dpi = 300)
 
 
 
@@ -292,6 +299,12 @@ SyncDesyncAnalysis <- function(file) {
         dplyr::filter(eeg_state == "desync"),
       mapping = aes(x = isi, fill = eeg_state), alpha = 0.5, bins = 150
     )
+  
+  ggsave(file.path("output_data",paste0(file, c("_ISI.png"))),
+         width = 24,
+         height = 18,
+         units = "cm",
+         dpi = 300)
 
 
   # isihist$counts %>% sort(decreasing = T) %>% `[[`(2)
@@ -351,6 +364,12 @@ SyncDesyncAnalysis <- function(file) {
       aes(x = time, fill = eeg_state), bins = 500
     ) +
     scale_fill_brewer(type = "div", palette = "Paired")
+  
+  ggsave(file.path("output_data",paste0(file, c("_AC.png"))),
+         width = 24,
+         height = 18,
+         units = "cm",
+         dpi = 300)
 
 
   ### Wavelet -------------------------------------------------------------------
@@ -449,6 +468,13 @@ SyncDesyncAnalysis <- function(file) {
         dplyr::filter(times > time_window[1], times < time_window[2]),
       mapping = aes(x = times, y = -3 * levels + 5), color = "white"
     )
+  
+  
+  ggsave(file.path("output_data",paste0(file, c("_wavelet.png"))),
+         width = 24,
+         height = 18,
+         units = "cm",
+         dpi = 300)
 
   ### write data to csv
   file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
@@ -465,7 +491,29 @@ SyncDesyncAnalysis <- function(file) {
 }
 lapply(file_list, SyncDesyncAnalysis)
 
-read_csv(file.path("output_data", "sync_desync_data.csv")) %>% View()
+
+
+### Analyzing results
+result_tibble <- read_csv(file.path("output_data", "sync_desync_data.csv")) 
+
+result_tibble <- result_tibble %>% 
+  mutate(No_clusters_norm = No_clusters/state_length) 
+
+
+
+ggplot(data = result_tibble,
+       mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+                     y = No_clusters_norm)) +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 10)) +
+  #geom_boxplot(width = 0.1, alpha = 0.5) +
+  geom_point(#shape = 21, 
+    color = "#EB8104", 
+    size = 2) +
+  geom_line(aes(group = ID), color = "#EB8104") 
+  
+  scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
+  labs(y = "Mean firing rate") 
 
 # WriteToFile <- function(){
 #   append_parameter = T
