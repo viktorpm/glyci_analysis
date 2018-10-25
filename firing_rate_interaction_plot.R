@@ -391,7 +391,7 @@ filter_condititon <- "pinch == T" #& firing == 'irregular'"
 
 ### transforming allCells data frame
 allCells_for_plot <- allCells %>%
-  filter(eval(parse(text = filter_condititon))) %>% 
+  dplyr::filter(eval(parse(text = filter_condititon))) %>% 
   mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
   mutate(No.AP_p_stimLength = No.AP / stimLength) %>%
   dplyr::group_by(condition, cell) %>%

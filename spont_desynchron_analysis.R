@@ -2,12 +2,14 @@ library(R.matlab)
 library(tidyverse)
 library(reshape2)
 library(signal)
+library(bspec) ### power spectrum
+library(WaveletComp) ### wavelet
 
-load(file.path("f:", "_R_WD", "useful_to_load", "colorMatrix.RData"))
 
-
-file_list <- list.files(path = "data", 
-                        pattern = "*.mat", full.names = F, recursive = F) 
+file_list <- list.files(
+  path = "data",
+  pattern = "*.mat", full.names = F, recursive = F
+)
 
 SyncDesyncAnalysis <- function(file, sd_threshold) {
   file_to_load <- file
@@ -31,10 +33,13 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### codes: marker codes of the APs
   ### values: matrix containing the waveforms of the APs (described by a given No. points)
 
-  points_to_peak <- which(raw.rec$ap[, , 1]$values[150, ] == 
-                            max(raw.rec$ap[, , 1]$values[150, ])) %>%
+  ### number of data points to the peak of the AP from its first data point
+  points_to_peak <- which(raw.rec$ap[, , 1]$values[150, ] ==
+    max(raw.rec$ap[, , 1]$values[150, ])) %>%
     as.numeric()
-  raw.rec$ap[, , 1]$interval * points_to_peak ### time of the peak of the APs after the first point
+  
+  ### time of the peak of the APs after its first point
+  raw.rec$ap[, , 1]$interval * points_to_peak 
 
   ap <- raw.rec$ap[, , 1]$times %>% as.double()
   ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
@@ -59,7 +64,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
   EEG_scaled <- (EEG * as.double(raw.rec$EEG[, , 1]$scale)) + as.double(raw.rec$EEG[, , 1]$offset)
 
-  ### downsampling and standardizing in R
+  ### downsampling and standardizing in R -----------------------
   source(file.path("downSamp.R"))
 
   ds_fun_out <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000)
@@ -68,7 +73,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   rec_length <- ds_fun_out$r_length
   interval_ds <- 1 / samp_rate_ds
 
-  ### Filtering
+  ### Filtering ---------------
   ### function parameters:
   ### n: order
   ### W: freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
@@ -79,34 +84,36 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     type = "pass",
     plane = "z"
   )
-  
+
+  ### constructing high pass filter 
   # ButterHP <- butter(
   #   n = 3,
   #   W = 200 / (samp_rate / 2),
   #   type = "high",
   #   plane = "z"
   # )
-  
+
   EEG_ds_scaled <- signal::filter(ButterBP, EEG_ds_scaled) %>% as.double() %>% scale()
-  # EEG_hp <- signal::filter(ButterHP, EEG_scaled) %>% as.double() %>% scale() 
   
+  ###high pass filtering EEG
+  # EEG_hp <- signal::filter(ButterHP, EEG_scaled) %>% as.double() %>% scale()
   # ds_fun_out_hp <- downSamp(data = EEG_hp, ds_factor = 8, samp_rate = 20000)
   # plot(ds_fun_out_hp$data[(6*2500):(11*2500)], type = "l")
-  
+
 
   ### times of data points
   times <- seq(from = 0, to = rec_length - interval_ds, by = interval_ds)
 
 
-  ### calculate moving sd
+  ### calculating moving SDs and means
   source("slideFunct.R")
+  
   slide_sd <- slideFunct(
     data = EEG_ds_scaled,
     window = 1 * round(samp_rate_ds),
     step = 1 * round(samp_rate_ds / 2),
     type = "sd"
   ) %>% scale()
-
 
   slide_mean <- slideFunct(
     data = EEG_ds_scaled,
@@ -151,53 +158,65 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     mutate(levels = 1) %>%
     mutate(levels = replace(levels, sd < SD_THRESHOLD, 0)) %>%
     mutate(ID = "gv120")
+
+
+
+  ### Find burst_threshold based on power spectrum (oscillation frequency of the EEG)
   
+  ### calculating Power Spectral Density
+  PSD <- bspec::welchPSD(EEG_ds_df %>% dplyr::filter(levels == 1) %>% pull(eeg_values),
+    seglength = 256, windowfun = hannwindow
+  )
   
-  
-  ### power spectrum to find burst_threshold
-  library(bspec)
-  PSD <- welchPSD(EEG_ds_df %>% dplyr::filter(levels == 1) %>% pull(eeg_values) ,
-           seglength = 256, windowfun = hannwindow)
+  ### finding peaks on PSD
+  ### returns a list with indices [[1]] and values [[2]] of peaks and troughs [[3]] [[4]]
   source("findpeaks.R")
   peaks <- FindPeaks(PSD$power, bw = 5)
   plot(PSD$power, type = "h")
-  points(peaks[[1]],peaks[[2]], col = "red")
-  
-  second_peak <- (PSD$frequency*samp_rate_ds)[peaks[[1]][2]]
-  
+  points(peaks[[1]], peaks[[2]], col = "red")
+
+  ### frequency of the second peak
+  second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][2]]
+
   plot(
-    PSD$frequency*samp_rate_ds, 
+    PSD$frequency * samp_rate_ds,
     PSD$power,
     type = "h",
     lwd = 2,
-    xlim = c(0,20)
+    xlim = c(0, 20)
   )
   abline(v = second_peak, col = "red")
-  
-  burst_threshold_power <- 1000/second_peak/1000
 
+  ### calculating time from frequency in miliseconds and in seconds
+  burst_threshold_power <- 1000 / second_peak / 1000
+
+
+  ### plot eeg with sync desync periods (last 80 seconds of the recording)
+  plotting_region <- c(times[length(times)] - 80, times[length(times)])
   
-  ### plot eeg with sync desync periods
   ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
     geom_line() +
-    xlim(times[length(times)]-80, times[length(times)]) +
+    xlim(plotting_region[1], plotting_region[2]) +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = sd), color = "red") +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = mean), color = "blue") +
     geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels + 5), color = "purple") +
     geom_point(
       data = ap_peaks %>%
-        dplyr::filter(peak_times > times[length(times)]-80, 
-                      peak_times < times[length(times)]),
+        dplyr::filter(
+          peak_times > plotting_region[1],
+          peak_times < plotting_region[2]
+        ),
       mapping = aes(x = peak_times, y = 7),
       shape = "|",
       color = "black", size = 4
     )
-  
-  ggsave(file.path("output_data",paste0(file, c("_sync_desync_periods.png"))),
-         width = 24,
-         height = 18,
-         units = "cm",
-         dpi = 300)
+
+  ggsave(file.path("output_data", paste0(file, c("_sync_desync_periods.png"))),
+    width = 24,
+    height = 18,
+    units = "cm",
+    dpi = 300
+  )
 
 
 
@@ -210,14 +229,14 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ends <- which(EEG_ds_df %>% pull(levels) - (EEG_ds_df %>% pull(levels) %>% lag()) != 0) - 1
   ends <- c(ends, length(EEG_ds_df$levels))
 
-  if (EEG_ds_df$levels[1] == 1) {
+  if (EEG_ds_df$levels[1] == 1) { ### starting with sync period
     starts_ends <- cbind(starts, ends) %>%
       as.tibble() %>%
       mutate(eeg_period = rep(
         c("sync", "desync"),
         length(starts)
       )[1:length(starts)])
-  } else {
+  } else { ### starting with sync period
     starts_ends <- cbind(starts, ends) %>%
       as.tibble() %>%
       mutate(eeg_period = rep(
@@ -233,12 +252,24 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
   ### constructing eeg_periods tibble to store start/end times of sync/desync periods
 
-  if (starts_ends$starts %>% length() %% 2 == 0) {
+  if (starts_ends$starts %>% length() %% 2 == 0) { ### odd and even cases
     eeg_periods <- tibble(
-      sync_start = EEG_ds_df$times[starts_ends$starts[seq(1, length(starts_ends$starts), 2)]],
-      sync_end = EEG_ds_df$times[starts_ends$ends[seq(1, length(starts_ends$starts), 2)]],
-      desync_start = EEG_ds_df$times[starts_ends$starts[seq(2, length(starts_ends$starts), 2)]],
-      desync_end = EEG_ds_df$times[starts_ends$ends[seq(2, length(starts_ends$starts), 2)]]
+      sync_start = EEG_ds_df$times[starts_ends$starts[seq(1, 
+                                                          length(starts_ends$starts),
+                                                          2)]
+                                   ],
+      sync_end = EEG_ds_df$times[starts_ends$ends[seq(1, 
+                                                      length(starts_ends$starts), 
+                                                      2)]
+                                 ],
+      desync_start = EEG_ds_df$times[starts_ends$starts[seq(2, 
+                                                            length(starts_ends$starts), 
+                                                            2)]
+                                     ],
+      desync_end = EEG_ds_df$times[starts_ends$ends[seq(2, 
+                                                        length(starts_ends$starts), 
+                                                        2)]
+                                   ]
     ) %>%
       mutate(
         sync_length = sync_end - sync_start,
@@ -246,10 +277,24 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       )
   } else {
     eeg_periods <- tibble(
-      sync_start = EEG_ds_df$times[starts_ends$starts[seq(1, length(starts_ends$starts), 2)]],
-      sync_end = EEG_ds_df$times[starts_ends$ends[seq(1, length(starts_ends$starts), 2)]],
-      desync_start = c(EEG_ds_df$times[starts_ends$starts[seq(2, length(starts_ends$starts), 2)]], NA),
-      desync_end = c(EEG_ds_df$times[starts_ends$ends[seq(2, length(starts_ends$starts), 2)]], NA)
+      sync_start = EEG_ds_df$times[starts_ends$starts[seq(1,
+                                                          length(starts_ends$starts), 
+                                                          2)]
+                                   ],
+      sync_end = EEG_ds_df$times[starts_ends$ends[seq(1, 
+                                                      length(starts_ends$starts),
+                                                      2)]
+                                 ],
+      desync_start = c(EEG_ds_df$times[starts_ends$starts[seq(2, 
+                                                              length(starts_ends$starts), 
+                                                              2)]
+                                       ], 
+                       NA),
+      desync_end = c(EEG_ds_df$times[starts_ends$ends[seq(2, 
+                                                          length(starts_ends$starts), 
+                                                          2)]
+                                     ], 
+                     NA)
     ) %>%
       mutate(
         sync_length = sync_end - sync_start,
@@ -257,9 +302,9 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       )
   }
 
-
+  
   ### detecting AP clusters ("bursts") based on ISI (distance between local maxima / 2)
-  ### HANDLE MULTIPLE PEAKS
+  ### does not handel multiple local maxima
   BurstThresholdDetect <- function(hist_data, histbreaks) {
     isihist <- hist(hist_data, breaks = histbreaks, plot = F)
     max1 <- which(
@@ -281,6 +326,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     return(burst_threshold)
   }
 
+  ### burst thershold based on ISI peaks (first half, second half)
   burst_threshold <- BurstThresholdDetect(
     hist_data =
       diff(ap_peaks$peak_times),
@@ -291,13 +337,16 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ap_peaks <- ap_peaks %>%
     dplyr::mutate(eeg_state = "desync") %>%
     dplyr::mutate(isi = c(diff(peak_times), NA)) %>%
-    dplyr::mutate(burst = 0) %>% 
+    dplyr::mutate(burst = 0) %>%
     dplyr::mutate(burst_PSD = 0)
   ap_peaks <- ap_peaks %>%
-    dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold[1]), 1)) %>% 
-    dplyr::mutate(burst_PSD = replace(burst_PSD, lag(isi > burst_threshold_power), 1))
-  # lag() burst starts
-
+    dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold[1]), 1)) %>%
+    dplyr::mutate(burst_PSD = replace(burst_PSD, 
+                                      lag(isi > burst_threshold_power), 
+                                      1
+                                      )
+                  ) ### lag(): to find the firs APs in a cluster (burst) instead of the last one
+  
   for (i in 1:length(eeg_periods$sync_start)) {
     ap_peaks <- ap_peaks %>%
       dplyr::mutate(eeg_state = replace(
@@ -307,23 +356,22 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       ))
   }
 
+
+  ### save to file at the end: 
   EEG_STATE_ap <- ap_peaks %>%
     group_by(eeg_state) %>%
     summarise(length(peak_times)) %>%
     rename(No_APs = "length(peak_times)")
 
-
   EEG_STATE_cluster <- ap_peaks %>%
     group_by(eeg_state) %>%
     summarise(sum(burst)) %>%
     rename(No_clusters = "sum(burst)")
-  
+
   EEG_STATE_cluster_PSD <- ap_peaks %>%
     group_by(eeg_state) %>%
     summarise(sum(burst_PSD)) %>%
     rename(No_clusters_PSD = "sum(burst_PSD)")
-  
-
 
   EEG_STATE_length <- tibble(
     eeg_state = c("desync", "sync"),
@@ -333,7 +381,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     )
   )
 
-
+  ### plotting ISI
   ggplot() +
     geom_histogram(
       data = ap_peaks %>%
@@ -344,23 +392,21 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "desync"),
       mapping = aes(x = isi, fill = eeg_state), alpha = 0.5, bins = 150
-    ) 
-    # geom_vline(xintercept =  burst_threshold_power) + 
-    # geom_vline(xintercept =  burst_threshold[1], color = "red")
-  
-  ggsave(file.path("output_data",paste0(file, c("_ISI.png"))),
-         width = 24,
-         height = 18,
-         units = "cm",
-         dpi = 300)
+    )
+  # geom_vline(xintercept =  burst_threshold_power) +
+  # geom_vline(xintercept =  burst_threshold[1], color = "red")
+
+  ggsave(file.path("output_data", paste0(file, c("_ISI.png"))),
+    width = 24,
+    height = 18,
+    units = "cm",
+    dpi = 300
+  )
 
 
-  # isihist$counts %>% sort(decreasing = T) %>% `[[`(2)
+  ### AUTOCORRELOGRAM ------------------------------------------------------------
 
-
-  ### calculating and plotting autocorrelation during sync and desync eeg periods
-
-  ### rel_time matrix creator for lapply
+  ### rel_time matrix creator
   RTM_creator <- function(x) {
     mat_spike <- matrix(x,
       nrow = length(x),
@@ -382,7 +428,6 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     melt() %>%
     mutate(eeg_state = "sync")
 
-
   desync_AC <- RTM_creator(
     ap_peaks %>%
       dplyr::filter(eeg_state == "desync") %>%
@@ -394,10 +439,8 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   AC <- rbind(sync_AC, desync_AC) %>% ### DOES NOT WORK WITH bind_rows
     transmute(time = value, eeg_state = eeg_state)
 
-  AC %>%
-    group_by(eeg_state) %>%
-    summarise(length(time))
-
+ 
+  ### plotting AC
   ggplot() +
     geom_histogram(
       data = AC %>%
@@ -412,25 +455,25 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       aes(x = time, fill = eeg_state), bins = 500
     ) +
     scale_fill_brewer(type = "div", palette = "Paired")
-  
-  ggsave(file.path("output_data",paste0(file, c("_AC.png"))),
-         width = 24,
-         height = 18,
-         units = "cm",
-         dpi = 300)
+
+  ggsave(file.path("output_data", paste0(file, c("_AC.png"))),
+    width = 24,
+    height = 18,
+    units = "cm",
+    dpi = 300
+  )
 
 
-  ### Wavelet -------------------------------------------------------------------
-
-  library(WaveletComp)
+  ### WAVELET -------------------------------------------------------------------
 
   time_window <- c(50, 100)
+
+  ### calculating wavelet
   wave <- analyze.wavelet(EEG_ds_df %>%
     dplyr::filter(times > time_window[1], times < time_window[2]),
   "eeg_values",
   loess.span = 0,
-  dt = 1 / 40,
-  ### 1/sampling rate (number of intervals/time unit)
+  dt = 1 / 40, ### 1/sampling rate (number of intervals/time unit)
   dj = 1 / 20,
   # lowerPeriod = ,
   # upperPeriod = 2,
@@ -439,30 +482,19 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   n.sim = 1
   )
 
-  ### calculate frequency from period
+  ### calculating frequency from period
   # wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
 
   powers <- wave$Power
-  powers %>% dim()
   freqs <- (1 / wave$Period) %>% round(2)
   period <- (wave$Period) %>% round(2)
 
 
   powers <- powers %>%
     melt() # %>%
-  # mutate(freq = rep(freqs, 801))
-
-
-  # wt.image(wave, color.key = "interval", n.levels = 150,
-  #          legend.params = list(lab = "wavelet power levels", mar = 4.7),
-  #          plot.coi = F,
-  #          plot.contour = F,
-  #          plot.ridge = F
-  # )
 
 
   ### Plotting wavelet --------------------------------------------------------------
-
 
   ggplot() +
     theme_minimal() +
@@ -475,6 +507,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       panel.border = element_blank(),
       axis.ticks.length = unit(5, "mm")
     ) +
+    ### wavelet
     geom_raster(
       data = powers,
       mapping = aes(
@@ -497,13 +530,16 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
         freqs[150]
       )
     ) +
-    # scale_y_reverse() +
     scale_fill_distiller(palette = "RdGy", name = "Power") +
+
+    ### EEG
     geom_line(
       data = EEG_ds_df %>%
         dplyr::filter(times > time_window[1], times < time_window[2]),
       mapping = aes(x = times, y = -2 * eeg_values + 20), color = "white"
     ) +
+
+    ### APs
     geom_point(
       data = ap_peaks %>%
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]),
@@ -511,8 +547,8 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       shape = "|",
       color = "white", size = 5
     ) +
-    
-    ### cluster starts defined by PSD
+
+    ### first spikes of clusters defined by PSD
     geom_point(
       data = ap_peaks %>%
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
@@ -521,8 +557,8 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       shape = "ˇ",
       color = "green", size = 7
     ) +
-    
-    ### cluster starts defined by ISI
+
+    ### first spikes of clusters defined by ISI
     geom_point(
       data = ap_peaks %>%
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
@@ -531,98 +567,143 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       shape = "|",
       color = "red", size = 7
     ) +
-    
+
+    ### eeg state (sync: high, desync: low)
     geom_line(
       data = EEG_ds_df %>%
         dplyr::filter(times > time_window[1], times < time_window[2]),
       mapping = aes(x = times, y = -3 * levels + 5), color = "white"
     )
-    
-  
-  
-  ggsave(file.path("output_data",paste0(file, c("_wavelet.png"))),
-         width = 24,
-         height = 18,
-         units = "cm",
-         dpi = 300)
+
+
+  ggsave(file.path("output_data", paste0(file, c("_wavelet.png"))),
+    width = 24,
+    height = 18,
+    units = "cm",
+    dpi = 300
+  )
+
 
   ### write data to csv
   file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
 
   write_csv(as.tibble(left_join(EEG_STATE_ap, EEG_STATE_cluster) %>%
-    left_join(EEG_STATE_cluster_PSD) %>%                     
+    left_join(EEG_STATE_cluster_PSD) %>%
     left_join(EEG_STATE_length) %>%
     mutate(ID = file_to_load) %>%
     mutate(sd_threshold = SD_THRESHOLD)) %>%
-    mutate(burst_threshold = burst_threshold[1]) %>% 
-    mutate(burst_threshold_PSD = burst_threshold_power) %>% 
+    mutate(burst_threshold = burst_threshold[1]) %>%
+    mutate(burst_threshold_PSD = burst_threshold_power) %>%
     mutate(MFR = No_APs / state_length),
   file.path("output_data", "sync_desync_data.csv"),
   append = T,
   col_names = !file_exist_test
   )
 }
+
+
+### run on multiple files
 lapply(file_list, SyncDesyncAnalysis, sd_threshold = -0.7)
 
 
 
 ### Analyzing results
-result_tibble <- read_csv(file.path("output_data", "sync_desync_data.csv")) 
+result_tibble <- read_csv(file.path("output_data", "sync_desync_data.csv"))
 
-result_tibble <- result_tibble %>% 
-  mutate(No_clusters_norm = No_clusters/state_length) 
+result_tibble <- result_tibble %>%
+  mutate(No_clusters_norm = No_clusters / state_length) %>%
+  mutate(No_clusters_PSD_norm = No_clusters_PSD / state_length)
 
 
-y_axis <- "No_clusters_norm"
+
+y_axis <- "No_clusters"
 
 ggplot() +
   theme_minimal() +
   theme(axis.text = element_text(size = 10)) +
-  
-  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
-             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                           y = eval(parse(text = y_axis))),
-             color = "#EB8104") +
-  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
-            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                          y = eval(parse(text = y_axis)),
-                          group = ID),
-            color = "#EB8104") + 
-  
-  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
-             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                           y = eval(parse(text = y_axis)))) +
-  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
-            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                          y = eval(parse(text = y_axis)),
-                          group = ID)) +
-  
-  geom_point(data = result_tibble %>% dplyr::filter(sd_threshold == -1),
-             mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                           y = eval(parse(text = y_axis))),
-             color = "green") +
-  geom_line(data = result_tibble %>% dplyr::filter(sd_threshold == -1),
-            mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                          y = eval(parse(text = y_axis)),
-                          group = ID),
-            color = "green") +
-  scale_x_discrete(name = "EEG state",labels = c("Synchronous", "Deynchronous")) +
-  labs(y = y_axis) 
+
+  geom_point(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis))
+    ),
+    color = "#EB8104"
+  ) +
+  geom_line(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis)),
+      group = ID
+    ),
+    color = "#EB8104"
+  ) +
+  geom_text(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    aes(
+      label = ID,
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis))
+    ),
+    color = "#EB8104",
+    # hjust = -0.2,
+    vjust = 1.5
+  ) +
 
 
-ggplot(data = result_tibble,
-       mapping = aes(x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-                     y = eval(parse(text = y_axis)),
-                     color = as.factor(sd_threshold),
-                     )
-       ) +
+  geom_point(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis))
+    )
+  ) +
+  geom_line(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis)),
+      group = ID
+    )
+  ) +
+
+  geom_point(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -1),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis))
+    ),
+    color = "green"
+  ) +
+  geom_line(
+    data = result_tibble %>% dplyr::filter(sd_threshold == -1),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis)),
+      group = ID
+    ),
+    color = "green"
+  ) +
+  scale_x_discrete(name = "EEG state", labels = c("Synchronous", "Deynchronous")) +
+  labs(y = y_axis)
+
+
+ggplot(
+  data = result_tibble,
+  mapping = aes(
+    x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+    y = eval(parse(text = y_axis)),
+    color = as.factor(sd_threshold),
+  )
+) +
   theme_minimal() +
   theme(axis.text = element_text(size = 10)) +
-  geom_point() +  
-  scale_x_discrete(name = "EEG state",labels = c("Synchronous", "Deynchronous")) +
+  geom_point() +
+  scale_x_discrete(name = "EEG state", labels = c("Synchronous", "Deynchronous")) +
   labs(y = y_axis) +
   labs(color = "SD threshold")
-  
+
 # WriteToFile <- function(){
 #   append_parameter = T
 #
