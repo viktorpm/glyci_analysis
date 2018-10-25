@@ -13,6 +13,7 @@ file_list <- list.files(
 
 SyncDesyncAnalysis <- function(file, sd_threshold) {
   file_to_load <- file
+  filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
   raw.rec <- readMat(file.path("data", file_to_load))
 
   ### Action potentials ----------------------------------------------------------------
@@ -171,21 +172,30 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### finding peaks on PSD
   ### returns a list with indices [[1]] and values [[2]] of peaks and troughs [[3]] [[4]]
   source("findpeaks.R")
-  peaks <- FindPeaks(PSD$power, bw = 5)
+  peaks <- FindPeaks(PSD$power, bw = 3)
   plot(PSD$power, type = "h")
   points(peaks[[1]], peaks[[2]], col = "red")
 
   ### frequency of the second peak
-  second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][2]]
+  second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][3]]
+  
+  jpeg(file.path("output_data", paste0(filename, c("_burst_threshold_PSD.jpg"))),
+      width = 800,
+      height = 600)
 
   plot(
     PSD$frequency * samp_rate_ds,
     PSD$power,
     type = "h",
     lwd = 2,
-    xlim = c(0, 20)
+    xlim = c(0, 20),
+    xlab = "Time",
+    ylab = "Power"
   )
   abline(v = second_peak, col = "red")
+  text(x = second_peak + 1, y = max(PSD$power)-10, round(second_peak,3), col = "red")
+  
+  dev.off()
 
   ### calculating time from frequency in miliseconds and in seconds
   burst_threshold_power <- 1000 / second_peak / 1000
@@ -211,7 +221,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       color = "black", size = 4
     )
 
-  ggsave(file.path("output_data", paste0(file, c("_sync_desync_periods.png"))),
+  ggsave(file.path("output_data", paste0(filename, c("_sync_desync_periods.png"))),
     width = 24,
     height = 18,
     units = "cm",
@@ -396,12 +406,32 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   # geom_vline(xintercept =  burst_threshold_power) +
   # geom_vline(xintercept =  burst_threshold[1], color = "red")
 
-  ggsave(file.path("output_data", paste0(file, c("_ISI.png"))),
+  ggsave(file.path("output_data", paste0(filename, c("_ISI.png"))),
     width = 24,
     height = 18,
     units = "cm",
     dpi = 300
   )
+  
+  jpeg(file.path("output_data", paste0(filename, c("_isi_with_thresholds.jpg"))),
+      width = 800,
+      height = 600)
+  
+  hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"], breaks = 150)
+  abline(v = burst_threshold[1])
+  text(x = par("usr")[2] - par("usr")[2]/4 ,
+       y = par("usr")[4] - par("usr")[4]/10, 
+       paste0("Burst threshold: ", burst_threshold[1], " s"),
+       pos = 2)
+  abline(v = burst_threshold_power, col = "red")
+  text(x = par("usr")[2] - par("usr")[2]/4, 
+       y = (par("usr")[4] - par("usr")[4]/10) - par("usr")[4]/10/2, 
+       paste0("Burst threshold PSD: ",round(burst_threshold_power,3), " s"),
+       col = "red",
+       pos = 2)
+  
+  dev.off()
+  
 
 
   ### AUTOCORRELOGRAM ------------------------------------------------------------
@@ -456,7 +486,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     ) +
     scale_fill_brewer(type = "div", palette = "Paired")
 
-  ggsave(file.path("output_data", paste0(file, c("_AC.png"))),
+  ggsave(file.path("output_data", paste0(filename, c("_AC.png"))),
     width = 24,
     height = 18,
     units = "cm",
@@ -576,7 +606,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     )
 
 
-  ggsave(file.path("output_data", paste0(file, c("_wavelet.png"))),
+  ggsave(file.path("output_data", paste0(filename, c("_wavelet.png"))),
     width = 24,
     height = 18,
     units = "cm",
