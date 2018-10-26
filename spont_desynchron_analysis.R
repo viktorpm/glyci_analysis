@@ -333,12 +333,13 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       ))
   }
   
-  ### burst thershold based on ISI peaks (first half, second half)
+  ### burst thershold based on ISI peaks in xlim = c(0,1) window, FILTERS DATA INSIDE 
+  ### built in dip test to test ISI uni/multimodality (all ISIs are used) 
   source(file.path("supplementary_functions","BurstThresholdDetect.R"))
   
   burst_threshold_detect <- BurstThresholdDetect(
     hist_data = ap_peaks %>% 
-      dplyr::filter(eeg_state == "sync", isi > 0, isi < 1) %>% 
+      dplyr::filter(eeg_state == "sync" | eeg_state == "desync") %>% 
       pull(isi),
     histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
   )
@@ -405,9 +406,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       mapping = aes(x = isi, fill = eeg_state), 
       bins = bins_isi_sync ### same number of bins on the two ISIs!!
     )
-  # geom_vline(xintercept =  burst_threshold_power) +
-  # geom_vline(xintercept =  burst_threshold[1], color = "red")
-
+ 
   ggsave(file.path("output_data", paste0(filename, c("_ISI.png"))),
     width = 24,
     height = 18,
@@ -421,27 +420,42 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   
   hist(ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi),
        breaks = "FD")
+  
+  ### burst threshold calculated from ISI and its legend
   abline(v = burst_threshold_isi[1])
   text(x = par("usr")[2] - par("usr")[2]/4 ,
        y = par("usr")[4] - par("usr")[4]/10, 
        paste0("Burst threshold ISI: ", burst_threshold_isi[1], " s"),
        pos = 2)
+  
+  ### burst threshold calculated from PSD and its legend
   abline(v = burst_threshold_power, col = "red")
   text(x = par("usr")[2] - par("usr")[2]/4, 
        y = (par("usr")[4] - par("usr")[4]/10) - par("usr")[4]/10/2, 
        paste0("Burst threshold PSD: ",round(burst_threshold_power,3), " s"),
        col = "red",
        pos = 2)
+  
+  ### ISI burst threshold calculation window: xlim = c(0,1)
   rect(0,0,1,par("usr")[4], lty = 2)
   text(x = par("usr")[2] - par("usr")[2]/4, 
        y = (par("usr")[4] - par("usr")[4]/10) - 3*(par("usr")[4]/10/2), 
        "---- burst detection window 0 - 1 s",
        pos = 2)
+  
+  
   if(burst_threshold_detect[[2]] == F){
     text(par("usr")[2] - par("usr")[2]/4, 
          y = (par("usr")[4] - par("usr")[4]/10) - 2*(par("usr")[4]/10/2),
          pos = 2,
-         "NOT CLUSTERED")
+         "NOT CLUSTERED",
+         col = "red")
+  } else {
+    text(par("usr")[2] - par("usr")[2]/4, 
+         y = (par("usr")[4] - par("usr")[4]/10) - 2*(par("usr")[4]/10/2),
+         pos = 2,
+         "CLUSTERED",
+         col = "green")
   }
   dev.off()
   
@@ -682,14 +696,14 @@ result_tibble <- result_tibble %>%
 
 
 
-y_axis <- "No_clusters"
+y_axis <- "No_clusters_norm"
 
 ggplot() +
   theme_minimal() +
   theme(axis.text = element_text(size = 10)) +
 
   geom_point(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    data = result_tibble %>% dplyr::filter(clustered == T),
     mapping = aes(
       x = forcats::fct_relevel(eeg_state, "sync", "desync"),
       y = eval(parse(text = y_axis))
@@ -697,7 +711,7 @@ ggplot() +
     color = "#EB8104"
   ) +
   geom_line(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    data = result_tibble %>% dplyr::filter(clustered == T),
     mapping = aes(
       x = forcats::fct_relevel(eeg_state, "sync", "desync"),
       y = eval(parse(text = y_axis)),
@@ -706,7 +720,7 @@ ggplot() +
     color = "#EB8104"
   ) +
   geom_text(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -0.7),
+    data = result_tibble %>% dplyr::filter(clustered == T),
     aes(
       label = ID,
       x = forcats::fct_relevel(eeg_state, "sync", "desync"),
@@ -715,7 +729,7 @@ ggplot() +
     color = "#EB8104",
     # hjust = -0.2,
     vjust = 1.5
-  ) +
+  ) 
 
 
   geom_point(
@@ -752,7 +766,8 @@ ggplot() +
     color = "green"
   ) +
   scale_x_discrete(name = "EEG state", labels = c("Synchronous", "Deynchronous")) +
-  labs(y = y_axis)
+  labs(y = y_axis) +
+  geom_text()
 
 
 ggplot(

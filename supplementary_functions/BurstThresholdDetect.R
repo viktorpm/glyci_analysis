@@ -24,12 +24,12 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
                                  length(isihist_threshold$counts)] %>% max()
   ) + length(isihist_threshold$counts) / 2
   
-  diptest <- diptest::dip.test(isihist_diptest$counts, simulate.p.value = T)
+  diptest <- diptest::dip.test(isihist_diptest$counts, simulate.p.value = F)
   
-  if(diptest$p.value > 0.05){
-    clustered = F
-  } else {
+  if(diptest$p.value <= 0.05){
     clustered = T
+  } else {
+    clustered = F
   }
   
   hist(hist_data, breaks = histbreaks, xlim = c(0,1))
@@ -38,5 +38,5 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
   abline(v = isihist_threshold$mids[((max2 - max1) / 2) + max1], col = "red")
   
   burst_threshold <- isihist_threshold$mids[((max2 - max1) / 2) + max1]
-  return(list(burst_threshold,clustered))
+  return(list(bt = burst_threshold, clust = clustered, p_val = diptest$p.value))
 }
