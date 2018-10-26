@@ -4,6 +4,8 @@ library(reshape2)
 library(signal)
 library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
+library(diptest) ### to test distribution uni/multimodality (ISI)
+
 
 
 file_list <- list.files(
@@ -66,7 +68,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   EEG_scaled <- (EEG * as.double(raw.rec$EEG[, , 1]$scale)) + as.double(raw.rec$EEG[, , 1]$offset)
 
   ### downsampling and standardizing in R -----------------------
-  source(file.path("downSamp.R"))
+  source(file.path("supplementary_functions","downSamp.R"))
 
   ds_fun_out <- downSamp(data = EEG_scaled, ds_factor = 512, samp_rate = 20000)
   EEG_ds_scaled <- ds_fun_out$data %>% scale()
@@ -107,7 +109,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
 
   ### calculating moving SDs and means
-  source("slideFunct.R")
+  source(file.path("supplementary_functions","slideFunct.R"))
   
   slide_sd <- slideFunct(
     data = EEG_ds_scaled,
@@ -171,7 +173,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   
   ### finding peaks on PSD
   ### returns a list with indices [[1]] and values [[2]] of peaks and troughs [[3]] [[4]]
-  source("findpeaks.R")
+  source(file.path("supplementary_functions","findpeaks.R"))
   peaks <- FindPeaks(PSD$power, bw = 3)
   plot(PSD$power, type = "h")
   points(peaks[[1]], peaks[[2]], col = "red")
@@ -313,50 +315,15 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   }
 
   
-  ### detecting AP clusters ("bursts") based on ISI (distance between local maxima / 2)
-  ### does not handel multiple local maxima
-  BurstThresholdDetect <- function(hist_data, histbreaks) {
-    isihist <- hist(hist_data, breaks = histbreaks, plot = F)
-    max1 <- which(
-      isihist$counts[1:(length(isihist$counts) / 2)] ==
-        isihist$counts[1:(length(isihist$counts) / 2)] %>% max()
-    ) %>% as.numeric()
-
-    max2 <- which(
-      isihist$counts[(length(isihist$counts) / 2 + 1):length(isihist$counts)] ==
-        isihist$counts[(length(isihist$counts) / 2 + 1):length(isihist$counts)] %>% max()
-    ) + length(isihist$counts) / 2
-
-
-    hist(hist_data, breaks = histbreaks)
-    abline(v = isihist$mids[max1], col = "red")
-    abline(v = isihist$mids[max2], col = "red")
-    abline(v = isihist$mids[((max2 - max1) / 2) + max1], col = "red")
-    burst_threshold <- isihist$mids[((max2 - max1) / 2) + max1]
-    return(burst_threshold)
-  }
-
-  ### burst thershold based on ISI peaks (first half, second half)
-  burst_threshold <- BurstThresholdDetect(
-    hist_data =
-      diff(ap_peaks$peak_times),
-    histbreaks = 150
-  )
-
+  
   ### adding columns to ap_peaks
   ap_peaks <- ap_peaks %>%
     dplyr::mutate(eeg_state = "desync") %>%
     dplyr::mutate(isi = c(diff(peak_times), NA)) %>%
     dplyr::mutate(burst = 0) %>%
     dplyr::mutate(burst_PSD = 0)
-  ap_peaks <- ap_peaks %>%
-    dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold[1]), 1)) %>%
-    dplyr::mutate(burst_PSD = replace(burst_PSD, 
-                                      lag(isi > burst_threshold_power), 
-                                      1
-                                      )
-                  ) ### lag(): to find the firs APs in a cluster (burst) instead of the last one
   
+  ### finding sync periods based on conditions
   for (i in 1:length(eeg_periods$sync_start)) {
     ap_peaks <- ap_peaks %>%
       dplyr::mutate(eeg_state = replace(
@@ -365,6 +332,27 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
         values = "sync"
       ))
   }
+  
+  ### burst thershold based on ISI peaks (first half, second half)
+  source(file.path("supplementary_functions","BurstThresholdDetect.R"))
+  
+  burst_threshold_detect <- BurstThresholdDetect(
+    hist_data = ap_peaks %>% 
+      dplyr::filter(eeg_state == "sync", isi > 0, isi < 1) %>% 
+      pull(isi),
+    histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
+  )
+  
+  burst_threshold_isi <- burst_threshold_detect[[1]]
+  
+  
+  ap_peaks <- ap_peaks %>%
+    dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold_isi[1]), 1)) %>%
+    dplyr::mutate(burst_PSD = replace(burst_PSD, 
+                                      lag(isi > burst_threshold_power), 
+                                      1
+    )
+    ) ### lag(): to find the firs APs in a cluster (burst) instead of the last one
 
 
   ### save to file at the end: 
@@ -392,16 +380,30 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   )
 
   ### plotting ISI
+  ### calculating bw based on Freedman-Diaconis rule (max-min)/h (h: bin-width)
+  sync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi)
+  desync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "desync") %>% pull(isi)
+  
+  bins_isi_sync <- diff(range(sync_isi_data, na.rm = T)) / 
+    (2 * IQR(sync_isi_data, na.rm = T) / 
+       length(sync_isi_data)^(1/3))
+  
+  bins_isi_desync <- diff(range(desync_isi_data, na.rm = T)) / 
+    (2 * IQR(desync_isi_data, na.rm = T) / 
+       length(desync_isi_data)^(1/3))
+  
+                  
   ggplot() +
     geom_histogram(
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "sync"),
-      mapping = aes(x = isi, fill = eeg_state), bins = 150
+      mapping = aes(x = isi, fill = eeg_state), bins = bins_isi_sync
     ) +
     geom_histogram(
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "desync"),
-      mapping = aes(x = isi, fill = eeg_state), alpha = 0.5, bins = 150
+      mapping = aes(x = isi, fill = eeg_state), 
+      bins = bins_isi_sync ### same number of bins on the two ISIs!!
     )
   # geom_vline(xintercept =  burst_threshold_power) +
   # geom_vline(xintercept =  burst_threshold[1], color = "red")
@@ -417,11 +419,12 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       width = 800,
       height = 600)
   
-  hist(ap_peaks$isi[ap_peaks$eeg_state == "sync"], breaks = 150)
-  abline(v = burst_threshold[1])
+  hist(ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi),
+       breaks = "FD")
+  abline(v = burst_threshold_isi[1])
   text(x = par("usr")[2] - par("usr")[2]/4 ,
        y = par("usr")[4] - par("usr")[4]/10, 
-       paste0("Burst threshold: ", burst_threshold[1], " s"),
+       paste0("Burst threshold ISI: ", burst_threshold_isi[1], " s"),
        pos = 2)
   abline(v = burst_threshold_power, col = "red")
   text(x = par("usr")[2] - par("usr")[2]/4, 
@@ -429,7 +432,17 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
        paste0("Burst threshold PSD: ",round(burst_threshold_power,3), " s"),
        col = "red",
        pos = 2)
-  
+  rect(0,0,1,par("usr")[4], lty = 2)
+  text(x = par("usr")[2] - par("usr")[2]/4, 
+       y = (par("usr")[4] - par("usr")[4]/10) - 3*(par("usr")[4]/10/2), 
+       "---- burst detection window 0 - 1 s",
+       pos = 2)
+  if(burst_threshold_detect[[2]] == F){
+    text(par("usr")[2] - par("usr")[2]/4, 
+         y = (par("usr")[4] - par("usr")[4]/10) - 2*(par("usr")[4]/10/2),
+         pos = 2,
+         "NOT CLUSTERED")
+  }
   dev.off()
   
 
@@ -471,6 +484,28 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
  
   ### plotting AC
+
+  # sync_AC_data <- AC %>%
+  #   dplyr::filter(eeg_state == "sync") %>%
+  #   dplyr::filter(time > -1, time < 1) %>% 
+  #   pull(time)
+  # 
+  # desync_AC_data <- AC %>%
+  #   dplyr::filter(eeg_state == "desync") %>%
+  #   dplyr::filter(time > -1, time < 1) %>% 
+  #   pull(time)
+  # 
+  # 
+  # bins_AC_sync <- diff(range(sync_AC_data, na.rm = T)) / 
+  #   (2 * IQR(sync_AC_data, na.rm = T) / 
+  #      length(sync_AC_data)^(1/3))
+  # 
+  # 
+  # bins_AC_desync <- diff(range(desync_AC_data, na.rm = T)) / 
+  #   (2 * IQR(desync_AC_data, na.rm = T) / 
+  #      length(desync_AC_data)^(1/3))
+ 
+  
   ggplot() +
     geom_histogram(
       data = AC %>%
@@ -622,8 +657,9 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     left_join(EEG_STATE_length) %>%
     mutate(ID = file_to_load) %>%
     mutate(sd_threshold = SD_THRESHOLD)) %>%
-    mutate(burst_threshold = burst_threshold[1]) %>%
+    mutate(burst_threshold_ISI = burst_threshold_isi[1]) %>%
     mutate(burst_threshold_PSD = burst_threshold_power) %>%
+    mutate(clustered = burst_threshold_detect[[2]]) %>% 
     mutate(MFR = No_APs / state_length),
   file.path("output_data", "sync_desync_data.csv"),
   append = T,
@@ -633,7 +669,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
 
 ### run on multiple files
-lapply(file_list, SyncDesyncAnalysis, sd_threshold = -0.7)
+lapply(file_list, SyncDesyncAnalysis, sd_threshold = -1)
 
 
 
