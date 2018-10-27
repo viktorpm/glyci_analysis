@@ -25,6 +25,10 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
   ) + length(isihist_threshold$counts) / 2
   
   diptest <- diptest::dip.test(isihist_diptest$counts, simulate.p.value = F)
+  density <- density(hist_data, na.rm = T)
+  diptest_density_log <- diptest::dip.test(log(density$y)[log(density$y) %>% is.finite()], 
+                                           simulate.p.value = F)
+  
   
   if(diptest$p.value <= 0.05){
     clustered = T
@@ -32,11 +36,24 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
     clustered = F
   }
   
+  if(diptest_density_log$p.value <= 0.05){
+    clustered_d_log = T
+  } else {
+    clustered_d_log = F
+  }
+  
   hist(hist_data, breaks = histbreaks, xlim = c(0,1))
   abline(v = isihist_threshold$mids[max1])
   abline(v = isihist_threshold$mids[max2])
   abline(v = isihist_threshold$mids[((max2 - max1) / 2) + max1], col = "red")
   
+  plot(log(density$y), type = "l")
+  
   burst_threshold <- isihist_threshold$mids[((max2 - max1) / 2) + max1]
-  return(list(bt = burst_threshold, clust = clustered, p_val = diptest$p.value))
+  return(list(bt = burst_threshold, 
+              clust = clustered, 
+              p_val = diptest$p.value,
+              p_val_density_log = diptest_density_log$p.value,
+              clustered = clustered,
+              clustered_d_log = clustered_d_log))
 }

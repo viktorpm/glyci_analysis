@@ -1,11 +1,16 @@
 downSamp <- function(data, ds_factor, samp_rate) {
   counter <- 0
   
+  samp_rate_new <- samp_rate/ds_factor
+  r_length_decimal <- samp_rate_new %>% log10() %>% as.integer()
+  
+  
+  
   if (missing(samp_rate)){
     samp_rate <- 1
     print("No sampling rate was entered. Could not calculate recording length")
   } else {
-    r_length <- length(data)/samp_rate
+    r_length <- (length(data)/samp_rate) %>% round(r_length_decimal)
     print(paste0("Length of your recording: ", r_length, "s"))
   }
   
