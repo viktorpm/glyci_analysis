@@ -485,25 +485,41 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   rect(0, 0, 1, par("usr")[4], lty = 2)
   text(
     x = par("usr")[2] - par("usr")[2] / 4,
-    y = (par("usr")[4] - par("usr")[4] / 10) - 3 * (par("usr")[4] / 10 / 2),
+    y = (par("usr")[4] - par("usr")[4] / 10) - 2 * (par("usr")[4] / 10 / 2),
     "---- burst detection window 0 - 1 s",
     pos = 2
   )
 
 
-  if (burst_threshold_detect[[2]] == F) {
+  if (burst_threshold_detect$clustered == F) {
     text(par("usr")[2] - par("usr")[2] / 4,
-      y = (par("usr")[4] - par("usr")[4] / 10) - 2 * (par("usr")[4] / 10 / 2),
+      y = (par("usr")[4] - par("usr")[4] / 10) - 3 * (par("usr")[4] / 10 / 2),
       pos = 2,
-      "NOT CLUSTERED",
+      "Hist. dip test: NOT CLUSTERED",
       col = "red"
     )
   } else {
     text(par("usr")[2] - par("usr")[2] / 4,
-      y = (par("usr")[4] - par("usr")[4] / 10) - 2 * (par("usr")[4] / 10 / 2),
+      y = (par("usr")[4] - par("usr")[4] / 10) - 3 * (par("usr")[4] / 10 / 2),
       pos = 2,
-      "CLUSTERED",
+      "Hist. dip test: CLUSTERED",
       col = "green"
+    )
+  }
+  
+  if (burst_threshold_detect$clustered_d_log == F) {
+    text(par("usr")[2] - par("usr")[2] / 4,
+         y = (par("usr")[4] - par("usr")[4] / 10) - 4 * (par("usr")[4] / 10 / 2),
+         pos = 2,
+         "log density dip test: NOT CLUSTERED",
+         col = "red"
+    )
+  } else {
+    text(par("usr")[2] - par("usr")[2] / 4,
+         y = (par("usr")[4] - par("usr")[4] / 10) - 4 * (par("usr")[4] / 10 / 2),
+         pos = 2,
+         "log density dip test: CLUSTERED",
+         col = "green"
     )
   }
   dev.off()

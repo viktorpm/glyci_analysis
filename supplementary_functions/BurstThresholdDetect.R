@@ -51,7 +51,6 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
   
   burst_threshold <- isihist_threshold$mids[((max2 - max1) / 2) + max1]
   return(list(bt = burst_threshold, 
-              clust = clustered, 
               p_val = diptest$p.value,
               p_val_density_log = diptest_density_log$p.value,
               clustered = clustered,
