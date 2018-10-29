@@ -14,7 +14,7 @@ file_list <- list.files(
 )
 
 SyncDesyncAnalysis <- function(file, sd_threshold) {
-  file_to_load <- file
+  file_to_load <- file_list[5]
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
   raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -163,7 +163,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ))
 
   ### constructing data frame with eeg values, moving SDs and means
-  SD_THRESHOLD <- sd_threshold %>% as.numeric()
+  SD_THRESHOLD <- -1 %>% as.numeric()
   EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
     ts(
       start = 0,
@@ -196,7 +196,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   points(peaks[[1]], peaks[[2]], col = "red")
 
   ### frequency of the second peak
-  second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][3]]
+  second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][1]]
 
   jpeg(file.path("output_data", paste0(filename, c("_burst_threshold_PSD.jpg"))),
     width = 800,
@@ -423,15 +423,19 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     (2 * IQR(desync_isi_data, na.rm = T) /
       length(desync_isi_data)^(1 / 3))
 
-  
+  y_norm <- F
   ggplot() +
     geom_histogram(
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "sync"),
       mapping = aes(x = isi, 
-                    # y = ..count../EEG_STATE_length %>% 
-                    #   dplyr::filter(eeg_state == "sync") %>% 
-                    #   pull(state_length),
+                    y = if(y_norm == F) {
+                      ..count..
+                    } else { 
+                      ..count../EEG_STATE_length %>% 
+                        dplyr::filter(eeg_state == "sync") %>% 
+                        pull(state_length)
+                    },
                     fill = eeg_state),
       bins = bins_isi_sync
     ) +
@@ -439,9 +443,13 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       data = ap_peaks %>%
         dplyr::filter(eeg_state == "desync"),
       mapping = aes(x = isi, 
-                    # y = ..count../EEG_STATE_length %>% 
-                    #   dplyr::filter(eeg_state == "desync") %>% 
-                    #   pull(state_length), 
+                     y = if(y_norm == F) {
+                       ..count..
+                       } else { 
+                         ..count../EEG_STATE_length %>% 
+                          dplyr::filter(eeg_state == "desync") %>% 
+                          pull(state_length)
+                       }, 
                     fill = eeg_state),
       bins = bins_isi_sync ### same number of bins on the two ISIs!!
     )
@@ -693,14 +701,17 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     ) +
 
     ### first spikes of clusters defined by PSD
-    geom_point(
-      data = ap_peaks %>%
-        dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
-        dplyr::filter(burst_PSD == 1),
-      mapping = aes(x = peak_times, y = 96),
-      shape = "ˇ",
-      color = "green", size = 7
-    ) +
+    (if (any(ap_peaks$burst_PSD == 1)) {
+      geom_point(
+        data = ap_peaks %>%
+          dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
+          dplyr::filter(burst_PSD == 1),
+        mapping = aes(x = peak_times, y = 96),
+        shape = "ˇ",
+        color = "green", size = 7
+      )
+    }) +
+
 
     ### first spikes of clusters defined by ISI
     geom_point(
