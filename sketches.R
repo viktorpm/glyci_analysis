@@ -41,7 +41,27 @@ length(EEG)
 
 log2(512) %% 1 == !0
 
-
+microbenchmark::microbenchmark(
+  sqldf("
+        SELECT 
+        a.*,
+        e.sync_start
+        FROM ap_peaks AS a
+        LEFT JOIN eeg_periods AS e
+        ON a.peak_times > e.sync_start
+        AND a.peak_times < e.sync_end
+        ;
+        ") %>% mutate(
+          egg_period2 = ifelse(is.na(sync_start), "desync", "sync")
+  ),
+  for (i in 1:length(eeg_periods$sync_start)){
+    ap_peaks <- ap_peaks %>% 
+      dplyr::mutate(egg_period = replace(
+        egg_period,
+        peak_times > eeg_periods$sync_start[i] & peak_times < eeg_periods$sync_end[i],
+        values = "sync"))
+  } 
+)
 
 
 
