@@ -1,7 +1,6 @@
 library(R.matlab)
 library(tidyverse)
 library(reshape2)
-library(signal)
 library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
@@ -14,6 +13,8 @@ recordings <- CreateRecTibble(
 )
 
 str(recordings)
+recordings <- recordings %>% dplyr::filter(animal_id != "not specified")
+
 
 animal_ID_list <- recordings$animal_id %>% as.factor() %>% levels() %>% as.list()
 # available_freqs_list <- recordings$stim_freq %>% as.factor() %>% levels()
@@ -30,9 +31,10 @@ freq_filter_1 <- c("1")
 CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
   ### parameters ----------------
-  animal_filter <- animal_ID_list[[8]]
+  animal_filter <- animal_ID
   recordings <- recordings
-  freq_filter <- freq_filter_20
+  freq_filter <- freqs
+  animal_name <- as.character(animal_ID)
 
 
 
@@ -66,7 +68,6 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
     dplyr::filter(
       signal_type == "AP",
       animal_id == animal_filter,
-      # animal_id != "not specified",
       unit_id == 1,
       sapply(
         str_split(
@@ -85,7 +86,6 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
     dplyr::filter(
       signal_type == "stim",
       animal_id == animal_filter,
-      # animal_id != "not specified",
       stim_freq %in% freq_filter
     ) %>%
     dplyr::select(signal_time)
@@ -100,15 +100,23 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
 
   ### calculating first APs after stimuli ------------------------------
-  first_spikes <- matrix(0, length(stim_times$signal_time), 1)
-  for (i in 1:length(stim_times$signal_time)) {
-    first_spikes[i, 1] <- AP_times %>%
-      dplyr::filter(signal_time > stim_times$signal_time[i]) %>%
-      pull() %>%
-      min()
+  if (AP_times$signal_time %>% length() != 0){
+    first_spikes <- matrix(0, length(stim_times$signal_time), 1)
+    for (i in 1:length(stim_times$signal_time)) {
+      first_spikes[i, 1] <- AP_times %>%
+        dplyr::filter(signal_time > stim_times$signal_time[i]) %>%
+        pull() %>%
+        min()
+    }
+    first_spikes[is.infinite(first_spikes)] <- NA
+  } else {
+    first_spikes <- 0
+    print(paste0(animal_name, ": ", "No APs in this category"))
   }
+  
 
-  first_spikes[is.infinite(first_spikes)] <- NA
+
+
 
   # first_spikes[119, 1] <- AP_times %>%
   #   dplyr::filter(signal_time > stim_times$signal_time[119]) %>%
@@ -150,10 +158,14 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
   # return(PSTH_data)
 }
 
+lapply(animal_ID_list, CreatePSTHTibble, recordings = recordings, freq_filter_1)
 
 stim_result_tibble <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
 
-lapply(animal_ID_list, CreatePSTHTibble, recordings = recordings, freq_filter_20)
+
+
+
+
 
 
 ### plotting -----------------------------
@@ -193,6 +205,7 @@ stim_result_tibble %>%
 ggplot(
   data = stim_result_tibble %>%
     dplyr::filter(first_ap_reltimes > -0.01, first_ap_reltimes < 0.04) %>%
+    dplyr::filter(freq)
     group_by(animal_ID),
   mapping = aes(y = first_ap_reltimes, x = animal_ID)
 ) +
@@ -202,13 +215,17 @@ ggplot(
 
 
 
+scale = c(-0.01, 0.04)
+
+
 ggplot(
   data = stim_result_tibble %>%
-    dplyr::filter(first_ap_reltimes > -0.01, first_ap_reltimes < 0.04),
+    dplyr::filter(first_ap_reltimes > scale[1], first_ap_reltimes < scale[2], freq == 9),
   mapping = aes(x = first_ap_reltimes)
 ) +
-  geom_histogram(aes(fill = animal_ID), bins = 50) + 
-  stat_bin(aes(fill = animal_ID), bins = 50) +
+  xlim(scale[1],scale[2]) +
+  #geom_histogram(aes(fill = animal_ID), bins = 50) + 
+  stat_bin(aes(fill = animal_ID), bins = 100) +
   scale_fill_brewer(palette = "Set3") +
   # geom_vline(xintercept = BP$plot[[1]]$stats[1,1]) +
   # geom_vline(xintercept = BP$plot[[1]]$stats[2,1]) +
