@@ -16,17 +16,14 @@ str(recordings)
 # recordings <- recordings %>% dplyr::filter(animal_id != "not specified")
 
 
-animal_ID_list <- recordings$animal_id %>% as.factor() %>% levels() %>% as.list()
-recordings$stim_freq %>% as.factor() %>% levels()
 
+recordings$stim_freq %>% as.factor() %>% levels()
+animal_ID_list <- recordings$animal_id %>% as.factor() %>% levels() %>% as.list()
 
 
 freq_filter_20 <- c("18", "20")
 freq_filter_10 <- c("8", "10", "12")
 freq_filter_1 <- "1"
-
-
-
 CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
   ### parameters ----------------
@@ -157,14 +154,15 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
   #   )
   # return(PSTH_data)
 }
+lapply(animal_ID_list, CreatePSTHTibble, recordings = recordings, freq_filter_20)
 
-lapply(animal_ID_list, CreatePSTHTibble, recordings = recordings, freq_filter_1)
+
+
 
 stim_result_tibble <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
-
 stim_result_tibble$freq %>% as.factor() %>% levels()
-
-
+stim_result_tibble$animal_ID %>% as.factor() %>% levels()
+animal_ID_list <- stim_result_tibble$animal_ID %>% as.factor() %>% levels() %>% as.list()
 
 
 ### Boxplots ----------------------------------------
@@ -173,9 +171,11 @@ source(file.path("supplementary_functions", "geom_flat_violin.R"))
 
 gp_box_1 <- ggplot(
   data = stim_result_tibble %>%
-    dplyr::filter(first_ap_reltimes > PSTH_range[1], 
-                  first_ap_reltimes < PSTH_range[2], 
-                  freq == 1),
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 1
+    ),
   mapping = aes(y = first_ap_reltimes, x = animal_ID)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
@@ -186,9 +186,11 @@ gp_box_1 <- ggplot(
 
 gp_box_10 <- ggplot(
   data = stim_result_tibble %>%
-    dplyr::filter(first_ap_reltimes > PSTH_range[1], 
-                  first_ap_reltimes < PSTH_range[2], 
-                  freq == 8),
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 8
+    ),
   mapping = aes(y = first_ap_reltimes, x = animal_ID)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
@@ -199,9 +201,11 @@ gp_box_10 <- ggplot(
 
 gp_box_20 <- ggplot(
   data = stim_result_tibble %>%
-    dplyr::filter(first_ap_reltimes > PSTH_range[1], 
-                  first_ap_reltimes < PSTH_range[2], 
-                  freq == 18),
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 18
+    ),
   mapping = aes(y = first_ap_reltimes, x = animal_ID)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
@@ -219,28 +223,33 @@ multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 ### Histograms ----------------------------------------
 
 PSTH_range <- c(-0.01, 0.04)
-freq_to_plot <- 8 %>% as.character()
+freq_to_plot <- 18 %>% as.character()
 
 ### main plot
 gp_hist <- ggplot(
   data = stim_result_tibble %>%
-    dplyr::filter(first_ap_reltimes > PSTH_range[1],
-                  first_ap_reltimes < PSTH_range[2], 
-                  freq == freq_to_plot),
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == freq_to_plot
+    ),
   mapping = aes(x = first_ap_reltimes)
 ) +
   xlim(PSTH_range[1], PSTH_range[2]) +
-  # geom_histogram(aes(fill = animal_ID), bins = 50) +
-  stat_bin(aes(fill = animal_ID), binwidth = 0.001) +
+  geom_histogram(aes(fill = animal_ID), binwidth = 0.001) +
+  # stat_bin(aes(label = ..count..),
+  #   binwidth = 0.001,
+  #   geom = "text",
+  #   vjust = -.5
+  # ) +
   scale_fill_brewer(palette = "Set3") +
-  facet_wrap(~animal_ID, ncol = 1) +
+  facet_wrap(~animal_ID, ncol = 2) +
   geom_vline(xintercept = 0)
 
 
 ### calculating basic statistics from the histogram
 source(file.path("supplementary_functions", "HistStats.R"))
-gp_hist_1_stats <- HistStats(gp_hist)
-
+gp_hist_stats <- HistStats(gplot_object = gp_hist)
 
 
 ### vertical lines
@@ -254,7 +263,7 @@ for (i in seq_along(animal_ID_list)) {
           freq == freq_to_plot,
           animal_ID == as.character(animal_ID_list[[i]])
         ),
-      aes_(xintercept = gp_hist_1_stats$median[i])
+      aes_(xintercept = gp_hist_stats$median[i])
     )
 
   gp_hist <- gp_hist +
@@ -266,7 +275,7 @@ for (i in seq_along(animal_ID_list)) {
           freq == freq_to_plot,
           animal_ID == as.character(animal_ID_list[[i]])
         ),
-      aes_(xintercept = gp_hist_1_stats$quantile25[i]),
+      aes_(xintercept = gp_hist_stats$quantile25[i]),
       color = "red"
     )
 
@@ -279,28 +288,83 @@ for (i in seq_along(animal_ID_list)) {
           freq == freq_to_plot,
           animal_ID == as.character(animal_ID_list[[i]])
         ),
-      aes_(xintercept = gp_hist_1_stats$quantile75[i]),
+      aes_(xintercept = gp_hist_stats$quantile75[i]),
       color = "red"
+    )
+
+  gp_hist <- gp_hist +
+    geom_vline(
+      data = stim_result_tibble %>%
+        dplyr::filter(
+          first_ap_reltimes > PSTH_range[1],
+          first_ap_reltimes < PSTH_range[2],
+          freq == freq_to_plot,
+          animal_ID == as.character(animal_ID_list[[i]])
+        ),
+      aes_(xintercept = gp_hist_stats$quantile75[i] + 1.5 * gp_hist_stats$IQR[i]),
+      color = "red",
+      linetype = "dashed"
+    )
+
+  gp_hist <- gp_hist +
+    geom_vline(
+      data = stim_result_tibble %>%
+        dplyr::filter(
+          first_ap_reltimes > PSTH_range[1],
+          first_ap_reltimes < PSTH_range[2],
+          freq == freq_to_plot,
+          animal_ID == as.character(animal_ID_list[[i]])
+        ),
+      aes_(xintercept = gp_hist_stats$quantile25[i] - 1.5 * gp_hist_stats$IQR[i]),
+      color = "red",
+      linetype = "dashed"
+    )
+
+  gp_hist <- gp_hist +
+    geom_point(
+      data = stim_result_tibble %>%
+        dplyr::filter(
+          first_ap_reltimes > PSTH_range[1],
+          first_ap_reltimes < PSTH_range[2],
+          freq == freq_to_plot,
+          animal_ID == as.character(animal_ID_list[[i]])
+        ),
+      aes_(x = gp_hist_stats$mean[i], y = gp_hist_stats$y_max[i] + 4)
+    )
+
+  gp_hist <- gp_hist +
+    geom_point(
+      data = stim_result_tibble %>%
+        dplyr::filter(
+          first_ap_reltimes > PSTH_range[1],
+          first_ap_reltimes < PSTH_range[2],
+          freq == freq_to_plot,
+          animal_ID == as.character(animal_ID_list[[i]])
+        ),
+      aes_(x = gp_hist_stats$peak[i], y = gp_hist_stats$y_max[i] + 4),
+      shape = 25,
+      fill = "red"
     )
 }
-
 gp_hist
 
 
+gp_hist_stats$all_count_sum
+gp_hist_stats$range_count_sum
 
-
-stim_result_tibble %>%
-  dplyr::filter(first_ap_reltimes >= 0, first_ap_reltimes <= 0.05, freq == 18) %>%
+### No. APs after stimuli @ given frequencies
+No_APs <- stim_result_tibble %>%
+  dplyr::filter(first_ap_reltimes > 0, first_ap_reltimes < 0.05, freq == 8) %>%
   group_by(animal_ID) %>%
-  summarise(length(first_ap_reltimes))
+  summarise(No_APs = length(first_ap_reltimes)) %>%
+  pull(No_APs)
 
 
-### No. stim
-recordings %>%
-  dplyr::filter(signal_type == "stim", animal_id == "GV_136", stim_freq == 18) %>%
-  select(signal_time) %>%
-  pull() %>%
-  length()
+### No. stim @ given frequency
+No_stim <- recordings %>%
+  dplyr::filter(signal_type == "stim", stim_freq == 8 | stim_freq == 10 | stim_freq == 12) %>%
+  group_by(animal_id) %>%
+  summarise(No_stim = length(signal_time)) %>%
+  pull(No_stim)
 
-
-
+(No_APs / No_stim) * 100
