@@ -64,4 +64,30 @@ microbenchmark::microbenchmark(
 )
 
 
+library(tidyverse)
+freq <- c(rep(1, 4), rep(10,3), rep(27, 2))
+stim_number <- c(rep(0,length(freq)))
+
+
+initial_value <- freq[1]
+stim_counter <- 1
+index <- 1
+
+stim_number[1] <- stim_counter
+
+repeat{
+  if (freq[index+1] == initial_value){
+    stim_number[index+1] <-  stim_counter+1
+    stim_counter <- stim_counter+1
+    index <- index + 1
+  } else {
+    initial_value <- freq[index+1]
+    stim_counter <- 1
+    stim_number[index+1] <- stim_counter
+    index <- index+1
+  }
+  
+  if (index == length(stim_number)){break}
+}
+
 
