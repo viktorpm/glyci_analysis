@@ -91,3 +91,37 @@ repeat{
 }
 
 
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+recordings <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
+)
+
+str(recordings)
+recordings <- recordings %>% dplyr::filter(animal_id != "not specified")
+
+recordings <- recordings %>% 
+  mutate(stim_number = 0)
+
+initial_value <- recordings$stim_freq[1]
+stim_counter <- 1
+index <- 1
+
+recordings$stim_number[1] = stim_counter
+
+repeat{
+  if (recordings$stim_freq[index+1] == initial_value){
+    recordings$stim_number[index+1] <-  stim_counter+1
+    stim_counter <- stim_counter+1
+    index <- index + 1
+  } else {
+    initial_value <- recordings$stim_freq[index+1]
+    stim_counter <- 1
+    recordings$stim_number[index+1] <- stim_counter
+    index <- index+1
+  }
+  
+  if (index == length(recordings$stim_number)){break}
+}
+
+recordings$stim_number[recordings$signal_type == "AP"] = NA
