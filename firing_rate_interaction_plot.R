@@ -420,21 +420,21 @@ ggplot(data = allCells_for_plot,
                      y = mean_No.AP)) +
   #theme(panel.background = element_rect(fill = 0)) +
   theme_minimal() +
-  theme(axis.text = element_text(size = 10)) +
+  theme(axis.text = element_text(size = 15)) +
   geom_boxplot(width = 0.1, alpha = 0.5) +
   geom_point(#shape = 21, 
              color = "#EB8104", 
              #color = "white",
              size = 2) +
              #stroke = 2) +
-  geom_point(data = cells_to_highlight, 
-             #shape = 21, 
-             color = "#1D4871", 
-             #color = "white",  
-             size = 2) +
-             #stroke = 2) +
+  # geom_point(data = cells_to_highlight, 
+  #            #shape = 21, 
+  #            color = "#1D4871", 
+  #            #color = "white",  
+  #            size = 2) +
+  #            #stroke = 2) +
   geom_line(aes(group = cell), color = "#EB8104") +
-  geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell)) +
+  # geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell)) +
   # geom_text(data = cells_to_highlight, 
   #           aes(label = cell),
   #           color = "#1D4871",

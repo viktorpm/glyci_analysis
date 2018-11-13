@@ -14,7 +14,7 @@ file_list <- list.files(
 )
 
 SyncDesyncAnalysis <- function(file, sd_threshold) {
-  file_to_load <- file_list[5]
+  file_to_load <- file
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
   raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -163,7 +163,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ))
 
   ### constructing data frame with eeg values, moving SDs and means
-  SD_THRESHOLD <- -1 %>% as.numeric()
+  SD_THRESHOLD <- sd_threshold %>% as.numeric()
   EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
     ts(
       start = 0,
@@ -410,7 +410,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     )
   )
 
-  ### plotting ISI
+  ### plotting ISI ------------------------
   ### calculating bw based on Freedman-Diaconis rule (max-min)/h (h: bin-width)
   sync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi)
   desync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "desync") %>% pull(isi)
@@ -452,7 +452,9 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
                        }, 
                     fill = eeg_state),
       bins = bins_isi_sync ### same number of bins on the two ISIs!!
-    )
+    ) +
+    ylab("Count") +
+    xlab("Time (s)")
 
   ggsave(file.path("output_data", paste0(filename, c("_ISI.png"))),
     width = 24,
@@ -701,16 +703,16 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     ) +
 
     ### first spikes of clusters defined by PSD
-    (if (any(ap_peaks$burst_PSD == 1)) {
-      geom_point(
-        data = ap_peaks %>%
-          dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
-          dplyr::filter(burst_PSD == 1),
-        mapping = aes(x = peak_times, y = 96),
-        shape = "ˇ",
-        color = "green", size = 7
-      )
-    }) +
+    # (if (any(ap_peaks$burst_PSD == 1)) {
+    #   geom_point(
+    #     data = ap_peaks %>%
+    #       dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
+    #       dplyr::filter(burst_PSD == 1),
+    #     mapping = aes(x = peak_times, y = 96),
+    #     shape = "ˇ",
+    #     color = "green", size = 7
+    #   )
+    # }) +
 
 
     ### first spikes of clusters defined by ISI
@@ -764,7 +766,7 @@ lapply(file_list, SyncDesyncAnalysis, sd_threshold = -1)
 
 
 
-### Analyzing results
+ ### Analyzing results
 result_tibble <- read_csv(file.path("output_data", "sync_desync_data.csv"))
 
 result_tibble <- result_tibble %>%
@@ -773,31 +775,48 @@ result_tibble <- result_tibble %>%
 
 
 
-y_axis <- "No_clusters_norm"
+y_axis <- "MFR"
 
 ggplot() +
   theme_minimal() +
-  theme(axis.text = element_text(size = 10)) +
+  theme(axis.text = element_text(size = 15)) +
+  xlab("LFP period")+
+  scale_x_discrete(labels = c('Synchronous','Deynchronous')) +
+  ylab("MFR") +
 
   geom_point(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis))
-    ),
-    color = "#EB8104"
-  ) +
-  geom_line(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T),
+    data = result_tibble %>% dplyr::filter(clustered_d_log == T|
+                                             clustered_d_log == F
+                                           ),
     mapping = aes(
       x = forcats::fct_relevel(eeg_state, "sync", "desync"),
       y = eval(parse(text = y_axis)),
-      group = ID
-    ),
-    color = "#EB8104"
+      color = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")
+    )
   ) +
+  geom_line(
+    data = result_tibble %>% dplyr::filter(clustered_d_log == T|
+                                             clustered_d_log == F
+                                           ),
+    mapping = aes(
+      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+      y = eval(parse(text = y_axis)),
+      group = ID,
+      color = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")
+    )
+  ) +
+  scale_color_discrete (name = "",
+                        breaks = c("FALSE", "TRUE"),
+                        labels = c("Non clustered", "Clustered"),
+                        guide= FALSE )
+  
+  
+
+
+
+
   geom_text(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T),
+    data = result_tibble %>% dplyr::filter(clustered_d_log == T ),
     aes(
       label = ID,
       x = forcats::fct_relevel(eeg_state, "sync", "desync"),
@@ -807,6 +826,7 @@ ggplot() +
     # hjust = -0.2,
     vjust = 1.5
   )
+
 
 
 geom_point(
