@@ -13,17 +13,17 @@ HistStats <- function(gplot_object) {
     .$x
 
   mean <- gplot_object$data %>%
-    group_by(animal_ID) %>%
+    group_by(animal_id) %>%
     summarise(means = mean(first_ap_reltimes)) %>%
     pull(means)
 
   median <- gplot_object$data %>%
-    group_by(animal_ID) %>%
+    group_by(animal_id) %>%
     summarise(medians = median(first_ap_reltimes)) %>%
     pull(medians)
 
   Q <- gplot_object$data %>%
-    group_by(animal_ID) %>%
+    group_by(animal_id) %>%
     summarise(Qs = list(quantile(first_ap_reltimes))) %>%
     pull(Qs)
 
