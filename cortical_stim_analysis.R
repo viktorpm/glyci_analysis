@@ -1,36 +1,80 @@
+### LOADING PACKAGES ############
+
 library(R.matlab)
 library(tidyverse)
-library(reshape2)
+kelibrary(reshape2)
 library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
 
-
+### LOADING RECORDINGS (tibble with AP and stim times) ###############
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
-recordings <- CreateRecTibble(
+RECORDINGS <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
 )
 
-str(recordings)
-# recordings <- recordings %>% dplyr::filter(animal_id != "not specified")
+### adding stimulus number within train
+RECORDINGS <- RECORDINGS %>%
+  mutate(stim_number = 0)
 
+### calculating stimulus number within train 
+initial_value <- RECORDINGS$stim_freq[1]
+stim_counter <- 1
+index <- 1
 
+RECORDINGS$stim_number[1] <- stim_counter
+repeat{
+  if (RECORDINGS$stim_freq[index + 1] == initial_value) {
+    RECORDINGS$stim_number[index + 1] <- stim_counter + 1
+    stim_counter <- stim_counter + 1
+    index <- index + 1
+  } else {
+    initial_value <- RECORDINGS$stim_freq[index + 1]
+    stim_counter <- 1
+    RECORDINGS$stim_number[index + 1] <- stim_counter
+    index <- index + 1
+  }
+  
+  if (index == length(RECORDINGS$stim_number)) {
+    break
+  }
+}
 
-recordings$stim_freq %>% as.factor() %>% levels()
-animal_ID_list <- recordings$animal_id %>% as.factor() %>% levels() %>% as.list()
+### replacing stim_number with NA at "AP"
+RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
 
+### categorizing stimuli
+RECORDINGS <- RECORDINGS %>%
+  mutate(stim_freq_categ = stim_freq) %>%
+  mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 12 | stim_freq_categ == 8),
+    values = 10
+  )) %>%
+  mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 18),
+    values = 20
+  ))
+
+RECORDINGS$stim_freq %>% as.factor() %>% levels()
+RECORDINGS$stim_freq_categ %>% as.factor() %>% levels()
+
+# RECORDINGS <- RECORDINGS %>% dplyr::filter(animal_id != "not specified")
+
+animal_ID_list <- RECORDINGS$animal_id %>% as.factor() %>% levels() %>% as.list()
 
 freq_filter_20 <- c("18", "20")
 freq_filter_10 <- c("8", "10", "12")
 freq_filter_1 <- "1"
-CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
+CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
 
   ### parameters ----------------
-  animal_filter <- animal_ID
-  recordings <- recordings
+  animal_filter <- animal_id
+  RECORDINGS <- RECORDINGS
   freq_filter <- freqs
-  animal_name <- as.character(animal_ID)
+  animal_name <- as.character(animal_id)
 
 
 
@@ -60,7 +104,7 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
 
   ### filtering AP_times ---------------------
-  AP_times <- recordings %>%
+  AP_times <- RECORDINGS %>%
     dplyr::filter(
       signal_type == "AP",
       animal_id == animal_filter,
@@ -68,7 +112,7 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
       # stim_freq == freq_filter
       sapply(
         str_split(
-          string = recordings$available_freqs,
+          string = RECORDINGS$available_freqs,
           pattern = ", "
         ),
         function(x) any(x %in% freq_filter)
@@ -79,7 +123,7 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
 
   ### filtering stim_times ---------------------
-  stim_times <- recordings %>%
+  stim_times <- RECORDINGS %>%
     dplyr::filter(
       signal_type == "stim",
       animal_id == animal_filter,
@@ -133,7 +177,7 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
   file_exist_test <- file.exists(file.path("output_data", "cortical_stim_analysis.csv"))
   write_csv(tibble(
-    animal_ID = animal_filter,
+    animal_id = animal_filter,
     first_ap_reltimes = first_ap_reltimes %>%
       melt() %>%
       pull(value),
@@ -146,7 +190,7 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
 
 
   # PSTH_data <- tibble(
-  #   animal_ID = animal_filter,
+  #   animal_id = animal_filter,
   #   first_ap_reltimes = first_ap_reltimes %>%
   #     melt() %>%
   #     pull(value),
@@ -154,15 +198,14 @@ CreatePSTHTibble <- function(animal_ID, recordings, freqs) {
   #   )
   # return(PSTH_data)
 }
-lapply(animal_ID_list, CreatePSTHTibble, recordings = recordings, freq_filter_20)
+lapply(animal_ID_list, CreatePSTHTibble, RECORDINGS = RECORDINGS, freq_filter_1)
 
 
 
-
-stim_result_tibble <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
-stim_result_tibble$freq %>% as.factor() %>% levels()
-stim_result_tibble$animal_ID %>% as.factor() %>% levels()
-animal_ID_list <- stim_result_tibble$animal_ID %>% as.factor() %>% levels() %>% as.list()
+### LOADING STIM_RESULTS (produced by CreatePSTHTibble.R, data for PSTH)
+STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
+STIM_RESULTS$freq %>% as.factor() %>% levels()
+STIM_RESULTS$animal_id %>% as.factor() %>% levels()
 
 
 ### Boxplots ----------------------------------------
@@ -170,13 +213,13 @@ animal_ID_list <- stim_result_tibble$animal_ID %>% as.factor() %>% levels() %>% 
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
 
 gp_box_1 <- ggplot(
-  data = stim_result_tibble %>%
+  data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == 1
     ),
-  mapping = aes(y = first_ap_reltimes, x = animal_ID)
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
@@ -185,13 +228,13 @@ gp_box_1 <- ggplot(
   geom_hline(yintercept = 0)
 
 gp_box_10 <- ggplot(
-  data = stim_result_tibble %>%
+  data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == 8
     ),
-  mapping = aes(y = first_ap_reltimes, x = animal_ID)
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
@@ -200,13 +243,13 @@ gp_box_10 <- ggplot(
   geom_hline(yintercept = 0)
 
 gp_box_20 <- ggplot(
-  data = stim_result_tibble %>%
+  data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == 18
     ),
-  mapping = aes(y = first_ap_reltimes, x = animal_ID)
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
@@ -222,38 +265,40 @@ multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 
 ### Histograms ----------------------------------------
 
-PSTH_range <- c(-0.01, 0.04)
-freq_to_plot <- 8 %>% as.character()
+
+### PLOT: PSTH all cells -----------
+PSTH_range <- c(0, 0.05)
+freq_to_plot <- 18 %>% as.character()
 
 ### main plot
 gp_hist <- ggplot(
-  data = stim_result_tibble %>%
+  data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == freq_to_plot
-      # animal_ID == "GII_21"
+      # animal_id == "GII_21"
     ),
   mapping = aes(x = first_ap_reltimes)
 ) +
   xlim(PSTH_range[1], PSTH_range[2]) +
   theme_minimal() +
-  geom_histogram(aes(fill = animal_ID), binwidth = 0.001) +
+  geom_histogram(aes(fill = animal_id), binwidth = 0.001) +
   # stat_bin(aes(label = ..count..),
   #   binwidth = 0.001,
   #   geom = "text",
   #   vjust = -.5
   # ) +
   theme(
-    text = element_text(size = 15),
-    axis.text.x = element_text(angle = 45, hjust = 1.2, vjust = 1.2)
+    text = element_text(size = 18),
+    axis.text.x = element_text(angle = 45, hjust = 1.2, vjust = 1.2, size = 18)
   ) +
   scale_fill_brewer(
     palette = "Set3",
     name = "Animal"
     # guide = FALSE
   ) +
-  facet_wrap(~animal_ID, ncol = 3) +
+  facet_wrap(~animal_id, ncol = 3) +
   geom_vline(xintercept = 0) +
   xlab("Time (s)") +
   ylab("Count")
@@ -267,24 +312,24 @@ gp_hist_stats <- HistStats(gplot_object = gp_hist)
 for (i in seq_along(animal_ID_list)) {
   gp_hist <- gp_hist +
     geom_vline(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(xintercept = gp_hist_stats$median[i])
     )
 
   gp_hist <- gp_hist +
     geom_vline(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(xintercept = gp_hist_stats$quantile25[i]),
       color = "red"
@@ -292,12 +337,12 @@ for (i in seq_along(animal_ID_list)) {
 
   gp_hist <- gp_hist +
     geom_vline(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(xintercept = gp_hist_stats$quantile75[i]),
       color = "red"
@@ -305,12 +350,12 @@ for (i in seq_along(animal_ID_list)) {
 
   gp_hist <- gp_hist +
     geom_vline(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(xintercept = gp_hist_stats$quantile75[i] + 1.5 * gp_hist_stats$IQR[i]),
       color = "red",
@@ -319,12 +364,12 @@ for (i in seq_along(animal_ID_list)) {
 
   gp_hist <- gp_hist +
     geom_vline(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(xintercept = gp_hist_stats$quantile25[i] - 1.5 * gp_hist_stats$IQR[i]),
       color = "red",
@@ -333,24 +378,24 @@ for (i in seq_along(animal_ID_list)) {
 
   gp_hist <- gp_hist +
     geom_point(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(x = gp_hist_stats$mean[i], y = gp_hist_stats$y_max[i] + 4), size = 2
     )
 
   gp_hist <- gp_hist +
     geom_point(
-      data = stim_result_tibble %>%
+      data = STIM_RESULTS %>%
         dplyr::filter(
           first_ap_reltimes > PSTH_range[1],
           first_ap_reltimes < PSTH_range[2],
           freq == freq_to_plot,
-          animal_ID == as.character(animal_ID_list[[i]])
+          animal_id == as.character(animal_ID_list[[i]])
         ),
       aes_(x = gp_hist_stats$peak[i], y = gp_hist_stats$y_max[i] + 4),
       shape = 25,
@@ -359,25 +404,29 @@ for (i in seq_along(animal_ID_list)) {
     )
 }
 gp_hist
+ggsave(file.path("output_data","PSTH_all_cells.png"),
+       width = 12,
+       height = 10,
+       dpi = 300)
 
 
+
+### Calculatin response probability ------------------------
 gp_hist_stats$all_count_sum
 gp_hist_stats$range_count_sum
 
 ### No. APs after stimuli @ given frequencies
-No_APs <- stim_result_tibble %>%
+No_APs <- STIM_RESULTS %>%
   dplyr::filter(first_ap_reltimes > 0, first_ap_reltimes < 0.05, freq == 18) %>%
-  group_by(animal_ID) %>%
+  group_by(animal_id) %>%
   summarise(No_APs = length(first_ap_reltimes)) %>%
   pull(No_APs)
 
 
 ### No. stim @ given frequency
-No_stim <- recordings %>%
+No_stim <- RECORDINGS %>%
   dplyr::filter(
-    signal_type == "stim", stim_freq == 18
-    | stim_freq == 20
-    #| stim_freq == 12
+    signal_type == "stim", stim_freq_categ == 20
   ) %>%
   group_by(animal_id) %>%
   summarise(No_stim = length(signal_time)) %>%
@@ -386,9 +435,9 @@ No_stim <- recordings %>%
 
 
 
-resp_probability <- recordings %>%
+resp_probability <- RECORDINGS %>%
   dplyr::filter(
-    signal_type == "stim", stim_freq == 1
+    signal_type == "stim", stim_freq_categ == 1
     #| stim_freq == 20 
     #| stim_freq == 12
   ) %>%
@@ -398,12 +447,12 @@ resp_probability <- recordings %>%
   add_column(No_APs = gp_hist_stats$all_count_sum) %>%
   add_column(No_APs_range = gp_hist_stats$range_count_sum)
 
-resp_probability10 <- recordings %>%
+resp_probability10 <- RECORDINGS %>%
   dplyr::filter(
     signal_type == "stim",
-    stim_freq == 8
-    | stim_freq == 10
-    | stim_freq == 12
+    stim_freq_categ == 10
+    # | stim_freq == 10
+    # | stim_freq == 12
   ) %>%
   group_by(animal_id) %>%
   summarise(No_stim = length(signal_time)) %>%
@@ -411,10 +460,10 @@ resp_probability10 <- recordings %>%
   add_column(No_APs = gp_hist_stats$all_count_sum) %>%
   add_column(No_APs_range = gp_hist_stats$range_count_sum)
 
-resp_probability20 <- recordings %>%
+resp_probability20 <- RECORDINGS %>%
   dplyr::filter(
-    signal_type == "stim", stim_freq == 18
-    | stim_freq == 20
+    signal_type == "stim",
+    stim_freq_categ == 20
     #| stim_freq == 12
   ) %>%
   group_by(animal_id) %>%
@@ -425,71 +474,52 @@ resp_probability20 <- recordings %>%
 
 
 
-resp_prob <- bind_rows(bind_rows(resp_probability, resp_probability10), resp_probability20)
+RESP_PROB <- bind_rows(bind_rows(resp_probability, resp_probability10), resp_probability20)
 
-resp_prob <- resp_prob %>%
+RESP_PROB <- RESP_PROB %>%
   mutate(resp_prob_range = (No_APs_range / No_stim) * 100)
 
+library(ggrepel)
+
+
+### PLOT: resp brob ----------
 ggplot(
-  data = resp_prob,
+  data = RESP_PROB,
   mapping = aes(
     x = as.factor(freq),
     y = resp_prob_range
   )
 ) +
   theme_minimal() +
-  xlab("Response probability") +
-  ylab("Stimulus frequency") +
-  theme(text = element_text(size = 15)) +
-  geom_point() +
-  geom_boxplot(alpha = 0, width = 0.2)
+  xlab("Stimulus frequency") +
+  ylab("Response probability") +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 18)) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  geom_point(
+    fill = "dark gray",
+    color = "black",
+    size = 2.5,
+    shape = 21
+  ) +
+  ### https://cran.r-project.org/web/packages/ggrepel/vignettes/ggrepel.html
+  geom_text_repel(aes(label = animal_id),
+    nudge_x = 0.15,
+    direction = "y",
+    hjust = -0.5,
+    segment.size = 0.2
+  )
+ggsave(file.path("output_data","resp_prob.png"),
+       width = 6,
+       height = 8,
+       dpi = 300)
 
 
-### Latency and probability within stimulus train ################################
 
+### Latency and probability within stimulus train -----------------------------
 
-source(file.path("supplementary_functions", "CreateRecTibble.R"))
-recordings <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
-  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
-)
-
-str(recordings)
-# recordings <- recordings %>% dplyr::filter(animal_id != "not specified")
-
-recordings <- recordings %>%
-  mutate(stim_number = 0)
-
-
-### numbering stimuli within train ---------------------
-initial_value <- recordings$stim_freq[1]
-stim_counter <- 1
-index <- 1
-
-recordings$stim_number[1] <- stim_counter
-
-repeat{
-  if (recordings$stim_freq[index + 1] == initial_value) {
-    recordings$stim_number[index + 1] <- stim_counter + 1
-    stim_counter <- stim_counter + 1
-    index <- index + 1
-  } else {
-    initial_value <- recordings$stim_freq[index + 1]
-    stim_counter <- 1
-    recordings$stim_number[index + 1] <- stim_counter
-    index <- index + 1
-  }
-
-  if (index == length(recordings$stim_number)) {
-    break
-  }
-}
-recordings$stim_number[recordings$signal_type == "AP"] <- NA
-
-recordings$animal_id %>% as.factor() %>% levels()
-
-
-CountAPperStim <- function(animal) {
+### counting no APs after each stimuli in a train
+CountAPperStim <- function(animal, stim_frequency) {
   numbered_stim <- list()
   RTM_creator <- function(ap, stim) {
     ap_vect <- ap %>% as.vector()
@@ -513,16 +543,15 @@ CountAPperStim <- function(animal) {
     return(mat_reltimes)
   }
   for (i in 1:10) {
-    stim <- recordings %>%
+    stim <- RECORDINGS %>%
       dplyr::filter(
-        stim_freq == 1,
-        # stim_freq == 20,
+        stim_freq_categ == stim_frequency,
         stim_number == i,
         animal_id == animal
       ) %>%
       pull(signal_time)
 
-    ap <- recordings %>%
+    ap <- RECORDINGS %>%
       dplyr::filter(
         signal_type == "AP",
         animal_id == animal
@@ -544,66 +573,100 @@ CountAPperStim <- function(animal) {
     unlist() %>%
     tibble(No_AP = .) %>%
     mutate(stim_number = c(1:10)) %>%
-    mutate(anima_id = animal)
+    mutate(animal_id = animal)
 
   do.call(rbind, AP_counts)
   return(AP_counts)
 }
 
-tmp <- lapply(recordings$animal_id %>% as.factor() %>% levels(), CountAPperStim)
+AP_PER_STIM <- do.call(
+  rbind,
+  lapply(RECORDINGS$animal_id %>% as.factor() %>% levels(),
+    CountAPperStim,
+    stim_frequency = 1
+  )
+)
 
+
+hz1 <- AP_PER_STIM %>%
+  filter(animal_id != "GII_26") %>%
+  group_by(stim_number) %>%
+  summarise(
+    No_AP_mean = mean(No_AP),
+    No_AP_sd = sd(No_AP),
+    SEM = sd(No_AP) / sqrt(length(No_AP))
+  ) %>%
+  add_column(freq = 1)
+
+hz10 <- AP_PER_STIM %>%
+  filter(animal_id != "GII_26") %>%
+  group_by(stim_number) %>%
+  summarise(
+    No_AP_mean = mean(No_AP),
+    No_AP_sd = sd(No_AP),
+    SEM = sd(No_AP) / sqrt(length(No_AP))
+  ) %>%
+  add_column(freq = 10)
+
+hz20 <- AP_PER_STIM %>%
+  filter(animal_id != "GII_26") %>%
+  group_by(stim_number) %>%
+  summarise(
+    No_AP_mean = mean(No_AP),
+    No_AP_sd = sd(No_AP),
+    SEM = sd(No_AP) / sqrt(length(No_AP))
+  ) %>%
+  add_column(freq = 20)
+
+bind_rows(bind_rows(hz1, hz10), hz20)
+
+
+### PLOT: ap numbers ----------
+ggplot(
+  data = bind_rows(bind_rows(hz1, hz10), hz20),
+  mapping = aes(
+    x = stim_number,
+    y = No_AP_mean,
+    fill = as.factor(freq),
+    group = as.factor(freq)
+  )
+) +
+  theme_minimal() +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 18), 
+        legend.text = element_text(size = 18)
+        ) +
+  xlab("Mean no. APs") +
+  ylab("No. stimulus in train") + 
+  geom_point(size = 3, shape = 21) +
+  geom_line(aes(color = as.factor(freq)), lwd = 1) +
+  geom_errorbar(aes(
+    ymin = No_AP_mean - SEM,
+    ymax = No_AP_mean + SEM,
+    color = as.factor(freq),
+  ),
+  width = .5,
+  position = position_dodge(0.1)
+  ) +
+  scale_x_discrete(limits = as.character(c(1:10))) +
+  labs(fill = "Frequency", color = "Frequency" ) 
+ggsave(file.path("output_data","ap_numbers.png"),width = 14,height = 8,dpi = 300)
 
 
 ggplot(
-  data =
-    do.call(rbind, tmp),
+  data = AP_PER_STIM,
   mapping = aes(
     x = stim_number,
     y = No_AP,
-    shape = as.factor(anima_id),
-    color = as.factor(anima_id),
-    linetype = as.factor(anima_id)
+    shape = as.factor(animal_id),
+    color = as.factor(animal_id),
+    linetype = as.factor(animal_id)
   )
 ) +
   geom_line() +
   geom_point() +
   scale_x_discrete(limits = as.character(c(1:10))) +
-  scale_shape_manual(values = 1:nlevels(as.factor(do.call(rbind, tmp)$anima_id)))
+  scale_shape_manual(values = 1:nlevels(as.factor(AP_PER_STIM$animal_id)))
 
 
 
-
-
-
-
-# PSTH_range <- c(0, 0.05)
-#
-# par(mfrow = c(5,2))
-# par(mar=c(1,1,1,1))
-#
-# for (i in c(1:10)) {
-#   hist(numbered_stim[[i]][numbered_stim[[i]] > 0 & numbered_stim[[i]] < 0.05 ],
-#        xlim = PSTH_range,
-#        breaks = 20,
-#        main = NULL,
-#        xlab = NULL,
-#        ylab = NULL)
-# }
-
-
-
-
-ggplot(
-  data = as.tibble(RTM_1st_ap %>% melt()),
-  mapping = aes(x = value)
-) +
-  xlim(PSTH_range[1], PSTH_range[2]) +
-  geom_histogram(binwidth = 0.001) +
-  # stat_bin(aes(label = ..count..),
-  #   binwidth = 0.001,
-  #   geom = "text",
-  #   vjust = -.5
-  # ) +
-  # scale_fill_brewer(palette = "Set3") +
-  # facet_wrap(~animal_ID, ncol = 2) +
-  geom_vline(xintercept = 0)
