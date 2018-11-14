@@ -1,3 +1,5 @@
+### LOADING PACKAGES ############
+
 library(R.matlab)
 library(tidyverse)
 library(reshape2)
@@ -221,7 +223,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   burst_threshold_power <- 1000 / second_peak / 1000
 
 
-  ### plot eeg with sync desync periods (last 80 seconds of the recording)
+  ### PLOT: eeg, APs (last 80 seconds of the recording) -----------
   plotting_region <- c(times[length(times)] - 80, times[length(times)])
 
   ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
@@ -410,7 +412,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     )
   )
 
-  ### plotting ISI ------------------------
+  ### PLOT: ISI ------------------------
   ### calculating bw based on Freedman-Diaconis rule (max-min)/h (h: bin-width)
   sync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi)
   desync_isi_data <- ap_peaks %>% dplyr::filter(eeg_state == "desync") %>% pull(isi)
@@ -594,7 +596,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   #   (2 * IQR(desync_AC_data, na.rm = T) /
   #      length(desync_AC_data)^(1/3))
 
-
+  ### PLOT: ac ----------------
   ggplot() +
     geom_histogram(
       data = AC %>%
@@ -648,7 +650,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     melt() # %>%
 
 
-  ### Plotting wavelet --------------------------------------------------------------
+  ### PLOT: wavelet --------------------------------------------------------------
 
   ggplot() +
     theme_minimal() +
@@ -765,11 +767,11 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 lapply(file_list, SyncDesyncAnalysis, sd_threshold = -1)
 
 
+### LOADING DATA (sync_desync tibble) ###############
+### Analyzing results
+SYNC_DESYNC_RESULT <- read_csv(file.path("output_data", "sync_desync_data.csv"))
 
- ### Analyzing results
-result_tibble <- read_csv(file.path("output_data", "sync_desync_data.csv"))
-
-result_tibble <- result_tibble %>%
+SYNC_DESYNC_RESULT <- SYNC_DESYNC_RESULT %>%
   mutate(No_clusters_norm = No_clusters / state_length) %>%
   mutate(No_clusters_PSD_norm = No_clusters_PSD / state_length)
 
@@ -777,139 +779,47 @@ result_tibble <- result_tibble %>%
 
 y_axis <- "MFR"
 
-ggplot() +
+### PLOT : Sync vs Desync (MFR/Clusters) ----------------------
+ggplot(data = SYNC_DESYNC_RESULT %>% dplyr::filter(clustered_d_log == T|
+                                                    clustered_d_log == F
+                                                   ),
+       mapping = aes(
+         x = forcats::fct_relevel(eeg_state, "sync", "desync"),
+         y = eval(parse(text = y_axis)))
+       ) +
   theme_minimal() +
-  theme(axis.text = element_text(size = 15)) +
+  theme(axis.text = element_text(size = 20),
+        text = element_text(size = 20),
+        legend.text = element_text(size = 20)) +
   xlab("LFP period")+
   scale_x_discrete(labels = c('Synchronous','Deynchronous')) +
   ylab("MFR") +
-
+ 
   geom_point(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T|
-                                             clustered_d_log == F
-                                           ),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis)),
-      color = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")
-    )
-  ) +
+    aes(fill = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")), 
+    shape = 21,
+    size = 4
+    ) +
   geom_line(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T|
-                                             clustered_d_log == F
-                                           ),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis)),
-      group = ID,
-      color = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")
-    )
+    mapping = aes(group = ID,
+                  color = forcats::fct_relevel(as.factor(clustered_d_log),"TRUE", "FALSE")
+                  ),
+    lwd = 1
   ) +
-  scale_color_discrete (name = "",
-                        breaks = c("FALSE", "TRUE"),
-                        labels = c("Non clustered", "Clustered"),
-                        guide= FALSE )
-  
-  
+  scale_fill_discrete(name = "",
+                      breaks = c("FALSE", "TRUE"),
+                      labels = c("Non clustered", "Clustered")
+                      #guide = F
+                      ) +
+  scale_color_discrete(name = "",
+                    breaks = c("FALSE", "TRUE"),
+                    labels = c("Non clustered", "Clustered") 
+                    #guide = F
+                    )
 
 
+ggsave(file.path("output_data","MFR_clust_vs_nonclust.png"),
+       width = 8,
+       height = 12,
+       dpi = 300)
 
-
-  geom_text(
-    data = result_tibble %>% dplyr::filter(clustered_d_log == T ),
-    aes(
-      label = ID,
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis))
-    ),
-    color = "#EB8104",
-    # hjust = -0.2,
-    vjust = 1.5
-  )
-
-
-
-geom_point(
-  data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
-  mapping = aes(
-    x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-    y = eval(parse(text = y_axis))
-  )
-) +
-  geom_line(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -0.8),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis)),
-      group = ID
-    )
-  ) +
-
-  geom_point(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -1),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis))
-    ),
-    color = "green"
-  ) +
-  geom_line(
-    data = result_tibble %>% dplyr::filter(sd_threshold == -1),
-    mapping = aes(
-      x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-      y = eval(parse(text = y_axis)),
-      group = ID
-    ),
-    color = "green"
-  ) +
-  scale_x_discrete(name = "EEG state", labels = c("Synchronous", "Deynchronous")) +
-  labs(y = y_axis) +
-  geom_text()
-
-
-ggplot(
-  data = result_tibble,
-  mapping = aes(
-    x = forcats::fct_relevel(eeg_state, "sync", "desync"),
-    y = eval(parse(text = y_axis)),
-    color = as.factor(sd_threshold),
-  )
-) +
-  theme_minimal() +
-  theme(axis.text = element_text(size = 10)) +
-  geom_point() +
-  scale_x_discrete(name = "EEG state", labels = c("Synchronous", "Deynchronous")) +
-  labs(y = y_axis) +
-  labs(color = "SD threshold")
-
-# WriteToFile <- function(){
-#   append_parameter = T
-#
-#   file_exist_test <- file.exists(file.path("output_data", "sync_desync_data.csv"))
-#
-#   if (file_exist_test == T) {
-#     read_output_file <- read_csv(file.path("output_data", "sync_desync_data.csv"))
-#   } else {
-#     read_file_info <- data.frame()
-#   }
-#
-#   file_processed_test <- str_detect(
-#     read_output_file$ID,
-#     regex(paste0(file_to_load))
-#   )
-#
-#   if (any(file_processed_test == T)) {
-#     append_parameter == F
-#     warning("File has already been processed")
-#   }
-#
-#
-#   write_csv(as.tibble(left_join(EEG_STATE_ap,EEG_STATE_cluster) %>%
-#                         left_join(EEG_STATE_length) %>%
-#                         mutate(ID = file_to_load) %>%
-#                         mutate(sd_threshold = SD_THRESHOLD)),
-#             file.path("output_data","sync_desync_data.csv"), append = append_parameter)
-#
-#
-# }
-# WriteToFile()
