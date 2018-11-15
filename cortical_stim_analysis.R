@@ -45,6 +45,20 @@ repeat{
   }
 }
 
+### Alternative to repeat loop to number stimuli
+# RECORDINGS %>% 
+#   filter(signal_type == "stim") %>% 
+#   mutate(
+#     lag_sf = lag(stim_freq),
+#     asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
+#     cum_asd = cumsum(asd)
+#   ) %>% 
+#   select(file_name, stim_freq, cum_asd, stim_number) %>% 
+#   group_by(cum_asd) %>% 
+#   mutate(stim_number_asd = row_number()) %>% 
+#   ungroup() %>% 
+#   View()
+
 ### replacing stim_number with NA at "AP"
 RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
 
