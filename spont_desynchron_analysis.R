@@ -7,7 +7,7 @@ library(signal)
 library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
-
+library(ggrepel)
 
 
 file_list <- list.files(
@@ -780,9 +780,10 @@ SYNC_DESYNC_RESULT <- SYNC_DESYNC_RESULT %>%
 y_axis <- "MFR"
 
 ### PLOT : Sync vs Desync (MFR/Clusters) ----------------------
-ggplot(data = SYNC_DESYNC_RESULT %>% dplyr::filter(clustered_d_log == T|
-                                                    clustered_d_log == F
-                                                   ),
+ggplot(data = SYNC_DESYNC_RESULT %>% 
+         dplyr::filter(clustered_d_log == T|   
+                         clustered_d_log == F
+                       ),
        mapping = aes(
          x = forcats::fct_relevel(eeg_state, "sync", "desync"),
          y = eval(parse(text = y_axis)))
@@ -806,6 +807,16 @@ ggplot(data = SYNC_DESYNC_RESULT %>% dplyr::filter(clustered_d_log == T|
                   ),
     lwd = 1
   ) +
+  # geom_text_repel(
+  #   data = (SYNC_DESYNC_RESULT %>% 
+  #             group_by(ID,eeg_state) %>% 
+  #             summarise(MFR = mean(MFR))),
+  #   aes(label = ID %>% substring(1,8)),
+  #   nudge_x = 0.15,
+  #   direction = "y",
+  #   hjust = -0.5,
+  #   segment.size = 0.2
+  # ) +
   scale_fill_discrete(name = "",
                       breaks = c("FALSE", "TRUE"),
                       labels = c("Non clustered", "Clustered")
