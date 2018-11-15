@@ -19,9 +19,13 @@ RECORDINGS <- RECORDINGS %>%
   mutate(stim_number = 0)
 
 ### calculating stimulus number within train 
-initial_value <- RECORDINGS$stim_freq[1]
-stim_counter <- 1
-index <- 1
+initial_value <- RECORDINGS$stim_freq[1] %>% 
+  `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
+
+stim_counter <- 1 %>% 
+  `comment<-`("Counts stimuli in a train")
+index <- 1 %>% 
+  `comment<-`("Tracks the position (index) of stim_freq")
 
 RECORDINGS$stim_number[1] <- stim_counter
 repeat{
