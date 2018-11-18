@@ -654,17 +654,18 @@ ggplot(
         axis.text = element_text(size = 18), 
         legend.text = element_text(size = 18)
         ) +
-  xlab("Mean no. APs") +
-  ylab("No. stimulus in train") + 
+  xlab("No. stimulus in train") +
+  ylab("Mean no. APs") + 
   geom_point(size = 3, shape = 21) +
   geom_line(aes(color = as.factor(freq)), lwd = 1) +
   geom_errorbar(aes(
     ymin = No_AP_mean - SEM,
     ymax = No_AP_mean + SEM,
-    color = as.factor(freq),
+    color = as.factor(freq)
   ),
   width = .5,
-  position = position_dodge(0.1)
+  position = position_dodge(0.3),
+  lty = 5
   ) +
   scale_x_discrete(limits = as.character(c(1:10))) +
   labs(fill = "Frequency", color = "Frequency" ) 
