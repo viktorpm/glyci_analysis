@@ -8,7 +8,8 @@ library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
 library(ggrepel)
-
+library(exactRankTests) ### wilcox.test for ties
+library(ggsignif)
 
 file_list <- list.files(
   path = "data",
@@ -777,12 +778,12 @@ SYNC_DESYNC_RESULT <- SYNC_DESYNC_RESULT %>%
 
 
 
-y_axis <- "MFR"
+y_axis <- "No_clusters_norm"
 
 ### PLOT : Sync vs Desync (MFR/Clusters) ----------------------
 ggplot(data = SYNC_DESYNC_RESULT %>% 
-         dplyr::filter(clustered_d_log == T|   
-                         clustered_d_log == F
+         dplyr::filter(clustered_d_log == T 
+                         #clustered_d_log == F
                        ),
        mapping = aes(
          x = forcats::fct_relevel(eeg_state, "sync", "desync"),
@@ -807,23 +808,19 @@ ggplot(data = SYNC_DESYNC_RESULT %>%
                   ),
     lwd = 1
   ) +
-  # geom_text_repel(
-  #   data = (SYNC_DESYNC_RESULT %>% 
-  #             group_by(ID,eeg_state) %>% 
-  #             summarise(MFR = mean(MFR))),
-  #   aes(label = ID %>% substring(1,8)),
-  #   nudge_x = 0.15,
-  #   direction = "y",
-  #   hjust = -0.5,
-  #   segment.size = 0.2
-  # ) +
+  geom_signif(comparisons = list(c("sync", "desync")),
+              map_signif_level = FALSE,
+              test = "wilcox.exact",
+              test.args = c("paired" = T)
+              ) +
+
   scale_fill_discrete(name = "",
                       breaks = c("FALSE", "TRUE"),
                       labels = c("Non clustered", "Clustered")
                       #guide = F
                       ) +
   scale_color_discrete(name = "",
-                    breaks = c("FALSE", "TRUE"),
+                    breaks = c("FALSE", "RTUE"),
                     labels = c("Non clustered", "Clustered") 
                     #guide = F
                     )
