@@ -11,447 +11,454 @@
 ### variable: separated_by '_'
 
 
-### notebook wd path (RUN ON NOTEBOOK):
+### NEW VERSION DEVELOPEMENT ------------------------
 
-wd_path <- file.path('c:',
-                     'Users',
-                     'Viktor',
-                     'Documents',
-                     'R_WD'
-)
-
-setwd(wd_path_NB)
-
-
-file_path <- file.path('c:',
-                       'Users',
-                       'Viktor',
-                       'OneDrive - MTA KOKI',
-                       'professional',
-                       '_R_WD',
-                       '_data_frames',
-                       'IL_juxta_GlyT2_fiber_stim'
-                       )
-
-
-### lab PC wd path (RUN ON lab PC):
-
-wd_path <- file.path('f:',
-                     '_R_WD'
-)
-
-setwd(wd_path)
-
-
-file_path <- file.path('f:',
-                       '_R_WD',
-                       '_data_frames',
-                       'folder',
-                       '*.mat'
-)
-
-
-### loading packages
-library(R.matlab)
-
-
-### reading data from file
-raw.rec <- readMat(paste0(file_path,
-                          '/cell21_13_right_IL_t3_3030_stim_control.mat'
-                          )
-                   )
-
-
-
-names(raw.rec)
-
-names(raw.rec) = c('unit','level','stim','eeg')
-
-level.stim = raw.rec$level[[5]]
-
-end = length(level.stim)
-
-level.start = raw.rec$level[[5]][seq(1,end,2),1]
-level.stop = raw.rec$level[[5]][seq(1,end,2)+1,1]
-level.stimLength = level.stop[1] - level.start[1] #calculates the length of the stim
-
-
-AP.times = raw.rec$unit[[12]]
-
-# # #APs during the first stim
-# length(AP.times[level.start[1]<AP.times & AP.times<level.stop[1]])
-# 
-# # #APs 33.3s before first stim (less than 33s, first 13.7s)
-# length(AP.times[level.start[1]-level.stimLength < AP.times & AP.times<level.start[1]])
-# 
-# 
-# # #APs 33.3s after first stim
-# length(AP.times[AP.times>level.stop[1] & AP.times<level.stop[1] + level.stimLength])
-
-
-# number of APs before during and after stim
-
-AP.numbers = matrix(0, nrow = length(level.start), ncol = 3)
-
-for (i in 1:length(level.start)) {
-  AP.numbers[i,1] = length(AP.times[level.start[i] - level.stimLength < AP.times & AP.times < level.start[i]])
-  AP.numbers[i,2] = length(AP.times[level.start[i] < AP.times & AP.times < level.stop[i]])
-  AP.numbers[i,3] = length(AP.times[AP.times > level.stop[i] & AP.times < level.stop[i] + level.stimLength])
-}
-
-# AP.numbers = AP.numbers[-6:-7,]
-
-rownames(AP.numbers) = c('1st','2nd')#,'3d','4th','5th','6th','7th','8th','9th')#,'10th')
-colnames(AP.numbers) = c('before','during','after')
-
-# MFR = AP.numbers/33.3
-
-cell24 = AP.numbers
-
-
-# cellList = list()
-cellList[[24]] = cell24
-
-
-
-c = names(cellList) = c('cell01','cell02','cell03','cell04','cell05','cell06','cell07','cell08','cell09','cell10','cell11','cell12','cell13','cell14','cell15','cell16','cell17','cell18','cell19','cell20','cell21','cell22','cell23','cell24')
-
-
-save(cellList, file = 'f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/cellList.RData')
-
-load('f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/cellList.RData')
-
-
-    ### Corrected cellList: stims with no controls are removed
-    
-      cellList$cell01 = cellList$cell01[-1,]
-      cellList$cell15 = cellList$cell15[-3:-4,]
-      cellList$cell16 = cellList$cell16[-3:-4,]
-      cellList$cell16 = cellList$cell16[-5:-6,]
-      cellList$cell17 = cellList$cell17[-3:-4,]
-      cellList$cell17 = cellList$cell17[-5:-6,]
-      cellList$cell18 = cellList$cell18[-1,]
-      cellList$cell19 = cellList$cell19[-1,]
-    
-      save(cellList,file = 'f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/Corrected_cellList.RData')
-
-      
-################################################
-
-load('f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/Corrected_cellList.RData')
-
-      
-load(paste0(file_path,
-            '/Corrected_cellList.RData'
-            )
-     )
-   
-
-v = formatC(seq(1,24), width = 2, flag = 0)
-#sprintf()
-
-
-ReArrange = function(v) {
-
-#  cellName = paste0('cell', readline(prompt = 'Give me the input cell number (1 to 24): '))
-  
-  for (i in v) {
-  cellName = paste0('cell', i)
-  
-  
-  input = cellList[[cellName]]
-
-  dim(input)
-
-  rows = dim(input)[1]
-  cols = dim(input)[2]   
-  
-  dim(input) = c(rows * cols,1)
-  
-  input = cbind(input, matrix(0, rows * cols , 1))
-  input[1:rows,2] = 'b'
-  input[(rows+1):(2*rows),2] = 'd'
-  input[(2*rows+1):(3*rows),2] = 'a'
-  
-  input = cbind(input, matrix(as.character(cellName) ,rows * cols,1 ))
-  colnames(input) = c('No.AP','condition','cell')
-
-  assign(cellName, input, envir = globalenv())
-  }
-}  
-
-ReArrange(v)
-
-#allCells = mget(c)
-c = c('cell01','cell02','cell03','cell04','cell05','cell06','cell07','cell08','cell09','cell10','cell11','cell12','cell13','cell14','cell15','cell16','cell17','cell18','cell19','cell20','cell21','cell22','cell23','cell24')
-
-
-allCells = do.call(rbind, mget(c))
-
-allCells = as.data.frame(allCells)
-allCells$pinch = T
-
-allCells$pinch[allCells$cell == 'cell18' |
-                 allCells$cell == 'cell19' |
-                 allCells$cell == 'cell20' |
-                 allCells$cell == 'cell21' |
-                 allCells$cell == 'cell23' |
-                 allCells$cell == 'cell01' |
-                 allCells$cell == 'cell06'] = FALSE
-
-#subset(allCells$pinch, allCells$cell == 'cell18' | allCells$cell == 'cell19')
-
-
-allCells$firing = 'regular'
-allCells$firing[allCells$cell == 'cell02' |
-                allCells$cell == 'cell03' |
-                allCells$cell == 'cell04' |
-                allCells$cell == 'cell05' |
-                allCells$cell == 'cell10' |
-                allCells$cell == 'cell14' |
-                allCells$cell == 'cell15' |
-                allCells$cell == 'cell16' |
-                allCells$cell == 'cell17' |
-                allCells$cell == 'cell24'] = 'irregular'
-
-allCells$stimLength = 0
-allCells$stimLength[allCells$cell == 'cell01' |
-                  allCells$cell == 'cell02' |
-                  allCells$cell == 'cell03'] = 33
-
-allCells$stimLength[allCells$cell == 'cell04' |
-                      allCells$cell == 'cell05' |
-                      allCells$cell == 'cell06' |
-                      allCells$cell == 'cell08' |
-                      allCells$cell == 'cell09' ] = 16.47
-
-allCells$stimLength[allCells$cell == 'cell16' |
-                      allCells$cell == 'cell17' |
-                      allCells$cell == 'cell18'] = 6.57
-
-allCells$stimLength[allCells$cell == 'cell11' |
-                  allCells$cell == 'cell12' |
-                  allCells$cell == 'cell13' |
-                  allCells$cell == 'cell14' |
-                  allCells$cell == 'cell15' |
-                  allCells$cell == 'cell19' |
-                  allCells$cell == 'cell20' |
-                  allCells$cell == 'cell21' |
-                  allCells$cell == 'cell22' |
-                  allCells$cell == 'cell23' |
-                  allCells$cell == 'cell24' ] = 4.92
-
-
-
-allCells$stimLength[allCells$cell == 'cell07' ] = 34.62
-allCells$stimLength[allCells$cell == 'cell10' ] = 3.27
-
-  
-save(allCells, file = 'f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/allCells.RData')
-
-
-##########################  Plotting  ###################################
-
-
-load(file = 'f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/allCells.RData')
-load('f:/_R_WD/useful_to_load/colorMatrix.RData')
-
-load('C:/Users/Viktor/OneDrive - MTA KOKI/professional/_R_WD/useful_to_load/colorMatrix.RData')
-
-load(paste0(file_path,
-            '/allCells.RData'
-            )
-     )
-
-str(allCells)
-
-### convert to numeric
-allCells$No.AP = as.numeric(levels(allCells$No.AP))[allCells$No.AP]
-#allCells$No.AP = as.numeric(as.character(allCells$No.AP))
-
-allCells$firing = as.factor(allCells$firing)
-
-
-#all
-ver.A = allCells
-
-#pinched and regular firing
-ver.B = subset(allCells, allCells$pinch == TRUE & allCells$firing == 'regular')
-
-levels(ver.B$cell)
-#ver.B$cell = factor(ver.B$cell)
-length(levels(droplevels(ver.B$cell)))
-
-
-#pinched and irregular firing
-ver.C = subset(allCells, allCells$pinch == TRUE & allCells$firing == 'irregular')
-levels(ver.C$cell)
-length(levels(droplevels(ver.C$cell)))
-
-
-
-#spontaneous and regular firing
-ver.D = subset(allCells, allCells$pinch == FALSE & allCells$firing == 'regular')
-levels(ver.D$cell)
-levels(droplevels(ver.D$cell))
-
-
-
-#spontaneous and irregular firing
-ver.E = subset(allCells, allCells$pinch == FALSE & allCells$firing == 'irregular')
-
-par(mfrow = c(2,3))
-par(mfrow = c(1,1))
-
-VER = ver.A
-
-plot.No.AP = function(){
-with(VER, 
-     interaction.plot(factor(condition, levels = c('b','d','a')
-                             ), 
-                      cell, 
-                      No.AP / stimLength,
-                      fun = mean,
-                      fixed = F,
-                      type = 'b',
-                      lty = 1,
-                      pch = 1,
-                      bty = 'L',
-                      #col = as.factor(pinch),
-                      col = colorMatrix['orange','dark'],
-                      legend = F
-                      )
-     )
-
-
-with(VER,
-     boxplot(No.AP / stimLength ~ factor(condition,
-                                     levels = c('b','d','a')
-     ),
-     boxwex = 0.1,
-     add = T,
-     outline = F,
-     col= rgb(0,0,0, maxColorValue = 255 ,alpha=0)
-     )
-) 
-
-}     
-plot.No.AP()
-
-
-
-
-with(subset(allCells, allCells$pinch == TRUE & allCells$firing == 'regular'), 
-     stripchart(No.AP / stimLength ~ factor(condition, levels = c('b','d','a')
-                                                 ),
-                     vertical = T,
-                     pch = 19,
-                     method = 'jitter',
-                     jitter = 0.1,
-                     col = colorMatrix['blue','dark']
-                     )
-     )
-     
-with(subset(allCells, allCells$pinch == T & allCells$firing == 'irregular'), 
-     stripchart(No.AP / stimLength ~ factor(condition, levels = c('b','d','a')
-     ),
-     vertical = T,
-     pch = 19,
-     method = 'jitter',
-     jitter = 0.1,
-     add =T,
-     col = colorMatrix['blue','midle']
-     )
-)
-
-with(subset(allCells, allCells$pinch == F & allCells$firing == 'regular'), 
-     stripchart(No.AP / stimLength ~ factor(condition, levels = c('b','d','a')
-     ),
-     vertical = T,
-     pch = 19,
-     method = 'jitter',
-     jitter = 0.1,
-     add =T,
-     col = colorMatrix['blue','light']
-     )
-)
-
-
-
-### ggplot2 -------------------------------------------------------------
-
-load(file = "f:/_R_WD/_data_frames/IL_juxta_GlyT2_fiber_stim/allCells.RData")
-load(file = "f:/_R_WD/useful_to_load/colorMatrix.RData")
 library(tidyverse)
+library(reshape2)
+library(ggrepel)
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+RECORDINGS <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR","stimulus", "stim_times.csv"))
+)
+info <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
 
 
-#filter_condititon <- quote(pinch == F, firing == 'regular')
-filter_condititon <- "pinch == T" #& firing == 'irregular'"
+RECORDINGS$file_name %>% unique() %>% length()
+info$file_name %>% length()
 
 
-### transforming allCells data frame
-allCells_for_plot <- allCells %>%
+
+RECORDINGS <- left_join(RECORDINGS, info, by = "file_name")
+
+
+start_times <- RECORDINGS %>%
+  group_by(file_name) %>%
+  summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  mutate(cell_id = substr(info$file_name, 1, 6)) %>%
+  group_by(cell_id) %>%
+  summarise(train_starts = unique(train_starts)) %>%
+  pull(train_starts) %>%
+  strsplit(",") %>%
+  set_names(substr(info$file_name, 1, 6)) %>%
+  lapply(as.numeric)
+
+
+end_times <- RECORDINGS %>%
+  group_by(file_name) %>%
+  summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  mutate(cell_id = substr(info$file_name, 1, 6)) %>%
+  group_by(cell_id) %>%
+  summarise(train_ends = unique(train_ends)) %>%
+  pull(train_ends) %>%
+  strsplit(",") %>%
+  set_names(substr(info$file_name, 1, 6)) %>%
+  lapply(as.numeric)
+
+
+
+
+# split(.,.$cell_id)
+
+cell_list <- substr(info$file_name, 1, 6)
+
+foo <- function(data, list) {
+  cell_list <- list
+  
+    train_length <- data %>%
+      filter(substr(file_name, 1, 6) == cell_list) %>%
+      select(train_length) %>%
+      pull() %>%
+      `[[`(1)
+  
+  
+  
+  if (
+    (data %>%
+      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      select(unit_id) %>%
+      unique() %>%
+      pull() %>%
+      length()) == 1
+  ) {
+    ### In case of one unit in the file:
+    AP_times <- data %>%
+      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      select(signal_time) %>%
+      pull()
+    
+    AP_numbers <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers) <- c("b", "d", "a")
+
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers[train_num, 1] <- length(AP_times[start_times[[cell_list]][train_num] - train_length
+      < AP_times & AP_times < start_times[[cell_list]][train_num]])
+
+      ### during
+      AP_numbers[train_num, 2] <- length(AP_times[AP_times > start_times[[cell_list]][train_num] & AP_times < end_times[[cell_list]][train_num]])
+
+      ### after
+      AP_numbers[train_num, 3] <- length(AP_times[AP_times > end_times[[cell_list]][train_num] &
+        AP_times < end_times[[cell_list]][train_num] + train_length])
+    }
+    
+    melt(AP_numbers, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+      as.tibble() %>%
+      add_column(cell_id = cell_list) %>% 
+      add_column(train_length = train_length)
+    
+    
+  } else { 
+    ### in case of multiple units in the file:
+    AP_times_1 <- data %>%
+      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 1) %>%
+      select(signal_time) %>%
+      pull()
+    
+    AP_numbers_1 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers_1) <- c("b", "d", "a")
+    
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers_1[train_num, 1] <- length(AP_times_1[start_times[[cell_list]][train_num] - train_length
+                                                  < AP_times_1 & AP_times_1 < start_times[[cell_list]][train_num]])
+      
+      ### during
+      AP_numbers_1[train_num, 2] <- length(AP_times_1[AP_times_1 > start_times[[cell_list]][train_num] & 
+                                                        AP_times_1 < end_times[[cell_list]][train_num]])
+      
+      ### after
+      AP_numbers_1[train_num, 3] <- length(AP_times_1[AP_times_1 > end_times[[cell_list]][train_num] &
+                                                        AP_times_1 < end_times[[cell_list]][train_num] + train_length])
+    }
+    
+    
+    AP_times_2 <- data %>%
+      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 2) %>%
+      select(signal_time) %>%
+      pull()
+    
+    AP_numbers_2 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers_2) <- c("b", "d", "a")
+    
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers_2[train_num, 1] <- length(AP_times_2[start_times[[cell_list]][train_num] - train_length
+                                                      < AP_times_2 & AP_times_2 < start_times[[cell_list]][train_num]])
+      
+      ### during
+      AP_numbers_2[train_num, 2] <- length(AP_times_2[AP_times_2 > start_times[[cell_list]][train_num] & 
+                                                        AP_times_2 < end_times[[cell_list]][train_num]])
+      
+      ### after
+      AP_numbers_2[train_num, 3] <- length(AP_times_2[AP_times_2 > end_times[[cell_list]][train_num] &
+                                                        AP_times_2 < end_times[[cell_list]][train_num] + train_length])
+    }
+    
+    
+    
+    if (cell_list %>% substr(5,6) %>% as.numeric() %>% nchar() == 1) {
+      new_name <- paste0(
+        "cell0",
+        cell_list %>% substr(5,6) %>% as.numeric() + 1
+      )
+    } 
+      
+    if (cell_list %>% substr(5,6) %>% as.numeric() %>% nchar() == 2) {
+      new_name <- paste0(
+        "cell",
+        cell_list %>% substr(5,6) %>% as.numeric() + 1
+      )
+    }
+    
+    bind_rows(
+      melt(AP_numbers_1, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+        as.tibble() %>%
+        add_column(cell_id = cell_list) %>% 
+        add_column(train_length = train_length),
+      
+      melt(AP_numbers_2, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+        as.tibble() %>%
+        add_column(cell_id = new_name) %>% 
+        add_column(train_length = train_length)
+    )
+   }#else
+
+}#foo
+
+
+# allCells %>% filter(pinch == F) %>% select(cell) %>% unique()
+
+
+IL_stim_firing <- lapply(cell_list, foo, data = RECORDINGS) %>% 
+  bind_rows() %>% 
+  mutate(pinch = T) %>% 
+  mutate(pinch = replace(pinch,
+                         pinch, .$cell_id == "cell01"|
+                           .$cell_id == "cell06"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell21"|
+                           .$cell_id == "cell23"|
+                           .$cell_id == "cell24"|
+                           .$cell_id == "cell25"|
+                           .$cell_id == "cell26"|
+                           .$cell_id == "cell27"|
+                           .$cell_id == "cell28",
+                         F)) 
+
+
+
+
+filter_condititon <- "pinch == T" 
+
+ALL_CELLS_PLOT <- IL_stim_firing %>%
   dplyr::filter(eval(parse(text = filter_condititon))) %>% 
-  mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
-  mutate(No.AP_p_stimLength = No.AP / stimLength) %>%
-  dplyr::group_by(condition, cell) %>%
-  summarise(mean_No.AP = mean(No.AP_p_stimLength))
+  #mutate(No_AP = as.numeric(levels(No_AP))[No_AP]) %>%
+  mutate(No_AP_p_stimLength = No_AP / train_length) %>%
+  dplyr::group_by(stim_cond, cell_id) %>%
+  summarise(MFR = mean(No_AP_p_stimLength))
 
-### select cells to highlight on plot
-cells_to_highlight <- allCells %>%
+cells_to_highlight <- IL_stim_firing %>%
   filter(eval(parse(text = filter_condititon))) %>% 
-  mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
-  mutate(No.AP_p_stimLength = No.AP / stimLength) %>%
-  dplyr::group_by(condition, cell) %>%
-  summarise(mean_No.AP = mean(No.AP_p_stimLength)) %>%
-  filter(cell == "cell01" |
-           cell == "cell06" |
-           cell == "cell07" |
-           cell == "cell08" |
-           cell == "cell09" |
-           cell == "cell11" |
-           cell == "cell16")
+  #mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
+  mutate(No_AP_p_stimLength = No_AP / train_length) %>%
+  dplyr::group_by(stim_cond, cell_id) %>%
+  summarise(MFR = mean(No_AP_p_stimLength)) %>%
+  filter(cell_id == "cell01" )
+           # cell == "cell02" |
+           # cell == "cell03" |
+           # cell == "cell08" |
+           # cell == "cell09" |
+           # cell == "cell10" |
+           # cell == "cell15" |
+           # cell == "cell16" |
+           # cell == "cell17" |
+           # cell == "cell18" |
+           # cell == "cell19" |
+           # cell == "cell20" )
 
 
 
-### PLOT: MFR before/during/after (transformed allCells data frame)
-ggplot(data = allCells_for_plot,
-       mapping = aes(x = forcats::fct_relevel(condition, "b", "d", "a"),
-                     y = mean_No.AP)) +
+ggplot(data = ALL_CELLS_PLOT,
+       mapping = aes(x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+                     y = MFR)) +
   #theme(panel.background = element_rect(fill = 0)) +
   theme_minimal() +
   theme(axis.text = element_text(size = 20),
         text = element_text(size = 20)) +
+  ylim(0,35)+
+  
   geom_boxplot(width = 0.2, alpha = 0.5) +
   geom_point(shape = 21, 
              fill = "#EB8104", 
              #color = "white",
              size = 4) +
-             #stroke = 2) +
-  # geom_point(data = cells_to_highlight, 
-  #            #shape = 21, 
-  #            color = "#1D4871", 
-  #            #color = "white",  
-  #            size = 2) +
-  #            #stroke = 2) +
-  geom_line(aes(group = cell), color = "#EB8104") +
-  # geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell)) +
-  # geom_text(data = cells_to_highlight, 
-  #           aes(label = cell),
+  #stroke = 2) +
+  geom_line(aes(group = cell_id), color = "#EB8104") +
+  geom_label_repel(mapping = aes(label = cell_id),
+                                    nudge_x = 0.15,
+                                    direction = "y",
+                                    hjust = -0.5,
+                                    segment.size = .9) +
+  
+  ### Highlight
+  # geom_point(data = cells_to_highlight,
+  #            #shape = 21,
+  #            color = "#1D4871",
+  #            #color = "white",
+  #            size = 4,
+  #            stroke = 2) +
+  # geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell_id)) +
+  # geom_text(data = cells_to_highlight,
+  #           aes(label = cell_id),
   #           color = "#1D4871",
   #           hjust = -0.2, vjust = -0.2) +
+  # geom_label_repel(data = cells_to_highlight,
+  #                  mapping = aes(label = cell_id),
+  #                  nudge_x = 0.15,
+  #                  direction = "y",
+  #                  hjust = -0.5,
+  #                  segment.size = .9) +
+
+
   scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
   labs(y = "Mean firing rate") 
-# scale_y_continuous(sec.axis = sec_axis(~.*2, name = "proba axis"))
-
-ggsave(file.path("output_data","inhibition_of_IL_cells_pinch.png"),
-       width = 8,
-       height = 12,
-       dpi = 300)
 
 
 
+### BASELINE ---------------------
+
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+IL_baseline_firing <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR","baseline", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
+)
+info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
+
+CELL_INFO <- info_baseline %>% 
+  select(file_name) %>% 
+  add_column(cell_id = substr(info_baseline$file_name, 1,6), .before = "file_name") %>% 
+  mutate(bl_activity = T) %>%
+  mutate(bl_activity = replace(bl_activity, .$cell_id == "cell05"|
+                                 .$cell_id == "cell10"|
+                                 .$cell_id == "cell12"|
+                                 .$cell_id == "cell13"|
+                                 .$cell_id == "cell14"|
+                                 .$cell_id == "cell15"|
+                                 .$cell_id == "cell21"|
+                                 .$cell_id == "cell22",
+                               F)) %>% 
+  mutate(pinch = T) %>% 
+  mutate(pinch = replace(pinch, .$cell_id == "cell01"|
+                           .$cell_id == "cell06"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell21"|
+                           .$cell_id == "cell23"|
+                           .$cell_id == "cell24"|
+                           .$cell_id == "cell25"|
+                           .$cell_id == "cell26"|
+                           .$cell_id == "cell27"|
+                           .$cell_id == "cell28",
+                         F)) %>% 
+  mutate(ident = F) %>% 
+  mutate(ident = replace(ident, .$cell_id == "cell01"|
+                           .$cell_id == "cell02"|
+                           .$cell_id == "cell03"|
+                           .$cell_id == "cell08"|
+                           .$cell_id == "cell09"|
+                           .$cell_id == "cell10"|
+                           .$cell_id == "cell15"|
+                           .$cell_id == "cell16"|
+                           .$cell_id == "cell17"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell28"|
+                           .$cell_id == "cell29",
+                         T))
 
 
-#1D4871
-#EB8104
+IL_baseline_firing <- left_join(IL_baseline_firing, 
+                      info_baseline %>%
+                        select(file_name,rec_length),
+                      by = "file_name") %>% 
+  mutate(stim_cond = "baseline")
+
+
+SDMeanISI <- function(f_name){
+  
+  
+  # mean_isi <- IL_baseline_firing %>% 
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>% 
+  #   pull() %>% 
+  #   diff() %>% 
+  #   mean() * 1000 %>% 
+  #   `names<-`(f_name)
+  # 
+  # sd_isi <- IL_baseline_firing %>% 
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>% 
+  #   pull() %>% 
+  #   diff() %>% 
+  #   sd() * 1000 %>% 
+  #   `names<-`(f_name)
+  # 
+  # return(list(MFR = mean_isi,
+  #             SDFR = sd_isi))
+
+  tmp2 <- IL_baseline_firing %>% 
+    filter(file_name == f_name, signal_type == "AP") %>%
+    select(signal_time) %>% 
+    pull() %>% 
+    diff() %>% 
+    mean() * 1000 %>% 
+    tibble(mean_isi = .) 
+  tmp2 %>%  
+    mutate(sd_isi = IL_baseline_firing %>%
+             filter(file_name == f_name, signal_type == "AP") %>%
+             select(signal_time) %>% 
+             pull() %>% 
+             diff() %>% 
+             sd() * 1000) %>% 
+    mutate(file_name = f_name) 
+  
+}
+
+sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% bind_rows()
+sd_mean_isi <- sd_mean_isi %>% 
+  mutate(cell_id = substr(sd_mean_isi$file_name,1,6)) %>% 
+  mutate(MFR = 1000/mean_isi) %>% 
+  mutate(SD_FR = 1000/sd_isi ) %>% 
+  mutate(MFR_inc = MFR + SD_FR) %>% 
+  mutate(MFR_dec = MFR - SD_FR) %>% 
+  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>% 
+  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>% 
+  mutate(stim_cond = "baseline") %>% 
+  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+
+
+# info_baseline$No_AP_unit/info_baseline$rec_length
+
+BASE_TO_PLOT <- bind_rows(sd_mean_isi %>%
+                            select(MFR, cell_id, stim_cond),
+                          ALL_CELLS_PLOT) %>%
+  mutate(pinch = T) %>% 
+  mutate(pinch = replace(pinch,
+                         .$cell_id == "cell01"|
+                           .$cell_id == "cell06"|
+                           .$cell_id == "cell07"|
+                           .$cell_id == "cell08"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell21"|
+                           .$cell_id == "cell23"|
+                           .$cell_id == "cell24"|
+                           .$cell_id == "cell25"|
+                           .$cell_id == "cell26"|
+                           .$cell_id == "cell27"|
+                           .$cell_id == "cell28",
+                         F)) %>% 
+  mutate(bl_activity = T) %>% 
+  mutate(bl_activity = replace(bl_activity,
+                               .$cell_id == "cell05"|
+                                 .$cell_id == "cell10"|
+                                 .$cell_id == "cell12"|
+                                 .$cell_id == "cell13"|
+                                 .$cell_id == "cell14"|
+                                 .$cell_id == "cell15"|
+                                 .$cell_id == "cell21"|
+                                 .$cell_id == "cell24",
+                               F))
+                         
+  
+
+
+
+ggplot(data = BASE_TO_PLOT %>% filter(bl_activity == T, pinch == F, stim_cond == "baseline" | stim_cond == "d"),
+       mapping = aes(x = forcats::fct_relevel(stim_cond, "baseline", "d"),
+                     y = MFR)) +
+  #theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 20),
+        text = element_text(size = 20)) +
+  ylim(0,35)+
+  
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(shape = 21, 
+             fill = "#EB8104", 
+             #color = "white",
+             size = 4) +
+  #stroke = 2) +
+  geom_line(aes(group = cell_id), color = "#EB8104") +
+  geom_label_repel(mapping = aes(label = cell_id),
+                   nudge_x = 0.15,
+                   direction = "y",
+                   hjust = -0.5,
+                   segment.size = .9) 
