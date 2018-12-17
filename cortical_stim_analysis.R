@@ -2,10 +2,12 @@
 
 library(R.matlab)
 library(tidyverse)
-kelibrary(reshape2)
+library(reshape2)
 library(bspec) ### power spectrum
 library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
+library(ggsignif)
+library(ggrepel)
 
 ### LOADING RECORDINGS (tibble with AP and stim times) ###############
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
@@ -77,6 +79,8 @@ RECORDINGS <- RECORDINGS %>%
   ))
 
 RECORDINGS$stim_freq %>% as.factor() %>% levels()
+RECORDINGS$stim_freq %>% unique()
+
 RECORDINGS$stim_freq_categ %>% as.factor() %>% levels()
 
 # RECORDINGS <- RECORDINGS %>% dplyr::filter(animal_id != "not specified")
@@ -463,7 +467,10 @@ resp_probability <- RECORDINGS %>%
   summarise(No_stim = length(signal_time)) %>%
   add_column(freq = 1, .after = "animal_id") %>%
   add_column(No_APs = gp_hist_stats$all_count_sum) %>%
-  add_column(No_APs_range = gp_hist_stats$range_count_sum)
+  add_column(No_APs_range = gp_hist_stats$range_count_sum) %>% 
+  add_column(peak_latency = gp_hist_stats$peak) %>% 
+  add_column(mean_latency = gp_hist_stats$mean) 
+  
 
 resp_probability10 <- RECORDINGS %>%
   dplyr::filter(
@@ -476,7 +483,9 @@ resp_probability10 <- RECORDINGS %>%
   summarise(No_stim = length(signal_time)) %>%
   add_column(freq = 10, .after = "animal_id") %>%
   add_column(No_APs = gp_hist_stats$all_count_sum) %>%
-  add_column(No_APs_range = gp_hist_stats$range_count_sum)
+  add_column(No_APs_range = gp_hist_stats$range_count_sum) %>% 
+  add_column(peak_latency = gp_hist_stats$peak) %>% 
+  add_column(mean_latency = gp_hist_stats$mean)
 
 resp_probability20 <- RECORDINGS %>%
   dplyr::filter(
@@ -488,53 +497,160 @@ resp_probability20 <- RECORDINGS %>%
   summarise(No_stim = length(signal_time)) %>%
   add_column(freq = 20, .after = "animal_id") %>%
   add_column(No_APs = gp_hist_stats$all_count_sum) %>%
-  add_column(No_APs_range = gp_hist_stats$range_count_sum)
+  add_column(No_APs_range = gp_hist_stats$range_count_sum) %>% 
+  add_column(peak_latency = gp_hist_stats$peak) %>% 
+  add_column(mean_latency = gp_hist_stats$mean)
 
 
 
-RESP_PROB <- bind_rows(bind_rows(resp_probability, resp_probability10), resp_probability20)
+RESP_PROB <- bind_rows(resp_probability, resp_probability10, resp_probability20)
 
 RESP_PROB <- RESP_PROB %>%
   mutate(resp_prob_range = (No_APs_range / No_stim) * 100)
 
-library(ggrepel)
+
+save(RESP_PROB, file = file.path("output_data","RData", "RESP_PROB.RData"))
+
 
 
 ### PLOT: resp brob ----------
 ggplot(
-  data = RESP_PROB,
+  data = RESP_PROB %>% filter(animal_id != "GII_20"),
   mapping = aes(
     x = as.factor(freq),
     y = resp_prob_range
-  )
-) +
-  theme_minimal() +
+    )
+  ) +
+  ### theme, design, labels
+  theme_bw() +
   xlab("Stimulus frequency") +
   ylab("Response probability") +
-  theme(text = element_text(size = 18),
-        axis.text = element_text(size = 18)) +
-  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  theme(text = element_text(size = 35),
+        axis.text = element_text(size = 35),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()
+        ) +
+  scale_fill_brewer(palette = "Reds") +
+  guides(fill=FALSE) +
+  
+  ### data visualization layers
   geom_point(
-    fill = "dark gray",
+    aes(fill = animal_id),
     color = "black",
-    size = 2.5,
-    shape = 21
+    size = 5,
+    shape = 21,
+    position = position_jitter(0.1)
   ) +
+  # geom_line(aes(group = animal_id)) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) 
+  
+  ### additional texts
   ### https://cran.r-project.org/web/packages/ggrepel/vignettes/ggrepel.html
-  geom_text_repel(aes(label = animal_id),
-    nudge_x = 0.15,
-    direction = "y",
-    hjust = -0.5,
-    segment.size = 0.2
-  )
-ggsave(file.path("output_data","resp_prob.png"),
-       width = 6,
+  # geom_text_repel(aes(label = animal_id),
+  #   nudge_x = 0.01,
+  #   direction = "y",
+  #   hjust = -0.5,
+  #   segment.size = 0.5
+  # ) +
+  
+  ### statistics
+  # geom_signif(comparisons = list(c("10", "20")), 
+  #             map_signif_level = TRUE,
+  #             test = "mood.test")
+
+
+ggsave(file.path("output_data","resp_prob.eps"),
+       width = 4,
        height = 8,
        dpi = 300)
 
 
+### PLOT: Latencies ----------
 
-### Latency and probability within stimulus train -----------------------------
+ggplot(data = bind_rows(RESP_PROB %>% select(-peak_latency) %>% 
+                          rename(latency_value = mean_latency) %>% 
+                          mutate(latency_type = "mean") %>% 
+                          filter(animal_id != "GII_20"),
+                        RESP_PROB %>% select(-mean_latency) %>% 
+                          rename(latency_value = peak_latency) %>% 
+                          mutate(latency_type = "peak") %>% 
+                          filter(animal_id != "GII_20")),
+       mapping = aes(
+         x = as.factor(freq),
+         y = latency_value,
+         fill = latency_type,
+         color = latency_type)
+       ) +
+  
+  ### theme, design, labels
+  theme_bw() +
+  theme(text = element_text(size = 35),
+        axis.text = element_text(size = 35),
+        axis.ticks.length = unit(5, "mm"),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()
+  ) +
+  #scale_color_brewer(palette = "Blacks") +
+  xlab("Stimulus frequency") +
+  ylab("Peak latency") +
+  scale_y_continuous(name = "Latency (ms)",
+                     breaks = c(0.000, 0.005, 0.010, 0.015, 0.020),
+                     labels = c(0,5,10,15,20),
+                     limits = c(0,0.022)
+                     ) +
+  labs(fill = "", color = "" ) +
+  # guides(color = T) +
+  scale_fill_discrete(name = "Latency",
+                      breaks = c("mean", "peak"),
+                      labels = c("Mean", "Peak")) +
+  scale_color_discrete(name = "Latency",
+                      breaks = c("mean", "peak"),
+                      labels = c("Mean", "Peak")) +
+
+  ### data visualization layers
+  geom_point(
+    color = "black",
+    size = 5,
+    shape = 21,
+    position = position_dodge(0.4)
+    ) + 
+  geom_boxplot(
+    position = position_dodge(0.4),
+    width = 0.3,
+    alpha = 0,
+    lwd = 1, 
+    fatten = 1.2
+    ) 
+  
+  ### https://cran.r-project.org/web/packages/ggrepel/vignettes/ggrepel.html
+  # geom_text_repel(aes(label = animal_id),
+  #                 nudge_x = 0.15,
+  #                 direction = "y",
+  #                 hjust = -0.5,
+  #                 segment.size = 0.2
+  # ) + 
+
+  ### Statistics
+  # facet_wrap("latency_type") +
+  # stat_compare_means(comparisons = l 
+  #                    )
+  # 
+  # geom_signif(
+  #   comparisons = list(c("10", "20")),
+  #   map_signif_level = TRUE,
+  #   test = "mood.test")
+
+
+ggsave(file.path("output_data","latency.eps"),
+       width = 8,
+       height = 10,
+       dpi = 300)
+
+
+
+### AP number within stimulus train -----------------------------
 
 ### counting no APs after each stimuli in a train
 CountAPperStim <- function(animal, stim_frequency) {
@@ -601,13 +717,13 @@ AP_PER_STIM <- do.call(
   rbind,
   lapply(RECORDINGS$animal_id %>% as.factor() %>% levels(),
     CountAPperStim,
-    stim_frequency = 1
+    stim_frequency = 20
   )
 )
 
 
 hz1 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26") %>%
+  filter(animal_id != "GII_26", animal_id != "GII_20") %>% 
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -617,7 +733,7 @@ hz1 <- AP_PER_STIM %>%
   add_column(freq = 1)
 
 hz10 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26") %>%
+  filter(animal_id != "GII_26", animal_id != "GII_20") %>%
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -627,7 +743,7 @@ hz10 <- AP_PER_STIM %>%
   add_column(freq = 10)
 
 hz20 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26") %>%
+  filter(animal_id != "GII_26", animal_id != "GII_20") %>%
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -636,27 +752,38 @@ hz20 <- AP_PER_STIM %>%
   ) %>%
   add_column(freq = 20)
 
-bind_rows(bind_rows(hz1, hz10), hz20)
-
+AP_COUNT <- bind_rows(hz1, hz10, hz20)
+save(AP_COUNT, file = file.path("output_data","RData", "AP_COUNT.RData"))
 
 ### PLOT: ap numbers ----------
 ggplot(
-  data = bind_rows(bind_rows(hz1, hz10), hz20),
+  data = AP_COUNT,
   mapping = aes(
     x = stim_number,
     y = No_AP_mean,
     fill = as.factor(freq),
     group = as.factor(freq)
-  )
-) +
-  theme_minimal() +
-  theme(text = element_text(size = 18),
-        axis.text = element_text(size = 18), 
-        legend.text = element_text(size = 18)
+    )
+  ) +
+  
+  ### theme, design, labels
+  theme_linedraw() +
+  theme(text = element_text(size = 35),
+        axis.text = element_text(size = 35), 
+        legend.text = element_text(size = 35),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()
         ) +
   xlab("No. stimulus in train") +
   ylab("Mean no. APs") + 
-  geom_point(size = 3, shape = 21) +
+  scale_x_discrete(limits = as.character(c(1:10))) +
+  labs(fill = "Frequency", color = "Frequency" ) +
+  scale_fill_brewer(type = "div", palette = "Reds") +
+  scale_color_brewer(type = "div", palette = "Reds") +
+  
+  ### data visualization layers
+  geom_point(size = 8, shape = 21) +
   geom_line(aes(color = as.factor(freq)), lwd = 1) +
   geom_errorbar(aes(
     ymin = No_AP_mean - SEM,
@@ -666,10 +793,15 @@ ggplot(
   width = .5,
   position = position_dodge(0.3),
   lty = 5
-  ) +
-  scale_x_discrete(limits = as.character(c(1:10))) +
-  labs(fill = "Frequency", color = "Frequency" ) 
-ggsave(file.path("output_data","ap_numbers.png"),width = 14,height = 8,dpi = 300)
+  ) 
+  
+
+ggsave(file.path("output_data","ap_numbers.eps"),
+       width = 12,
+       height = 8,
+       device = "eps" 
+       #dpi = 300
+       )
 
 
 ggplot(
