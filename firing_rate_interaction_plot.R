@@ -17,51 +17,116 @@ library(tidyverse)
 library(reshape2)
 library(ggrepel)
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
-RECORDINGS <- CreateRecTibble(
+
+
+### LOADING DATA ------------
+
+### stimulus data
+IL_stim_firing <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "IL_MFR","stimulus", "stim_times.csv"))
 )
-info <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
+info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
+
+### baseline data
+IL_baseline_firing <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR","baseline", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
+)
+info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
 
 
-RECORDINGS$file_name %>% unique() %>% length()
-info$file_name %>% length()
+
+### CELL INFO to store categories
+CELL_INFO <- info_baseline %>% 
+  select(file_name) %>% 
+  add_column(cell_id = substr(info_baseline$file_name, 1,6), .before = "file_name") %>% 
+  mutate(bl_activity = T) %>%
+  mutate(bl_activity = replace(bl_activity, .$cell_id == "cell05"|
+                                 .$cell_id == "cell10"|
+                                 .$cell_id == "cell12"|
+                                 .$cell_id == "cell13"|
+                                 .$cell_id == "cell14"|
+                                 .$cell_id == "cell15"|
+                                 .$cell_id == "cell21"|
+                                 .$cell_id == "cell22",
+                               F)) %>% 
+  mutate(pinch = T) %>% 
+  mutate(pinch = replace(pinch, .$cell_id == "cell01"|
+                           .$cell_id == "cell06"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell21"|
+                           .$cell_id == "cell23"|
+                           .$cell_id == "cell24"|
+                           .$cell_id == "cell25"|
+                           .$cell_id == "cell26"|
+                           .$cell_id == "cell27"|
+                           .$cell_id == "cell28",
+                         F)) %>% 
+  mutate(ident = F) %>% 
+  mutate(ident = replace(ident, .$cell_id == "cell01"|
+                           .$cell_id == "cell02"|
+                           .$cell_id == "cell03"|
+                           .$cell_id == "cell08"|
+                           .$cell_id == "cell09"|
+                           .$cell_id == "cell10"|
+                           .$cell_id == "cell15"|
+                           .$cell_id == "cell16"|
+                           .$cell_id == "cell17"|
+                           .$cell_id == "cell18"|
+                           .$cell_id == "cell19"|
+                           .$cell_id == "cell20"|
+                           .$cell_id == "cell28"|
+                           .$cell_id == "cell29",
+                         T))
 
 
 
-RECORDINGS <- left_join(RECORDINGS, info, by = "file_name")
+IL_stim_firing$file_name %>% unique() %>% length()
+info_stim$file_name %>% length()
 
+### CALCULATING --------
 
-start_times <- RECORDINGS %>%
+IL_stim_firing <- left_join(IL_stim_firing, 
+                            info_stim %>% 
+                              select(file_name,
+                                     rec_length,
+                                     train_starts,
+                                     train_ends,
+                                     train_length), 
+                            by = "file_name")
+
+### calculating stim start times 
+start_times <- IL_stim_firing %>%
   group_by(file_name) %>%
   summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
-  mutate(cell_id = substr(info$file_name, 1, 6)) %>%
+  mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
   group_by(cell_id) %>%
   summarise(train_starts = unique(train_starts)) %>%
   pull(train_starts) %>%
   strsplit(",") %>%
-  set_names(substr(info$file_name, 1, 6)) %>%
+  set_names(substr(info_stim$file_name, 1, 6)) %>%
   lapply(as.numeric)
 
-
-end_times <- RECORDINGS %>%
+### calculating stim end times 
+end_times <- IL_stim_firing %>%
   group_by(file_name) %>%
   summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
-  mutate(cell_id = substr(info$file_name, 1, 6)) %>%
+  mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
   group_by(cell_id) %>%
   summarise(train_ends = unique(train_ends)) %>%
   pull(train_ends) %>%
   strsplit(",") %>%
-  set_names(substr(info$file_name, 1, 6)) %>%
+  set_names(substr(info_stim$file_name, 1, 6)) %>%
   lapply(as.numeric)
 
 
+cell_list <- substr(info_stim$file_name, 1, 6)
+CELL_INFO$cell_id
 
-
-# split(.,.$cell_id)
-
-cell_list <- substr(info$file_name, 1, 6)
-
+### function to calculate #AP b/d/a stim 
 foo <- function(data, list) {
   cell_list <- list
   
@@ -188,15 +253,87 @@ foo <- function(data, list) {
 }#foo
 
 
-# allCells %>% filter(pinch == F) %>% select(cell) %>% unique()
+b_d_a_MFR <- lapply(CELL_INFO$cell_id, foo, data = IL_stim_firing) %>% 
+  bind_rows() %>%  
+  mutate(FR = No_AP / train_length) %>%
+  dplyr::group_by(stim_cond, cell_id) %>%
+  summarise(MFR = mean(FR))
 
 
-IL_stim_firing <- lapply(cell_list, foo, data = RECORDINGS) %>% 
-  bind_rows() %>% 
+
+
+IL_baseline_firing <- left_join(IL_baseline_firing, 
+                                info_baseline %>%
+                                  select(file_name,rec_length),
+                                by = "file_name") %>% 
+  mutate(stim_cond = "baseline")
+
+### function to calculate ISI mean and SD 
+SDMeanISI <- function(f_name){
+  
+  
+  # mean_isi <- IL_baseline_firing %>% 
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>% 
+  #   pull() %>% 
+  #   diff() %>% 
+  #   mean() * 1000 %>% 
+  #   `names<-`(f_name)
+  # 
+  # sd_isi <- IL_baseline_firing %>% 
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>% 
+  #   pull() %>% 
+  #   diff() %>% 
+  #   sd() * 1000 %>% 
+  #   `names<-`(f_name)
+  # 
+  # return(list(MFR = mean_isi,
+  #             SDFR = sd_isi))
+  
+  tmp2 <- IL_baseline_firing %>% 
+    filter(file_name == f_name, signal_type == "AP") %>%
+    select(signal_time) %>% 
+    pull() %>% 
+    diff() %>% 
+    mean() * 1000 %>% 
+    tibble(mean_isi = .) 
+  tmp2 %>%  
+    mutate(sd_isi = IL_baseline_firing %>%
+             filter(file_name == f_name, signal_type == "AP") %>%
+             select(signal_time) %>% 
+             pull() %>% 
+             diff() %>% 
+             sd() * 1000) %>% 
+    mutate(file_name = f_name) 
+  
+}
+
+sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% bind_rows()
+
+sd_mean_isi <- sd_mean_isi %>% 
+  mutate(cell_id = substr(sd_mean_isi$file_name,1,6)) %>% 
+  mutate(MFR = 1000/mean_isi) %>% 
+  mutate(SD_FR = 1000/sd_isi ) %>% 
+  mutate(MFR_inc = MFR + SD_FR) %>% 
+  mutate(MFR_dec = MFR - SD_FR) %>% 
+  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>% 
+  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>% 
+  mutate(stim_cond = "baseline") %>% 
+  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+
+
+
+
+TO_PLOT <- bind_rows(sd_mean_isi %>%
+                            select(MFR, cell_id, stim_cond),
+                          b_d_a_MFR) %>% 
   mutate(pinch = T) %>% 
   mutate(pinch = replace(pinch,
-                         pinch, .$cell_id == "cell01"|
+                         .$cell_id == "cell01"|
                            .$cell_id == "cell06"|
+                           .$cell_id == "cell07"|
+                           .$cell_id == "cell08"|
                            .$cell_id == "cell18"|
                            .$cell_id == "cell19"|
                            .$cell_id == "cell20"|
@@ -207,19 +344,39 @@ IL_stim_firing <- lapply(cell_list, foo, data = RECORDINGS) %>%
                            .$cell_id == "cell26"|
                            .$cell_id == "cell27"|
                            .$cell_id == "cell28",
-                         F)) 
+                         F)) %>% 
+  mutate(bl_activity = T) %>% 
+  mutate(bl_activity = replace(bl_activity,
+                               .$cell_id == "cell05"|
+                                 .$cell_id == "cell10"|
+                                 .$cell_id == "cell12"|
+                                 .$cell_id == "cell13"|
+                                 .$cell_id == "cell14"|
+                                 .$cell_id == "cell15"|
+                                 .$cell_id == "cell21"|
+                                 .$cell_id == "cell24",
+                               F))
 
 
 
 
-filter_condititon <- "pinch == T" 
 
-ALL_CELLS_PLOT <- IL_stim_firing %>%
-  dplyr::filter(eval(parse(text = filter_condititon))) %>% 
-  #mutate(No_AP = as.numeric(levels(No_AP))[No_AP]) %>%
-  mutate(No_AP_p_stimLength = No_AP / train_length) %>%
-  dplyr::group_by(stim_cond, cell_id) %>%
-  summarise(MFR = mean(No_AP_p_stimLength))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 cells_to_highlight <- IL_stim_firing %>%
   filter(eval(parse(text = filter_condititon))) %>% 
@@ -228,21 +385,10 @@ cells_to_highlight <- IL_stim_firing %>%
   dplyr::group_by(stim_cond, cell_id) %>%
   summarise(MFR = mean(No_AP_p_stimLength)) %>%
   filter(cell_id == "cell01" )
-           # cell == "cell02" |
-           # cell == "cell03" |
-           # cell == "cell08" |
-           # cell == "cell09" |
-           # cell == "cell10" |
-           # cell == "cell15" |
-           # cell == "cell16" |
-           # cell == "cell17" |
-           # cell == "cell18" |
-           # cell == "cell19" |
-           # cell == "cell20" )
 
 
 
-ggplot(data = ALL_CELLS_PLOT,
+ggplot(data = b_d_a_MFR,
        mapping = aes(x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
                      y = MFR)) +
   #theme(panel.background = element_rect(fill = 0)) +
@@ -286,158 +432,6 @@ ggplot(data = ALL_CELLS_PLOT,
 
   scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
   labs(y = "Mean firing rate") 
-
-
-
-### BASELINE ---------------------
-
-source(file.path("supplementary_functions", "CreateRecTibble.R"))
-IL_baseline_firing <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "IL_MFR","baseline", "AP_times.csv")),
-  stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
-)
-info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
-
-CELL_INFO <- info_baseline %>% 
-  select(file_name) %>% 
-  add_column(cell_id = substr(info_baseline$file_name, 1,6), .before = "file_name") %>% 
-  mutate(bl_activity = T) %>%
-  mutate(bl_activity = replace(bl_activity, .$cell_id == "cell05"|
-                                 .$cell_id == "cell10"|
-                                 .$cell_id == "cell12"|
-                                 .$cell_id == "cell13"|
-                                 .$cell_id == "cell14"|
-                                 .$cell_id == "cell15"|
-                                 .$cell_id == "cell21"|
-                                 .$cell_id == "cell22",
-                               F)) %>% 
-  mutate(pinch = T) %>% 
-  mutate(pinch = replace(pinch, .$cell_id == "cell01"|
-                           .$cell_id == "cell06"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell21"|
-                           .$cell_id == "cell23"|
-                           .$cell_id == "cell24"|
-                           .$cell_id == "cell25"|
-                           .$cell_id == "cell26"|
-                           .$cell_id == "cell27"|
-                           .$cell_id == "cell28",
-                         F)) %>% 
-  mutate(ident = F) %>% 
-  mutate(ident = replace(ident, .$cell_id == "cell01"|
-                           .$cell_id == "cell02"|
-                           .$cell_id == "cell03"|
-                           .$cell_id == "cell08"|
-                           .$cell_id == "cell09"|
-                           .$cell_id == "cell10"|
-                           .$cell_id == "cell15"|
-                           .$cell_id == "cell16"|
-                           .$cell_id == "cell17"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell28"|
-                           .$cell_id == "cell29",
-                         T))
-
-
-IL_baseline_firing <- left_join(IL_baseline_firing, 
-                      info_baseline %>%
-                        select(file_name,rec_length),
-                      by = "file_name") %>% 
-  mutate(stim_cond = "baseline")
-
-
-SDMeanISI <- function(f_name){
-  
-  
-  # mean_isi <- IL_baseline_firing %>% 
-  #   filter(file_name == f_name, signal_type == "AP") %>%
-  #   select(signal_time) %>% 
-  #   pull() %>% 
-  #   diff() %>% 
-  #   mean() * 1000 %>% 
-  #   `names<-`(f_name)
-  # 
-  # sd_isi <- IL_baseline_firing %>% 
-  #   filter(file_name == f_name, signal_type == "AP") %>%
-  #   select(signal_time) %>% 
-  #   pull() %>% 
-  #   diff() %>% 
-  #   sd() * 1000 %>% 
-  #   `names<-`(f_name)
-  # 
-  # return(list(MFR = mean_isi,
-  #             SDFR = sd_isi))
-
-  tmp2 <- IL_baseline_firing %>% 
-    filter(file_name == f_name, signal_type == "AP") %>%
-    select(signal_time) %>% 
-    pull() %>% 
-    diff() %>% 
-    mean() * 1000 %>% 
-    tibble(mean_isi = .) 
-  tmp2 %>%  
-    mutate(sd_isi = IL_baseline_firing %>%
-             filter(file_name == f_name, signal_type == "AP") %>%
-             select(signal_time) %>% 
-             pull() %>% 
-             diff() %>% 
-             sd() * 1000) %>% 
-    mutate(file_name = f_name) 
-  
-}
-
-sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% bind_rows()
-sd_mean_isi <- sd_mean_isi %>% 
-  mutate(cell_id = substr(sd_mean_isi$file_name,1,6)) %>% 
-  mutate(MFR = 1000/mean_isi) %>% 
-  mutate(SD_FR = 1000/sd_isi ) %>% 
-  mutate(MFR_inc = MFR + SD_FR) %>% 
-  mutate(MFR_dec = MFR - SD_FR) %>% 
-  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>% 
-  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>% 
-  mutate(stim_cond = "baseline") %>% 
-  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
-
-
-# info_baseline$No_AP_unit/info_baseline$rec_length
-
-BASE_TO_PLOT <- bind_rows(sd_mean_isi %>%
-                            select(MFR, cell_id, stim_cond),
-                          ALL_CELLS_PLOT) %>%
-  mutate(pinch = T) %>% 
-  mutate(pinch = replace(pinch,
-                         .$cell_id == "cell01"|
-                           .$cell_id == "cell06"|
-                           .$cell_id == "cell07"|
-                           .$cell_id == "cell08"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell21"|
-                           .$cell_id == "cell23"|
-                           .$cell_id == "cell24"|
-                           .$cell_id == "cell25"|
-                           .$cell_id == "cell26"|
-                           .$cell_id == "cell27"|
-                           .$cell_id == "cell28",
-                         F)) %>% 
-  mutate(bl_activity = T) %>% 
-  mutate(bl_activity = replace(bl_activity,
-                               .$cell_id == "cell05"|
-                                 .$cell_id == "cell10"|
-                                 .$cell_id == "cell12"|
-                                 .$cell_id == "cell13"|
-                                 .$cell_id == "cell14"|
-                                 .$cell_id == "cell15"|
-                                 .$cell_id == "cell21"|
-                                 .$cell_id == "cell24",
-                               F))
-                         
-  
 
 
 
