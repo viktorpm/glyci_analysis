@@ -13,7 +13,9 @@
 library(tidyverse)
 
 ### source files from the utilities folder
-walk(dir("utilities"), ~source(file.path("utilities", .x)))
+walk(dir("supplementary_functions"), ~source(file.path("supplementary_functions", .x)))
+source(file.path("supplementary_functions","ReadMatFile.R"))
+
 
 ReadMatFile('cell21_13_right_IL_t3_3030_stim_control.mat')
 

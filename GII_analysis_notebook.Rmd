@@ -1,24 +1,28 @@
-### recording site: IL 
-### stimulation: glycinergic fibers in the IL around the recorded cells
-### to visualize firing rate change before, during and after the stimulation @30Hz
-### firing rate: no. of APs/time (length of the stimulus)
-### control firing rates (before and after the stimulus): no. of APs in a time window with the same length as the stimulus
+---
+title: "R Notebook"
+output: html_notebook
+---
 
-########################## Reading and organizing data ##########################
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-### function: separated by CapitalLetters
-### data from external source: separated.by '.'
-### variable: separated_by '_'
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+# Spontaneous desynchronization
 
 
-### NEW VERSION DEVELOPEMENT ------------------------
+# IL inhibition
 
+
+# Firing rate 
+
+```{r}
 library(tidyverse)
 library(reshape2)
 library(ggrepel)
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
+```
 
-
+```{r}
 ### LOADING DATA ------------
 
 ### stimulus data
@@ -34,9 +38,9 @@ IL_baseline_firing <- CreateRecTibble(
   stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
 )
 info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
+```
 
-
-
+```{r}
 ### CELL INFO to store categories
 CELL_INFO <- info_baseline %>% 
   select(file_name) %>% 
@@ -86,7 +90,9 @@ CELL_INFO <- info_baseline %>%
 
 IL_stim_firing$file_name %>% unique() %>% length()
 info_stim$file_name %>% length()
+```
 
+```{r}
 ### CALCULATING --------
 
 IL_stim_firing <- left_join(IL_stim_firing, 
@@ -125,7 +131,9 @@ end_times <- IL_stim_firing %>%
 
 cell_list <- substr(info_stim$file_name, 1, 6)
 CELL_INFO$cell_id
+```
 
+```{r}
 ### function to calculate #AP b/d/a stim 
 foo <- function(data, list) {
   cell_list <- list
@@ -251,209 +259,37 @@ foo <- function(data, list) {
    }#else
 
 }#foo
+```
 
+```{r}
 
-b_d_a_MFR <- lapply(CELL_INFO$cell_id, foo, data = IL_stim_firing) %>% 
-  bind_rows() %>%  
-  mutate(FR = No_AP / train_length) %>%
-  dplyr::group_by(stim_cond, cell_id) %>%
-  summarise(MFR = mean(FR))
-
-
-
-
-IL_baseline_firing <- left_join(IL_baseline_firing, 
-                                info_baseline %>%
-                                  select(file_name,rec_length),
-                                by = "file_name") %>% 
-  mutate(stim_cond = "baseline")
-
-### function to calculate ISI mean and SD 
-SDMeanISI <- function(f_name){
-  
-  
-  # mean_isi <- IL_baseline_firing %>% 
-  #   filter(file_name == f_name, signal_type == "AP") %>%
-  #   select(signal_time) %>% 
-  #   pull() %>% 
-  #   diff() %>% 
-  #   mean() * 1000 %>% 
-  #   `names<-`(f_name)
-  # 
-  # sd_isi <- IL_baseline_firing %>% 
-  #   filter(file_name == f_name, signal_type == "AP") %>%
-  #   select(signal_time) %>% 
-  #   pull() %>% 
-  #   diff() %>% 
-  #   sd() * 1000 %>% 
-  #   `names<-`(f_name)
-  # 
-  # return(list(MFR = mean_isi,
-  #             SDFR = sd_isi))
-  
-  tmp2 <- IL_baseline_firing %>% 
-    filter(file_name == f_name, signal_type == "AP") %>%
-    select(signal_time) %>% 
-    pull() %>% 
-    diff() %>% 
-    mean() * 1000 %>% 
-    tibble(mean_isi = .) 
-  tmp2 %>%  
-    mutate(sd_isi = IL_baseline_firing %>%
-             filter(file_name == f_name, signal_type == "AP") %>%
-             select(signal_time) %>% 
-             pull() %>% 
-             diff() %>% 
-             sd() * 1000) %>% 
-    mutate(file_name = f_name) 
-  
-}
-
-sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% bind_rows()
-
-sd_mean_isi <- sd_mean_isi %>% 
-  mutate(cell_id = substr(sd_mean_isi$file_name,1,6)) %>% 
-  mutate(MFR = 1000/mean_isi) %>% 
-  mutate(SD_FR = 1000/sd_isi ) %>% 
-  mutate(MFR_inc = MFR + SD_FR) %>% 
-  mutate(MFR_dec = MFR - SD_FR) %>% 
-  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>% 
-  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>% 
-  mutate(stim_cond = "baseline") %>% 
-  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+```
 
 
 
 
-TO_PLOT <- bind_rows(sd_mean_isi %>%
-                            select(MFR, cell_id, stim_cond),
-                          b_d_a_MFR) %>% 
-  mutate(pinch = T) %>% 
-  mutate(pinch = replace(pinch,
-                         .$cell_id == "cell01"|
-                           .$cell_id == "cell06"|
-                           .$cell_id == "cell07"|
-                           .$cell_id == "cell08"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell21"|
-                           .$cell_id == "cell23"|
-                           .$cell_id == "cell24"|
-                           .$cell_id == "cell25"|
-                           .$cell_id == "cell26"|
-                           .$cell_id == "cell27"|
-                           .$cell_id == "cell28",
-                         F)) %>% 
-  mutate(bl_activity = T) %>% 
-  mutate(bl_activity = replace(bl_activity,
-                               .$cell_id == "cell05"|
-                                 .$cell_id == "cell10"|
-                                 .$cell_id == "cell12"|
-                                 .$cell_id == "cell13"|
-                                 .$cell_id == "cell14"|
-                                 .$cell_id == "cell15"|
-                                 .$cell_id == "cell21"|
-                                 .$cell_id == "cell24",
-                               F))
+# Cortical stimulation
+```{r, include = FALSE}
+library(tidyverse)
+library(reshape2)
+library(ggrepel)
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+### source files from the utilities folder
+walk(dir("utilities"), ~source(file.path("utilities", .x)))
+
+RECORDINGS <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
+)
+
+
+```
 
 
 
 
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-cells_to_highlight <- IL_stim_firing %>%
-  filter(eval(parse(text = filter_condititon))) %>% 
-  #mutate(No.AP = as.numeric(levels(No.AP))[No.AP]) %>%
-  mutate(No_AP_p_stimLength = No_AP / train_length) %>%
-  dplyr::group_by(stim_cond, cell_id) %>%
-  summarise(MFR = mean(No_AP_p_stimLength)) %>%
-  filter(cell_id == "cell01" )
-
-
-
-ggplot(data = b_d_a_MFR,
-       mapping = aes(x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
-                     y = MFR)) +
-  #theme(panel.background = element_rect(fill = 0)) +
-  theme_minimal() +
-  theme(axis.text = element_text(size = 20),
-        text = element_text(size = 20)) +
-  ylim(0,35)+
-  
-  geom_boxplot(width = 0.2, alpha = 0.5) +
-  geom_point(shape = 21, 
-             fill = "#EB8104", 
-             #color = "white",
-             size = 4) +
-  #stroke = 2) +
-  geom_line(aes(group = cell_id), color = "#EB8104") +
-  geom_label_repel(mapping = aes(label = cell_id),
-                                    nudge_x = 0.15,
-                                    direction = "y",
-                                    hjust = -0.5,
-                                    segment.size = .9) +
-  
-  ### Highlight
-  # geom_point(data = cells_to_highlight,
-  #            #shape = 21,
-  #            color = "#1D4871",
-  #            #color = "white",
-  #            size = 4,
-  #            stroke = 2) +
-  # geom_line(data = cells_to_highlight, color = "#1D4871", aes(group = cell_id)) +
-  # geom_text(data = cells_to_highlight,
-  #           aes(label = cell_id),
-  #           color = "#1D4871",
-  #           hjust = -0.2, vjust = -0.2) +
-  # geom_label_repel(data = cells_to_highlight,
-  #                  mapping = aes(label = cell_id),
-  #                  nudge_x = 0.15,
-  #                  direction = "y",
-  #                  hjust = -0.5,
-  #                  segment.size = .9) +
-
-
-  scale_x_discrete(name = "Stimulus",labels = c("Before", "During", "After")) +
-  labs(y = "Mean firing rate") 
-
-
-
-ggplot(data = BASE_TO_PLOT %>% filter(bl_activity == T, pinch == F, stim_cond == "baseline" | stim_cond == "d"),
-       mapping = aes(x = forcats::fct_relevel(stim_cond, "baseline", "d"),
-                     y = MFR)) +
-  #theme(panel.background = element_rect(fill = 0)) +
-  theme_minimal() +
-  theme(axis.text = element_text(size = 20),
-        text = element_text(size = 20)) +
-  ylim(0,35)+
-  
-  geom_boxplot(width = 0.2, alpha = 0.5) +
-  geom_point(shape = 21, 
-             fill = "#EB8104", 
-             #color = "white",
-             size = 4) +
-  #stroke = 2) +
-  geom_line(aes(group = cell_id), color = "#EB8104") +
-  geom_label_repel(mapping = aes(label = cell_id),
-                   nudge_x = 0.15,
-                   direction = "y",
-                   hjust = -0.5,
-                   segment.size = .9) 
-
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
