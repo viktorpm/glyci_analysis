@@ -1761,38 +1761,140 @@ summary {
 <h1>Firing rate</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5dmVyc2UpXG5saWJyYXJ5KHJlc2hhcGUyKVxubGlicmFyeShnZ3JlcGVsKVxuc291cmNlKGZpbGUucGF0aChcInN1cHBsZW1lbnRhcnlfZnVuY3Rpb25zXCIsIFwiQ3JlYXRlUmVjVGliYmxlLlJcIikpXG5gYGAifQ== -->
-<pre class="r"><code>library(tidyverse)
-library(reshape2)
-library(ggrepel)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5dmVyc2UpXG5gYGAifQ== -->
+<pre class="r"><code>library(tidyverse)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUmVnaXN0ZXJlZCBTMyBtZXRob2Qgb3ZlcndyaXR0ZW4gYnkgJ2RwbHlyJzpcbiAgbWV0aG9kICAgICAgICAgICBmcm9tXG4gIHByaW50LnJvd3dpc2VfZGYgICAgIFxuXHUwMDFiWzM3bS0tIFx1MDAxYlsxbUF0dGFjaGluZyBwYWNrYWdlc1x1MDAxYlsyMm0gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIHRpZHl2ZXJzZSAxLjIuMSAtLVx1MDAxYlszOW1cblx1MDAxYlszN21cdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bWdncGxvdDJcdTAwMWJbMzdtIDMuMi4xICAgICBcdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bXB1cnJyICBcdTAwMWJbMzdtIDAuMy4yXG5cdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bXRpYmJsZSBcdTAwMWJbMzdtIDIuMS4zICAgICBcdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bWRwbHlyICBcdTAwMWJbMzdtIDAuOC4zXG5cdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bXRpZHlyICBcdTAwMWJbMzdtIDEuMC4wICAgICBcdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bXN0cmluZ3JcdTAwMWJbMzdtIDEuNC4wXG5cdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bXJlYWRyICBcdTAwMWJbMzdtIDEuMy4xICAgICBcdTAwMWJbMzJtdlx1MDAxYlszN20gXHUwMDFiWzM0bWZvcmNhdHNcdTAwMWJbMzdtIDAuNC4wXHUwMDFiWzM5bVxuXHUwMDFiWzM3bS0tIFx1MDAxYlsxbUNvbmZsaWN0c1x1MDAxYlsyMm0gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIHRpZHl2ZXJzZV9jb25mbGljdHMoKSAtLVxuXHUwMDFiWzMxbXhcdTAwMWJbMzdtIFx1MDAxYlszNG1kcGx5clx1MDAxYlszN206Olx1MDAxYlszMm1maWx0ZXIoKVx1MDAxYlszN20gbWFza3MgXHUwMDFiWzM0bXN0YXRzXHUwMDFiWzM3bTo6ZmlsdGVyKClcblx1MDAxYlszMW14XHUwMDFiWzM3bSBcdTAwMWJbMzRtZHBseXJcdTAwMWJbMzdtOjpcdTAwMWJbMzJtbGFnKClcdTAwMWJbMzdtICAgIG1hc2tzIFx1MDAxYlszNG1zdGF0c1x1MDAxYlszN206OmxhZygpXHUwMDFiWzM5bVxuIn0= -->
+<pre><code>Registered S3 method overwritten by &#39;dplyr&#39;:
+  method           from
+  print.rowwise_df     
+[37m-- [1mAttaching packages[22m --------------------------------------- tidyverse 1.2.1 --[39m
+[37m[32mv[37m [34mggplot2[37m 3.2.1     [32mv[37m [34mpurrr  [37m 0.3.2
+[32mv[37m [34mtibble [37m 2.1.3     [32mv[37m [34mdplyr  [37m 0.8.3
+[32mv[37m [34mtidyr  [37m 1.0.0     [32mv[37m [34mstringr[37m 1.4.0
+[32mv[37m [34mreadr  [37m 1.3.1     [32mv[37m [34mforcats[37m 0.4.0[39m
+[37m-- [1mConflicts[22m ------------------------------------------ tidyverse_conflicts() --
+[31mx[37m [34mdplyr[37m::[32mfilter()[37m masks [34mstats[37m::filter()
+[31mx[37m [34mdplyr[37m::[32mlag()[37m    masks [34mstats[37m::lag()[39m</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShyZXNoYXBlMilcbmBgYCJ9 -->
+<pre class="r"><code>library(reshape2)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog46S847ixcmVzaGFwZTLjpLzjuLJcblxuVGhlIGZvbGxvd2luZyBvYmplY3QgaXMgbWFza2VkIGZyb20g46S847ixcGFja2FnZTp0aWR5cuOkvOO4sjpcblxuICAgIHNtaXRoc1xuIn0= -->
+<pre><code>
+Attaching package: 㤼㸱reshape2㤼㸲
+
+The following object is masked from 㤼㸱package:tidyr㤼㸲:
+
+    smiths</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShnZ3JlcGVsKVxuc291cmNlKGZpbGUucGF0aChcInN1cHBsZW1lbnRhcnlfZnVuY3Rpb25zXCIsIFwiQ3JlYXRlUmVjVGliYmxlLlJcIikpXG5gYGAifQ== -->
+<pre class="r"><code>library(ggrepel)
 source(file.path(&quot;supplementary_functions&quot;, &quot;CreateRecTibble.R&quot;))</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyMjIExPQURJTkcgREFUQSAtLS0tLS0tLS0tLS1cblxuIyMjIHN0aW11bHVzIGRhdGFcbklMX3N0aW1fZmlyaW5nIDwtIENyZWF0ZVJlY1RpYmJsZShcbiAgQVBfdGltZXMgPSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsIFwic3RpbXVsdXNcIiwgXCJBUF90aW1lcy5jc3ZcIikpLFxuICBzdGltX3RpbWVzID0gcmVhZF9jc3YoZmlsZS5wYXRoKFwiZGF0YVwiLCBcIklMX01GUlwiLFwic3RpbXVsdXNcIiwgXCJzdGltX3RpbWVzLmNzdlwiKSlcbilcbmluZm9fc3RpbSA8LSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsIFwic3RpbXVsdXNcIiwgXCJmaWxlX2luZm8uY3N2XCIpKVxuXG4jIyMgYmFzZWxpbmUgZGF0YVxuSUxfYmFzZWxpbmVfZmlyaW5nIDwtIENyZWF0ZVJlY1RpYmJsZShcbiAgQVBfdGltZXMgPSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsXCJiYXNlbGluZVwiLCBcIkFQX3RpbWVzLmNzdlwiKSksXG4gIHN0aW1fdGltZXMgPSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsXCJiYXNlbGluZVwiLCBcInN0aW1fdGltZXMuY3N2XCIpKVxuKVxuaW5mb19iYXNlbGluZSA8LSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsIFwiYmFzZWxpbmVcIixcImZpbGVfaW5mby5jc3ZcIikpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyMjIExPQURJTkcgREFUQSAtLS0tLS0tLS0tLS1cblxuIyMjIHN0aW11bHVzIGRhdGFcbklMX3N0aW1fZmlyaW5nIDwtIENyZWF0ZVJlY1RpYmJsZShcbiAgQVBfdGltZXMgPSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsIFwic3RpbXVsdXNcIiwgXCJBUF90aW1lcy5jc3ZcIikpLFxuICBzdGltX3RpbWVzID0gcmVhZF9jc3YoZmlsZS5wYXRoKFwiZGF0YVwiLCBcIklMX01GUlwiLFwic3RpbXVsdXNcIiwgXCJzdGltX3RpbWVzLmNzdlwiKSlcbilcbmBgYCJ9 -->
 <pre class="r"><code>### LOADING DATA ------------
 
 ### stimulus data
 IL_stim_firing &lt;- CreateRecTibble(
   AP_times = read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;, &quot;stimulus&quot;, &quot;AP_times.csv&quot;)),
   stim_times = read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;,&quot;stimulus&quot;, &quot;stim_times.csv&quot;))
+)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgYW5pbWFsX2lkID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90eXBlID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHVuaXRfaWQgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgc2lnbmFsX3RpbWUgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bVxuKVxuUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgYW5pbWFsX2lkID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90eXBlID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90aW1lID0gXHUwMDFiWzMybWNvbF9kb3VibGUoKVx1MDAxYlszOW1cbilcbk5BcyBpbnRyb2R1Y2VkIGJ5IGNvZXJjaW9uXG4ifQ== -->
+<pre><code>Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  animal_id = [31mcol_character()[39m,
+  signal_type = [31mcol_character()[39m,
+  unit_id = [32mcol_double()[39m,
+  signal_time = [32mcol_double()[39m
 )
-info_stim &lt;- read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;, &quot;stimulus&quot;, &quot;file_info.csv&quot;))
-
-### baseline data
+Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  animal_id = [31mcol_character()[39m,
+  signal_type = [31mcol_character()[39m,
+  signal_time = [32mcol_double()[39m
+)
+NAs introduced by coercion</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5mb19zdGltIDwtIHJlYWRfY3N2KGZpbGUucGF0aChcImRhdGFcIiwgXCJJTF9NRlJcIiwgXCJzdGltdWx1c1wiLCBcImZpbGVfaW5mby5jc3ZcIikpXG5gYGAifQ== -->
+<pre class="r"><code>info_stim &lt;- read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;, &quot;stimulus&quot;, &quot;file_info.csv&quot;))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgTm9fY2ggPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgTm9fQVBfdW5pdCA9IFx1MDAxYlszMm1jb2xfZG91YmxlKClcdTAwMWJbMzltLFxuICBOb19BUF91bml0MiA9IFx1MDAxYlszMW1jb2xfY2hhcmFjdGVyKClcdTAwMWJbMzltLFxuICBOb19TdGltID0gXHUwMDFiWzMybWNvbF9kb3VibGUoKVx1MDAxYlszOW0sXG4gIHNhbXBfcmF0ZV9sZnAgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgc2FtcF9yYXRlX3VuaXQgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgcmVjX2xlbmd0aCA9IFx1MDAxYlszMW1jb2xfY2hhcmFjdGVyKClcdTAwMWJbMzltLFxuICBOb19UcmFpbnMgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgdHJhaW5fbGVuZ3RoX2VxdWFsID0gXHUwMDFiWzMzbWNvbF9sb2dpY2FsKClcdTAwMWJbMzltLFxuICB0cmFpbl9sZW5ndGggPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgdHJhaW5fc3RhcnRzID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHRyYWluX2VuZHMgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bVxuKVxuIn0= -->
+<pre><code>Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  No_ch = [32mcol_double()[39m,
+  No_AP_unit = [32mcol_double()[39m,
+  No_AP_unit2 = [31mcol_character()[39m,
+  No_Stim = [32mcol_double()[39m,
+  samp_rate_lfp = [31mcol_character()[39m,
+  samp_rate_unit = [32mcol_double()[39m,
+  rec_length = [31mcol_character()[39m,
+  No_Trains = [32mcol_double()[39m,
+  train_length_equal = [33mcol_logical()[39m,
+  train_length = [32mcol_double()[39m,
+  train_starts = [31mcol_character()[39m,
+  train_ends = [31mcol_character()[39m
+)</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyMjIGJhc2VsaW5lIGRhdGFcbklMX2Jhc2VsaW5lX2ZpcmluZyA8LSBDcmVhdGVSZWNUaWJibGUoXG4gIEFQX3RpbWVzID0gcmVhZF9jc3YoZmlsZS5wYXRoKFwiZGF0YVwiLCBcIklMX01GUlwiLFwiYmFzZWxpbmVcIiwgXCJBUF90aW1lcy5jc3ZcIikpLFxuICBzdGltX3RpbWVzID0gcmVhZF9jc3YoZmlsZS5wYXRoKFwiZGF0YVwiLCBcIklMX01GUlwiLFwiYmFzZWxpbmVcIiwgXCJzdGltX3RpbWVzLmNzdlwiKSlcbilcbmBgYCJ9 -->
+<pre class="r"><code>### baseline data
 IL_baseline_firing &lt;- CreateRecTibble(
   AP_times = read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;,&quot;baseline&quot;, &quot;AP_times.csv&quot;)),
   stim_times = read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;,&quot;baseline&quot;, &quot;stim_times.csv&quot;))
-)
-info_baseline &lt;- read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;, &quot;baseline&quot;,&quot;file_info.csv&quot;))</code></pre>
+)</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgYW5pbWFsX2lkID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90eXBlID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHVuaXRfaWQgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgc2lnbmFsX3RpbWUgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bVxuKVxuUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgYW5pbWFsX2lkID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90eXBlID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNpZ25hbF90aW1lID0gXHUwMDFiWzMybWNvbF9kb3VibGUoKVx1MDAxYlszOW1cbilcbk5BcyBpbnRyb2R1Y2VkIGJ5IGNvZXJjaW9uXG4ifQ== -->
+<pre><code>Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  animal_id = [31mcol_character()[39m,
+  signal_type = [31mcol_character()[39m,
+  unit_id = [32mcol_double()[39m,
+  signal_time = [32mcol_double()[39m
+)
+Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  animal_id = [31mcol_character()[39m,
+  signal_type = [31mcol_character()[39m,
+  signal_time = [32mcol_double()[39m
+)
+NAs introduced by coercion</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5mb19iYXNlbGluZSA8LSByZWFkX2NzdihmaWxlLnBhdGgoXCJkYXRhXCIsIFwiSUxfTUZSXCIsIFwiYmFzZWxpbmVcIixcImZpbGVfaW5mby5jc3ZcIikpXG5gYGAifQ== -->
+<pre class="r"><code>info_baseline &lt;- read_csv(file.path(&quot;data&quot;, &quot;IL_MFR&quot;, &quot;baseline&quot;,&quot;file_info.csv&quot;))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUGFyc2VkIHdpdGggY29sdW1uIHNwZWNpZmljYXRpb246XG5jb2xzKFxuICBmaWxlX25hbWUgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgTm9fY2ggPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgTm9fQVBfdW5pdCA9IFx1MDAxYlszMm1jb2xfZG91YmxlKClcdTAwMWJbMzltLFxuICBOb19BUF91bml0MiA9IFx1MDAxYlszMW1jb2xfY2hhcmFjdGVyKClcdTAwMWJbMzltLFxuICBOb19TdGltID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHNhbXBfcmF0ZV9sZnAgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgc2FtcF9yYXRlX3VuaXQgPSBcdTAwMWJbMzJtY29sX2RvdWJsZSgpXHUwMDFiWzM5bSxcbiAgcmVjX2xlbmd0aCA9IFx1MDAxYlszMm1jb2xfZG91YmxlKClcdTAwMWJbMzltLFxuICBOb19UcmFpbnMgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgdHJhaW5fbGVuZ3RoX2VxdWFsID0gXHUwMDFiWzMxbWNvbF9jaGFyYWN0ZXIoKVx1MDAxYlszOW0sXG4gIHRyYWluX2xlbmd0aCA9IFx1MDAxYlszMW1jb2xfY2hhcmFjdGVyKClcdTAwMWJbMzltLFxuICB0cmFpbl9zdGFydHMgPSBcdTAwMWJbMzFtY29sX2NoYXJhY3RlcigpXHUwMDFiWzM5bSxcbiAgdHJhaW5fZW5kcyA9IFx1MDAxYlszMW1jb2xfY2hhcmFjdGVyKClcdTAwMWJbMzltXG4pXG4ifQ== -->
+<pre><code>Parsed with column specification:
+cols(
+  file_name = [31mcol_character()[39m,
+  No_ch = [32mcol_double()[39m,
+  No_AP_unit = [32mcol_double()[39m,
+  No_AP_unit2 = [31mcol_character()[39m,
+  No_Stim = [31mcol_character()[39m,
+  samp_rate_lfp = [32mcol_double()[39m,
+  samp_rate_unit = [32mcol_double()[39m,
+  rec_length = [32mcol_double()[39m,
+  No_Trains = [31mcol_character()[39m,
+  train_length_equal = [31mcol_character()[39m,
+  train_length = [31mcol_character()[39m,
+  train_starts = [31mcol_character()[39m,
+  train_ends = [31mcol_character()[39m
+)</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyMjIENFTEwgSU5GTyB0byBzdG9yZSBjYXRlZ29yaWVzXG5DRUxMX0lORk8gPC0gaW5mb19iYXNlbGluZSAlPiUgXG4gIHNlbGVjdChmaWxlX25hbWUpICU+JSBcbiAgYWRkX2NvbHVtbihjZWxsX2lkID0gc3Vic3RyKGluZm9fYmFzZWxpbmUkZmlsZV9uYW1lLCAxLDYpLCAuYmVmb3JlID0gXCJmaWxlX25hbWVcIikgJT4lIFxuICBtdXRhdGUoYmxfYWN0aXZpdHkgPSBUKSAlPiVcbiAgbXV0YXRlKGJsX2FjdGl2aXR5ID0gcmVwbGFjZShibF9hY3Rpdml0eSwgLiRjZWxsX2lkID09IFwiY2VsbDA1XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxMlwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDEzXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTRcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxNVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDIxXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjJcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBGKSkgJT4lIFxuICBtdXRhdGUocGluY2ggPSBUKSAlPiUgXG4gIG11dGF0ZShwaW5jaCA9IHJlcGxhY2UocGluY2gsIC4kY2VsbF9pZCA9PSBcImNlbGwwMVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDA2XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMThcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxOVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDIwXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjFcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyM1wifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI0XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjVcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyNlwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI3XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjhcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICBGKSkgJT4lIFxuICBtdXRhdGUoaWRlbnQgPSBGKSAlPiUgXG4gIG11dGF0ZShpZGVudCA9IHJlcGxhY2UoaWRlbnQsIC4kY2VsbF9pZCA9PSBcImNlbGwwMVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDAyXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMDNcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwwOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDA5XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxNVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDE2XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTdcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDE5XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI5XCIsXG4gICAgICAgICAgICAgICAgICAgICAgICAgVCkpXG5cblxuXG5JTF9zdGltX2ZpcmluZyRmaWxlX25hbWUgJT4lIHVuaXF1ZSgpICU+JSBsZW5ndGgoKVxuaW5mb19zdGltJGZpbGVfbmFtZSAlPiUgbGVuZ3RoKClcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyMjIENFTEwgSU5GTyB0byBzdG9yZSBjYXRlZ29yaWVzXG5DRUxMX0lORk8gPC0gaW5mb19iYXNlbGluZSAlPiUgXG4gIHNlbGVjdChmaWxlX25hbWUpICU+JSBcbiAgYWRkX2NvbHVtbihjZWxsX2lkID0gc3Vic3RyKGluZm9fYmFzZWxpbmUkZmlsZV9uYW1lLCAxLDYpLCAuYmVmb3JlID0gXCJmaWxlX25hbWVcIikgJT4lIFxuICBtdXRhdGUoYmxfYWN0aXZpdHkgPSBUKSAlPiVcbiAgbXV0YXRlKGJsX2FjdGl2aXR5ID0gcmVwbGFjZShibF9hY3Rpdml0eSwgLiRjZWxsX2lkID09IFwiY2VsbDA1XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxMlwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDEzXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTRcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxNVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDIxXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjJcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBGKSkgJT4lIFxuICBtdXRhdGUocGluY2ggPSBUKSAlPiUgXG4gIG11dGF0ZShwaW5jaCA9IHJlcGxhY2UocGluY2gsIC4kY2VsbF9pZCA9PSBcImNlbGwwMVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDA2XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMThcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxOVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDIwXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjFcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyM1wifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI0XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjVcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyNlwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI3XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjhcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICBGKSkgJT4lIFxuICBtdXRhdGUoaWRlbnQgPSBGKSAlPiUgXG4gIG11dGF0ZShpZGVudCA9IHJlcGxhY2UoaWRlbnQsIC4kY2VsbF9pZCA9PSBcImNlbGwwMVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDAyXCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMDNcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwwOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDA5XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxNVwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDE2XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMTdcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwxOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDE5XCJ8XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAuJGNlbGxfaWQgPT0gXCJjZWxsMjBcInxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIC4kY2VsbF9pZCA9PSBcImNlbGwyOFwifFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgLiRjZWxsX2lkID09IFwiY2VsbDI5XCIsXG4gICAgICAgICAgICAgICAgICAgICAgICAgVCkpXG5cblxuXG5JTF9zdGltX2ZpcmluZyRmaWxlX25hbWUgJT4lIHVuaXF1ZSgpICU+JSBsZW5ndGgoKVxuYGBgIn0= -->
 <pre class="r"><code>### CELL INFO to store categories
 CELL_INFO &lt;- info_baseline %&gt;% 
   select(file_name) %&gt;% 
@@ -1840,9 +1942,17 @@ CELL_INFO &lt;- info_baseline %&gt;%
 
 
 
-IL_stim_firing$file_name %&gt;% unique() %&gt;% length()
-info_stim$file_name %&gt;% length()</code></pre>
+IL_stim_firing$file_name %&gt;% unique() %&gt;% length()</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDI5XG4ifQ== -->
+<pre><code>[1] 29</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5mb19zdGltJGZpbGVfbmFtZSAlPiUgbGVuZ3RoKClcbmBgYCJ9 -->
+<pre class="r"><code>info_stim$file_name %&gt;% length()</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDI5XG4ifQ== -->
+<pre><code>[1] 29</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
@@ -1887,6 +1997,10 @@ end_times &lt;- IL_stim_firing %&gt;%
 cell_list &lt;- substr(info_stim$file_name, 1, 6)
 CELL_INFO$cell_id</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiIFsxXSBcImNlbGwwMVwiIFwiY2VsbDAyXCIgXCJjZWxsMDNcIiBcImNlbGwwNFwiIFwiY2VsbDA1XCIgXCJjZWxsMDZcIiBcImNlbGwwN1wiIFwiY2VsbDA4XCIgXCJjZWxsMDlcIiBcImNlbGwxMFwiIFwiY2VsbDExXCIgXCJjZWxsMTJcIiBcImNlbGwxM1wiIFwiY2VsbDE0XCIgXCJjZWxsMTVcIiBcImNlbGwxNlwiIFwiY2VsbDE3XCJcblsxOF0gXCJjZWxsMThcIiBcImNlbGwxOVwiIFwiY2VsbDIwXCIgXCJjZWxsMjFcIiBcImNlbGwyMlwiIFwiY2VsbDIzXCIgXCJjZWxsMjRcIiBcImNlbGwyNVwiIFwiY2VsbDI2XCIgXCJjZWxsMjdcIiBcImNlbGwyOFwiIFwiY2VsbDI5XCJcbiJ9 -->
+<pre><code> [1] &quot;cell01&quot; &quot;cell02&quot; &quot;cell03&quot; &quot;cell04&quot; &quot;cell05&quot; &quot;cell06&quot; &quot;cell07&quot; &quot;cell08&quot; &quot;cell09&quot; &quot;cell10&quot; &quot;cell11&quot; &quot;cell12&quot; &quot;cell13&quot; &quot;cell14&quot; &quot;cell15&quot; &quot;cell16&quot; &quot;cell17&quot;
+[18] &quot;cell18&quot; &quot;cell19&quot; &quot;cell20&quot; &quot;cell21&quot; &quot;cell22&quot; &quot;cell23&quot; &quot;cell24&quot; &quot;cell25&quot; &quot;cell26&quot; &quot;cell27&quot; &quot;cell28&quot; &quot;cell29&quot;</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
