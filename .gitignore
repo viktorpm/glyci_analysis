@@ -4,3 +4,7 @@
 .Ruserdata
 data/
 output_data/
+*.html
+GII_analysis_notebook.nb.html
+ggplot_interaction_plot.R
+IL_juxta_GlyT2_fiber_stim/
