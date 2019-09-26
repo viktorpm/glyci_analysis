@@ -1,98 +1,232 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
+author: "Viktor Plattner"
+output:
+  html_notebook:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+spacing: single
+fontsize: 12pt
+always_allow_html: yes
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+<style type="text/css">
 
-# Spontaneous desynchronization
+body{ /* Normal  */
+      font-size: 14px;
+      font-family: "Arial", Helvetica, sans-serif;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 38px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #4d4e4f;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h2 { /* Header 2 */
+  font-size: 22px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
 
 
-# IL inhibition
 
 
-# Firing rate 
+<br><br>
 
-```{r}
+
+
+# Firing rate of IL neurons during glycinergic fiber activation
+
+In these experiments glycinergic fibers were photactivated while the firing rate of individual IL neurons was recorded. Some of the IL cells had very low baseline activity. In order to increase the firing rate of the IL neurons and to detect the effect of the glycinergic fiber activation a small tail pinch was applied. The firing rate of the recorded IL cells decreased during the glycinergic fiber activation. 
+
+```{r,include=FALSE}
 library(tidyverse)
 library(reshape2)
 library(ggrepel)
+library(DT)
+library(ggpubr)
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 ```
 
-```{r}
-### LOADING DATA ------------
 
-### stimulus data
+## Loading data
+
+
+Loading AP and stimuli times from *stimulus* and from *baseline* data to **IL_stim_firing** and to **IL_baseline_firing** tables:
+
+```{r, message=FALSE, warning=FALSE}
 IL_stim_firing <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),
+  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")), 
   stim_times = read_csv(file.path("data", "IL_MFR","stimulus", "stim_times.csv"))
-)
-info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
+) 
+IL_stim_firing %>% head()
+```
 
-### baseline data
+```{r, message=FALSE, warning=FALSE}
 IL_baseline_firing <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "IL_MFR","baseline", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
 )
+IL_stim_firing %>% head()
+```
+
+<br><br>
+
+## Summary information 
+
+Summary information of the *stimulus* and  *baseline* recording files:
+
+* Variables:
+  + file names (*file_name*)
+  + number of channels in the raw recording files (*No_ch*)
+  + number of APs (*No_AP_unit*, *No_AP_unit2*)
+  + number of stimulus trains (*No_Stim*)
+  + LFP sampling rate (*samp_rate_lfp*)
+  + unit sampling rate (*samp_rate_unit*)
+  + length of the recording (*rec_length*)
+  + length of the stimulus trains (*No_trains*)
+  + Are the lengths of the stimulus trains equal in the recording (*train_length_equal*)
+  + starting time of the stimulus trains (*train_start*)
+  + ending time of the stimulus trains (*train_end*)
+
+```{r, message=FALSE,echo=FALSE }
+
+info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
+datatable(info_stim, 
+          caption ="Summary table of the stimulus recording files (info_stim)", 
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
+```
+
+<br>
+
+```{r,message=FALSE,echo=FALSE}
 info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
+datatable(info_baseline, 
+          caption ="Summary table of the baseline recording files (info_baseline)",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))  
 ```
+<br>
 
-```{r}
-### CELL INFO to store categories
-CELL_INFO <- info_baseline %>% 
-  select(file_name) %>% 
-  add_column(cell_id = substr(info_baseline$file_name, 1,6), .before = "file_name") %>% 
+**CELL_INFO** table to store the cell categories. It was created manually using the information from the summary excel table (*Glicy_juxta-fm_exp_records_injection_sum.xls*)
+
+* Variables
+  + cell identification (*cell_id*). To find the recording file use the summary excel table
+  + file names (*file_name*)
+  + spontaneously active cells (*bl_activity*)
+  + induced firing (*pinch*)
+  + individually identified neurons (*ident*)
+  + control cells (*control*)
+
+
+```{r, echo=FALSE}
+### CELL INFO to store categories (spontaneously active, induced firing, identified)
+CELL_INFO <- info_baseline %>%
+  select(file_name) %>%
+  add_column(cell_id = substr(info_baseline$file_name, 1, 6), .before = "file_name") %>%
   mutate(bl_activity = T) %>%
-  mutate(bl_activity = replace(bl_activity, .$cell_id == "cell05"|
-                                 .$cell_id == "cell10"|
-                                 .$cell_id == "cell12"|
-                                 .$cell_id == "cell13"|
-                                 .$cell_id == "cell14"|
-                                 .$cell_id == "cell15"|
-                                 .$cell_id == "cell21"|
-                                 .$cell_id == "cell22",
-                               F)) %>% 
-  mutate(pinch = T) %>% 
-  mutate(pinch = replace(pinch, .$cell_id == "cell01"|
-                           .$cell_id == "cell06"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell21"|
-                           .$cell_id == "cell23"|
-                           .$cell_id == "cell24"|
-                           .$cell_id == "cell25"|
-                           .$cell_id == "cell26"|
-                           .$cell_id == "cell27"|
-                           .$cell_id == "cell28",
-                         F)) %>% 
-  mutate(ident = F) %>% 
-  mutate(ident = replace(ident, .$cell_id == "cell01"|
-                           .$cell_id == "cell02"|
-                           .$cell_id == "cell03"|
-                           .$cell_id == "cell08"|
-                           .$cell_id == "cell09"|
-                           .$cell_id == "cell10"|
-                           .$cell_id == "cell15"|
-                           .$cell_id == "cell16"|
-                           .$cell_id == "cell17"|
-                           .$cell_id == "cell18"|
-                           .$cell_id == "cell19"|
-                           .$cell_id == "cell20"|
-                           .$cell_id == "cell28"|
-                           .$cell_id == "cell29",
-                         T))
+  mutate(bl_activity = replace(
+    bl_activity, 
+    .$cell_id == "cell05" |
+      .$cell_id == "cell10" |
+      .$cell_id == "cell12" |
+      .$cell_id == "cell13" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell15" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell24",
+    F
+  )) %>%
+  mutate(pinch = T) %>%
+  mutate(pinch = replace(
+    pinch, 
+    .$cell_id == "cell01" |
+      .$cell_id == "cell06" |
+      .$cell_id == "cell07" |
+      .$cell_id == "cell08" |
+      .$cell_id == "cell18" |
+      .$cell_id == "cell19" |
+      .$cell_id == "cell20" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24" |
+      .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27" |
+      .$cell_id == "cell28",
+    F
+  )) %>%
+ mutate(ident = T) %>%
+  mutate(ident = replace(
+    ident,
+    .$cell_id == "cell06" |
+      .$cell_id == "cell07" |
+      .$cell_id == "cell11" |
+      .$cell_id == "cell12" |
+      .$cell_id == "cell13" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell22" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24" |
+      .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27",
+    F
+  )) %>% 
+  mutate(control = F) %>% 
+  mutate(control = replace(
+    control,
+    .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27" |
+      .$cell_id == "cell28" |
+      .$cell_id == "cell29",
+    T))
 
+datatable(CELL_INFO, 
+          caption = "CELL_INFO table",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))  
 
-
-IL_stim_firing$file_name %>% unique() %>% length()
-info_stim$file_name %>% length()
+#IL_stim_firing$file_name %>% unique() %>% length()
+#info_stim$file_name %>% length()
 ```
 
-```{r}
+
+<br><br>
+
+## Calculations
+### Firing rates
+
+```{r, include=FALSE}
 ### CALCULATING --------
 
 IL_stim_firing <- left_join(IL_stim_firing, 
@@ -133,9 +267,9 @@ cell_list <- substr(info_stim$file_name, 1, 6)
 CELL_INFO$cell_id
 ```
 
-```{r}
-### function to calculate #AP b/d/a stim 
-foo <- function(data, list) {
+```{r, include=FALSE}
+### function to calculate the number of AP b/d/a stim. Arguments: data (IL_stim_firing table with rec_length and stimulus train information)
+BDACalculator <- function(data, list) {
   cell_list <- list
   
     train_length <- data %>%
@@ -261,35 +395,339 @@ foo <- function(data, list) {
 }#foo
 ```
 
+**b_d_a_MFR**: Calculating the number of APs -using a custom made function (*BDACalculator*)- before during and after the stimulus trains (*b_d_a_MFR*). 
+
 ```{r}
+b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>% 
+  bind_rows() %>%  
+  mutate(FR = No_AP / train_length) %>%
+  dplyr::group_by(stim_cond, cell_id) %>%
+  summarise(MFR = mean(FR))
+```
+
+<br>
+**sd_mean_isi**: Calculating the baseline MFR of the recorded IL cells from the *IL_baseline_firing* table using a custom made function (*SDMeanISI*). The results are stored in the *sd_mean_isi* table.
+
+```{r, include=FALSE}
+IL_baseline_firing <- left_join(IL_baseline_firing,
+  info_baseline %>%
+    select(file_name, rec_length),
+  by = "file_name"
+) %>%
+  mutate(stim_cond = "baseline")
+
+### function to calculate ISI mean and SD during baseline activity of the cells
+SDMeanISI <- function(f_name) {
+
+
+  # mean_isi <- IL_baseline_firing %>%
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>%
+  #   pull() %>%
+  #   diff() %>%
+  #   mean() * 1000 %>%
+  #   `names<-`(f_name)
+  #
+  # sd_isi <- IL_baseline_firing %>%
+  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>%
+  #   pull() %>%
+  #   diff() %>%
+  #   sd() * 1000 %>%
+  #   `names<-`(f_name)
+  #
+  # return(list(MFR = mean_isi,
+  #             SDFR = sd_isi))
+
+  tmp2 <- IL_baseline_firing %>%
+    filter(file_name == f_name, signal_type == "AP") %>%
+    select(signal_time) %>%
+    pull() %>%
+    diff() %>%
+    mean() * 1000 %>%
+      tibble(mean_isi = .)
+  tmp2 %>%
+    mutate(sd_isi = IL_baseline_firing %>%
+      filter(file_name == f_name, signal_type == "AP") %>%
+      select(signal_time) %>%
+      pull() %>%
+      diff() %>%
+      sd() * 1000) %>%
+    mutate(file_name = f_name)
+}
+
+sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% 
+  bind_rows() %>% 
+  as.tibble()
+
+sd_mean_isi <- sd_mean_isi %>%
+  mutate(cell_id = substr(sd_mean_isi$file_name, 1, 6)) %>%
+  mutate(MFR = 1000 / mean_isi) %>%
+  mutate(SD_FR = 1000 / sd_isi) %>%
+  mutate(MFR_inc = MFR + SD_FR) %>%
+  mutate(MFR_dec = MFR - SD_FR) %>%
+  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>%
+  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>%
+  mutate(stim_cond = "baseline") %>%
+  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+
+```
+<br>
+
+### Ranks (strength of inhibition)
+**cellranks**: Calculating ranks based on the activity change from "*baseline*" to "*during stimulus*". If the activity change is negative (decreased MFR) the asigned rank is negative, if it is positive (increased MFR) the assigned rank is positive.
+
+<br>
+
+Calculating the firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to baseline:
+$$\mathbf{activity\_change} = \frac{MFR - base\_MFR}{base\_MFR} * 100$$
+
+
+```{r}
+cellranks <- b_d_a_MFR %>% 
+  group_by(stim_cond) %>%
+  mutate(base_MFR = sd_mean_isi$MFR) %>% 
+  mutate(activity_change = ((MFR-base_MFR)/base_MFR*100) %>% round(2)) %>% 
+  dplyr::filter(stim_cond == "d") %>% 
+  mutate(change_rank = ifelse(activity_change>0, 
+                              rank(activity_change), 
+                              -rank(-activity_change)) ) %>% 
+  ungroup()
+cellranks
+```
+
+<br><br>
+
+### Data to plot
+**TO_PLOT**: Combining *b_d_a_MFR* (firing rate of 29 IL neurons b/d/a stim) with *sd_mean_isi* table (baseline firing rate of the same 29 neurons), joining with CELL_INFO containing important information of the cells (baseline activity, identified, pinched, control) and with *cellranks* containing the ranks asigned to each cells based on the changes in MFR during the stimulus compared to baseline.
+
+```{r, message=FALSE, warning=FALSE}
+TO_PLOT <- bind_rows(
+  sd_mean_isi %>%
+    select(MFR, cell_id, stim_cond),
+  b_d_a_MFR
+) %>% left_join(CELL_INFO %>% 
+                  select(-file_name),
+                by = "cell_id") %>% 
+  left_join(cellranks %>% 
+              select(cell_id, change_rank, activity_change), 
+            by = "cell_id")
+
+datatable(TO_PLOT,
+          caption = "TO_PLOT table",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
+```
+<br><br>
+
+## Plotting
+
+### Baseline vs. "before" stimulus activity
+
+Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and sponteneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stiulus compared to baseline.
+
+```{r, fig.width=10, echo = FALSE, warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    filter(
+      control == F,
+      stim_cond == "baseline" | stim_cond == "b"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "baseline", "b"),
+    y = MFR
+  )
+) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(aes(fill = pinch),
+    shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id, col = pinch)
+  ) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 20),
+    text = element_text(size = 20)
+  ) +
+  xlab("Recording period") +
+  facet_wrap(vars(pinch)) +
+  stat_compare_means(method = "wilcox.test", paired = T) +
+   geom_label_repel(
+    data = TO_PLOT %>%
+      filter(
+        control == F,
+        stim_cond == "baseline"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = -.9,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+ 
+```
+
+<br><br>
+
+### MFR before, during and after stimulus 
+
+```{r, fig.width=14, fig.height=12 ,echo=FALSE, warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    filter(
+      control == F,
+      stim_cond == "b" | stim_cond == "d" | stim_cond == "a"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+    y = MFR
+  )
+) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 20),
+    text = element_text(size = 20)
+  ) +
+  ggtitle("Pinch",) + 
+  xlab("Recording period") +
+  ylim(0, 35) +
+
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    shape = 21,
+    fill = "#EB8104",
+    #color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id), 
+    color = "#EB8104"
+  ) +
+  geom_label_repel(
+    data =  TO_PLOT %>%
+      filter(
+        control == F,
+        stim_cond == "a"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = 0.15,
+    direction = "y",
+    hjust = -0.5,
+    segment.size = .2
+  ) +
+  facet_wrap(vars(pinch))
+```
+<br><br>
+
+### Strength of inhibition
+
+Firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to baseline:
+
+```{r, fig.width=10, echo=FALSE,warning=FALSE}
+ggplot(data = cellranks,
+       mapping = aes(x = change_rank, y = activity_change)) +
+  geom_point(size = 3) +
+  
+  ### label for negative values
+  geom_text_repel(data = cellranks %>% 
+                    dplyr::filter(activity_change < 0),
+    aes(label = cell_id),
+    direction = "y",
+    angle = 90,
+    hjust = .5,
+    nudge_y = -2
+    ) +
+  
+  ### label for positive values
+  geom_text_repel(data = cellranks %>% 
+                    dplyr::filter(activity_change > 0),
+    aes(label = cell_id),
+    direction = "x",
+    angle = 0,
+    hjust = .5,
+    nudge_x = -1
+    ) +
+  geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
+  theme_minimal() + 
+  theme(
+    axis.text = element_text(size = 20),
+    text = element_text(size = 20)
+  ) +
+  ylim(-max(cellranks$activity_change),max(cellranks$activity_change))
 
 ```
 
 
+<br><br>
 
+Plotting the change in MFR from "*baseline*" to "*during stimulus*". Coloring based on the strength of the inhibition (*rank*)
 
-# Cortical stimulation
-```{r, include = FALSE}
-library(tidyverse)
-library(reshape2)
-library(ggrepel)
-source(file.path("supplementary_functions", "CreateRecTibble.R"))
-### source files from the utilities folder
-walk(dir("utilities"), ~source(file.path("utilities", .x)))
-
-RECORDINGS <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
-  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
-)
-
+```{r, fig.width=10, fig.height=12, echo=FALSE,warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    filter(
+      control == F,
+      stim_cond == "baseline" | stim_cond == "d"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "baseline", "d", "a"),
+    y = MFR
+  )
+) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(aes(fill = change_rank),
+    shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id, col = change_rank)
+  ) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      filter(
+        control == F,
+        stim_cond == "baseline"
+      ),
+    mapping = aes(label = cell_id, col = change_rank),
+    #nudge_x = -.1,
+    direction = "y",
+    hjust = 4,
+    segment.size = .2
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 20),
+    text = element_text(size = 20)
+  ) +
+  xlab("Recording period") +
+  labs(fill = "Rank" ,col = "Rank")
 
 ```
 
 
+<br><br><br><br><br><br><br><br><br><br><br><br>
 
+# Activity of PRF glycinergic neurons during spontaneous desynchronization of the FC slow oscillation 
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+------- insert code here --------
+ 
+(spont_desynchron_analysis.R), 7 recordings
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+# Anlysing the activity of PRF glycinergic cells during PFC photoactivation
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+------- insert code here --------
+
+(cortical_stim_analysis.R)
+
