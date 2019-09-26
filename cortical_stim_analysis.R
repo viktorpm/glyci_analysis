@@ -233,7 +233,7 @@ STIM_RESULTS$animal_id %>% as.factor() %>% levels()
 ### Boxplots ----------------------------------------
 
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
-
+PSTH_range <- c(0, 0.05)
 gp_box_1 <- ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
