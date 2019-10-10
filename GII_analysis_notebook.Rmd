@@ -2,19 +2,25 @@
 title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
 author: "Viktor Plattner"
 output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    keep_tex: true
   html_notebook:
     number_sections: yes
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
   html_document:
+    number_sections: yes
     df_print: paged
     toc: yes
+    toc_float: yes
 spacing: single
 fontsize: 12pt
 always_allow_html: yes
 ---
+
+
 
 
 <style type="text/css">
@@ -56,6 +62,28 @@ pre { /* Code block - determines code spacing between lines */
 
 
 
+```{r setup, include=FALSE}
+library(R.matlab)
+library(tidyverse)
+library(reshape2)
+library(ggrepel)
+library(DT)
+library(ggpubr)
+library(styler)
+library(formatR)
+
+library(bspec) ### power spectrum
+library(WaveletComp) ### wavelet
+library(diptest) ### to test distribution uni/multimodality (ISI)
+library(exactRankTests) ### wilcox.test for ties
+library(WaveletComp) ### wavelet
+library(signal)
+
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff=30))
+```
+
 
 <br><br>
 
@@ -65,24 +93,15 @@ pre { /* Code block - determines code spacing between lines */
 
 In these experiments glycinergic fibers were photactivated while the firing rate of individual IL neurons was recorded. Some of the IL cells had very low baseline activity. In order to increase the firing rate of the IL neurons and to detect the effect of the glycinergic fiber activation a small tail pinch was applied. The firing rate of the recorded IL cells decreased during the glycinergic fiber activation. 
 
-```{r,include=FALSE}
-library(tidyverse)
-library(reshape2)
-library(ggrepel)
-library(DT)
-library(ggpubr)
-source(file.path("supplementary_functions", "CreateRecTibble.R"))
-```
-
 
 ## Loading data
 
 
 Loading AP and stimuli times from *stimulus* and from *baseline* data to **IL_stim_firing** and to **IL_baseline_firing** tables:
 
-```{r, message=FALSE, warning=FALSE}
-IL_stim_firing <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")), 
+```{r, message=FALSE, warning=FALSE, tidy=TRUE}
+IL_stim_firing <- CreateRecTibble(    
+  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),  
   stim_times = read_csv(file.path("data", "IL_MFR","stimulus", "stim_times.csv"))
 ) 
 IL_stim_firing %>% head()
@@ -273,7 +292,7 @@ BDACalculator <- function(data, list) {
   cell_list <- list
   
     train_length <- data %>%
-      filter(substr(file_name, 1, 6) == cell_list) %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list) %>%
       select(train_length) %>%
       pull() %>%
       `[[`(1)
@@ -282,7 +301,7 @@ BDACalculator <- function(data, list) {
   
   if (
     (data %>%
-      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
       select(unit_id) %>%
       unique() %>%
       pull() %>%
@@ -290,7 +309,7 @@ BDACalculator <- function(data, list) {
   ) {
     ### In case of one unit in the file:
     AP_times <- data %>%
-      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
       select(signal_time) %>%
       pull()
     
@@ -319,7 +338,7 @@ BDACalculator <- function(data, list) {
   } else { 
     ### in case of multiple units in the file:
     AP_times_1 <- data %>%
-      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 1) %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 1) %>%
       select(signal_time) %>%
       pull()
     
@@ -342,7 +361,7 @@ BDACalculator <- function(data, list) {
     
     
     AP_times_2 <- data %>%
-      filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 2) %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 2) %>%
       select(signal_time) %>%
       pull()
     
@@ -421,7 +440,7 @@ SDMeanISI <- function(f_name) {
 
 
   # mean_isi <- IL_baseline_firing %>%
-  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   dplyr::filter(file_name == f_name, signal_type == "AP") %>%
   #   select(signal_time) %>%
   #   pull() %>%
   #   diff() %>%
@@ -429,7 +448,7 @@ SDMeanISI <- function(f_name) {
   #   `names<-`(f_name)
   #
   # sd_isi <- IL_baseline_firing %>%
-  #   filter(file_name == f_name, signal_type == "AP") %>%
+  #   dplyr::filter(file_name == f_name, signal_type == "AP") %>%
   #   select(signal_time) %>%
   #   pull() %>%
   #   diff() %>%
@@ -440,7 +459,7 @@ SDMeanISI <- function(f_name) {
   #             SDFR = sd_isi))
 
   tmp2 <- IL_baseline_firing %>%
-    filter(file_name == f_name, signal_type == "AP") %>%
+    dplyr::filter(file_name == f_name, signal_type == "AP") %>%
     select(signal_time) %>%
     pull() %>%
     diff() %>%
@@ -448,7 +467,7 @@ SDMeanISI <- function(f_name) {
       tibble(mean_isi = .)
   tmp2 %>%
     mutate(sd_isi = IL_baseline_firing %>%
-      filter(file_name == f_name, signal_type == "AP") %>%
+      dplyr::filter(file_name == f_name, signal_type == "AP") %>%
       select(signal_time) %>%
       pull() %>%
       diff() %>%
@@ -470,7 +489,6 @@ sd_mean_isi <- sd_mean_isi %>%
   # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>%
   mutate(stim_cond = "baseline") %>%
   mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
-
 ```
 <br>
 
@@ -480,8 +498,11 @@ sd_mean_isi <- sd_mean_isi %>%
 <br>
 
 Calculating the firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to baseline:
-$$\mathbf{activity\_change} = \frac{MFR - base\_MFR}{base\_MFR} * 100$$
 
+<br><br><br>
+
+$$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$
+<br>
 
 ```{r}
 cellranks <- b_d_a_MFR %>% 
@@ -492,9 +513,43 @@ cellranks <- b_d_a_MFR %>%
   mutate(change_rank = ifelse(activity_change>0, 
                               rank(activity_change), 
                               -rank(-activity_change)) ) %>% 
-  ungroup()
+  ungroup() %>% 
+  left_join(CELL_INFO %>% 
+              select(cell_id, control, pinch),
+            by = "cell_id")
 cellranks
 ```
+
+
+
+**cellranks_before_stim**: Calculating ranks based on the activity change from "*before stimulus*" to "*during stimulus*". If the activity change is negative (decreased MFR) the asigned rank is negative, if it is positive (increased MFR) the assigned rank is positive.
+
+<br>
+
+Calculating the firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to before stimulus:
+
+<br><br><br>
+
+$$\mathbf{activity\_change} = \frac{during\_MFR - before\_MFR}{before\_MFR} * 100$$
+<br>
+
+
+
+```{r}
+cellranks_before_stim <- b_d_a_MFR %>% 
+  spread(key = stim_cond,value = MFR) %>% 
+  mutate(activity_change = ((d - b)/b*100) %>% round(2)) %>% 
+  mutate(change_rank = ifelse(activity_change > 0, 
+                              rank(activity_change), 
+                              -rank(-activity_change))
+         ) %>% 
+  left_join(CELL_INFO %>% 
+              select(cell_id, control, pinch),
+            by = "cell_id")
+cellranks_before_stim
+```
+
+
 
 <br><br>
 
@@ -529,7 +584,7 @@ Comparison of baseline and "before" stimulus firing rates in the case of spontan
 ```{r, fig.width=10, echo = FALSE, warning=FALSE}
 ggplot(
   data = TO_PLOT %>%
-    filter(
+    dplyr::filter(
       control == F,
       stim_cond == "baseline" | stim_cond == "b"
     ),
@@ -560,7 +615,7 @@ ggplot(
   stat_compare_means(method = "wilcox.test", paired = T) +
    geom_label_repel(
     data = TO_PLOT %>%
-      filter(
+      dplyr::filter(
         control == F,
         stim_cond == "baseline"
       ),
@@ -580,7 +635,7 @@ ggplot(
 ```{r, fig.width=14, fig.height=12 ,echo=FALSE, warning=FALSE}
 ggplot(
   data = TO_PLOT %>%
-    filter(
+    dplyr::filter(
       control == F,
       stim_cond == "b" | stim_cond == "d" | stim_cond == "a"
     ),
@@ -613,7 +668,7 @@ ggplot(
   ) +
   geom_label_repel(
     data =  TO_PLOT %>%
-      filter(
+      dplyr::filter(
         control == F,
         stim_cond == "a"
       ),
@@ -629,13 +684,15 @@ ggplot(
 
 ### Strength of inhibition
 
-Firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to baseline:
+Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **baseline**:
 
 ```{r, fig.width=10, echo=FALSE,warning=FALSE}
 ggplot(data = cellranks,
        mapping = aes(x = change_rank, y = activity_change)) +
-  geom_point(size = 3) +
-  
+  geom_point(data = cellranks %>% 
+               dplyr::filter(control == F),size = 3) +
+  geom_point(data = cellranks %>% 
+               dplyr::filter(control == T), size = 3, col = "magenta") +
   ### label for negative values
   geom_text_repel(data = cellranks %>% 
                     dplyr::filter(activity_change < 0),
@@ -657,6 +714,9 @@ ggplot(data = cellranks,
     ) +
   geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
   annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
+  geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
+  annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
   theme_minimal() + 
   theme(
     axis.text = element_text(size = 20),
@@ -666,6 +726,63 @@ ggplot(data = cellranks,
 
 ```
 
+<br><br>
+
+Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **before** stimulus:
+
+```{r, fig.width=10, echo=FALSE,warning=FALSE}
+
+ggplot(data = cellranks_before_stim,
+       mapping = aes(x = change_rank, y = activity_change)) +
+  geom_point(data = cellranks_before_stim %>% 
+               dplyr::filter(control == F),size = 3,
+             aes(col = pinch)) +
+  geom_point(data = cellranks_before_stim %>% 
+               dplyr::filter(control == T), size = 3, col = "magenta") +
+  ### label for negative values
+  geom_text_repel(data = cellranks_before_stim %>% 
+                    dplyr::filter(activity_change < 0),
+    aes(label = cell_id),
+    direction = "y",
+    angle = 90,
+    hjust = .5,
+    nudge_y = -2
+    ) +
+  
+  ### label for positive values
+  geom_text_repel(data = cellranks_before_stim %>% 
+                    dplyr::filter(activity_change > 0),
+    aes(label = cell_id),
+    direction = "x",
+    angle = 0,
+    hjust = .5,
+    nudge_x = -1
+    ) +
+  geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
+  geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
+  annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
+  theme_minimal() + 
+  theme(
+    axis.text = element_text(size = 20),
+    text = element_text(size = 20)
+  ) +
+  ylim(-max(cellranks_before_stim$activity_change),max(cellranks_before_stim$activity_change))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 <br><br>
 
@@ -674,7 +791,7 @@ Plotting the change in MFR from "*baseline*" to "*during stimulus*". Coloring ba
 ```{r, fig.width=10, fig.height=12, echo=FALSE,warning=FALSE}
 ggplot(
   data = TO_PLOT %>%
-    filter(
+    dplyr::filter(
       control == F,
       stim_cond == "baseline" | stim_cond == "d"
     ),
@@ -696,7 +813,7 @@ ggplot(
   ) +
   geom_label_repel(
     data = TO_PLOT %>%
-      filter(
+      dplyr::filter(
         control == F,
         stim_cond == "baseline"
       ),
@@ -719,15 +836,97 @@ ggplot(
 
 <br><br><br><br><br><br><br><br><br><br><br><br>
 
-# Activity of PRF glycinergic neurons during spontaneous desynchronization of the FC slow oscillation 
+
+# Activity of PRF glycinergic cells during PFC photoactivation
+
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+### LOADING RECORDINGS (tibble with AP and stim times) ###############
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+RECORDINGS <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
+)
+
+```
+
+* List of tibbles used to store data:
+  + RECORDINGS tibble: stores AP and stim time stamps, number of stimuli in each train, stimulus frequency categories (eg. 8 10 and 12 Hz belong to 10 Hz category)
+  + STIM_RESULTS: stores the data for PSTHs 
+
+
+
+```{r}
+### adding stimulus number within train
+RECORDINGS <- RECORDINGS %>%
+  mutate(stim_number = 0)
+
+### calculating stimulus number within train 
+initial_value <- RECORDINGS$stim_freq[1] %>% 
+  `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
+
+stim_counter <- 1 %>% 
+  `comment<-`("Counts stimuli in a train")
+index <- 1 %>% 
+  `comment<-`("Tracks the position (index) of stim_freq")
+
+RECORDINGS$stim_number[1] <- stim_counter
+repeat{
+  if (RECORDINGS$stim_freq[index + 1] == initial_value) {
+    RECORDINGS$stim_number[index + 1] <- stim_counter + 1
+    stim_counter <- stim_counter + 1
+    index <- index + 1
+  } else {
+    initial_value <- RECORDINGS$stim_freq[index + 1]
+    stim_counter <- 1
+    RECORDINGS$stim_number[index + 1] <- stim_counter
+    index <- index + 1
+  }
+  
+  if (index == length(RECORDINGS$stim_number)) {
+    break
+  }
+}
+
+```
+
+
+# Spontaneous desynchronization of the FC slow oscillation 
+
+
+
+```{r,  echo=FALSE,warning=FALSE,message=FALSE}
+file_list <- list.files(
+  path = "data",
+  pattern = "*.mat", full.names = F, recursive = F
+)
+
+```
+
+
+```{r}
+file_to_load <- file_list[[1]]
+filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
+raw.rec <- readMat(file.path("data", file_to_load))
+
+###takes the first AP (first row) and tells the index of point with the max value
+points_to_peak <- which(raw.rec$ap[, , 1]$values[1, ] ==
+    max(raw.rec$ap[, , 1]$values[1, ])) %>%
+    as.numeric()
+
+### time of the peak of the APs after its first point
+raw.rec$ap[, , 1]$interval * points_to_peak
+
+ap <- raw.rec$ap[, , 1]$times %>% as.double()
+ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
+
+
+```
+
 
 ------- insert code here --------
  
 (spont_desynchron_analysis.R), 7 recordings
 
-# Anlysing the activity of PRF glycinergic cells during PFC photoactivation
 
-------- insert code here --------
-
-(cortical_stim_analysis.R)
 

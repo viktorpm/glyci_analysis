@@ -48,8 +48,8 @@ CreateRecTibble <- function(AP_times, stim_times) {
 
 
   stim_freqs_by_file <- recordings %>%
-    filter(signal_type == "stim") %>%
-    group_by(file_name) %>%
+    dplyr::filter(signal_type == "stim") %>%
+    dplyr::group_by(file_name) %>%
     distinct(stim_freq)
 
   ### I have NO IDEA of what happens here but it works

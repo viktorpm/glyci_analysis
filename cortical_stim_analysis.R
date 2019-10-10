@@ -48,17 +48,17 @@ repeat{
 }
 
 ### Alternative to repeat loop to number stimuli
-# RECORDINGS %>% 
-#   filter(signal_type == "stim") %>% 
+# RECORDINGS %>%
+#   filter(signal_type == "stim") %>%
 #   mutate(
 #     lag_sf = lag(stim_freq),
 #     asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
 #     cum_asd = cumsum(asd)
-#   ) %>% 
-#   select(file_name, stim_freq, cum_asd, stim_number) %>% 
+#   ) %>%
+#   select(file_name, stim_freq, cum_asd, stim_number) %>%
 #   group_by(cum_asd) %>% 
-#   mutate(stim_number_asd = row_number()) %>% 
-#   ungroup() %>% 
+#   mutate(stim_number_asd = row_number()) %>%
+#   ungroup() %>%
 #   View()
 
 ### replacing stim_number with NA at "AP"
@@ -220,7 +220,16 @@ CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
   #   )
   # return(PSTH_data)
 }
-lapply(animal_ID_list, CreatePSTHTibble, RECORDINGS = RECORDINGS, freq_filter_1)
+
+
+#freq_filter_10
+#freq_filter_1
+#freq_filter_20
+
+lapply(animal_ID_list, 
+       CreatePSTHTibble, 
+       RECORDINGS = RECORDINGS, 
+       freqs = freq_filter_20)
 
 
 
@@ -290,6 +299,7 @@ multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 
 ### PLOT: PSTH all cells -----------
 PSTH_range <- c(0, 0.05)
+### 1, 8, 18
 freq_to_plot <- 18 %>% as.character()
 
 ### main plot
@@ -509,13 +519,14 @@ RESP_PROB <- RESP_PROB %>%
   mutate(resp_prob_range = (No_APs_range / No_stim) * 100)
 
 
-save(RESP_PROB, file = file.path("output_data","RData", "RESP_PROB.RData"))
+#save(RESP_PROB, file = file.path("output_data","RData", "RESP_PROB.RData"))
 
-
+RESload()
 
 ### PLOT: resp brob ----------
 ggplot(
-  data = RESP_PROB %>% filter(animal_id != "GII_20"),
+  data = RESP_PROB %>% 
+    dplyr::filter(animal_id != "GII_20"),
   mapping = aes(
     x = as.factor(freq),
     y = resp_prob_range
@@ -571,11 +582,11 @@ ggsave(file.path("output_data","resp_prob.eps"),
 ggplot(data = bind_rows(RESP_PROB %>% select(-peak_latency) %>% 
                           rename(latency_value = mean_latency) %>% 
                           mutate(latency_type = "mean") %>% 
-                          filter(animal_id != "GII_20"),
+                          dplyr::filter(animal_id != "GII_20"),
                         RESP_PROB %>% select(-mean_latency) %>% 
                           rename(latency_value = peak_latency) %>% 
                           mutate(latency_type = "peak") %>% 
-                          filter(animal_id != "GII_20")),
+                          dplyr::filter(animal_id != "GII_20")),
        mapping = aes(
          x = as.factor(freq),
          y = latency_value,
@@ -723,7 +734,7 @@ AP_PER_STIM <- do.call(
 
 
 hz1 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26", animal_id != "GII_20") %>% 
+  #dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>% 
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -733,7 +744,7 @@ hz1 <- AP_PER_STIM %>%
   add_column(freq = 1)
 
 hz10 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26", animal_id != "GII_20") %>%
+  #dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -743,7 +754,7 @@ hz10 <- AP_PER_STIM %>%
   add_column(freq = 10)
 
 hz20 <- AP_PER_STIM %>%
-  filter(animal_id != "GII_26", animal_id != "GII_20") %>%
+  #dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
   group_by(stim_number) %>%
   summarise(
     No_AP_mean = mean(No_AP),
@@ -752,12 +763,16 @@ hz20 <- AP_PER_STIM %>%
   ) %>%
   add_column(freq = 20)
 
-AP_COUNT <- bind_rows(hz1, hz10, hz20)
+AP_COUNT <- bind_rows(hz1, hz10, hz20) ### GII26 and GII20 were removed
+AP_COUNT_ALL <- bind_rows(hz1, hz10, hz20) ### with GII26 and GII20
 save(AP_COUNT, file = file.path("output_data","RData", "AP_COUNT.RData"))
+save(AP_COUNT_ALL, file = file.path("output_data","RData", "AP_COUNT_ALL.RData"))
+
+
 
 ### PLOT: ap numbers ----------
 ggplot(
-  data = AP_COUNT,
+  data = AP_COUNT_ALL,
   mapping = aes(
     x = stim_number,
     y = No_AP_mean,
@@ -767,10 +782,10 @@ ggplot(
   ) +
   
   ### theme, design, labels
-  theme_linedraw() +
-  theme(text = element_text(size = 35),
-        axis.text = element_text(size = 35), 
-        legend.text = element_text(size = 35),
+  theme_minimal() +
+  theme(text = element_text(size = 20),
+        axis.text = element_text(size = 20), 
+        legend.text = element_text(size = 20),
         panel.grid = element_blank(),
         panel.border = element_blank(),
         panel.background = element_blank()
@@ -779,11 +794,14 @@ ggplot(
   ylab("Mean no. APs") + 
   scale_x_discrete(limits = as.character(c(1:10))) +
   labs(fill = "Frequency", color = "Frequency" ) +
-  scale_fill_brewer(type = "div", palette = "Reds") +
-  scale_color_brewer(type = "div", palette = "Reds") +
+  #scale_fill_brewer(type = "div", palette = "Reds") +
+  #scale_color_brewer(type = "div", palette = "Reds") +
   
   ### data visualization layers
-  geom_point(size = 8, shape = 21) +
+  geom_point( aes(col = as.factor(freq)),
+     size = 3, 
+    # shape = 21
+    ) +
   geom_line(aes(color = as.factor(freq)), lwd = 1) +
   geom_errorbar(aes(
     ymin = No_AP_mean - SEM,
@@ -809,15 +827,23 @@ ggplot(
   mapping = aes(
     x = stim_number,
     y = No_AP,
-    shape = as.factor(animal_id),
+    #shape = as.factor(animal_id),
     color = as.factor(animal_id),
     linetype = as.factor(animal_id)
   )
 ) +
   geom_line() +
-  geom_point() +
+  geom_point(size = 3) +
   scale_x_discrete(limits = as.character(c(1:10))) +
-  scale_shape_manual(values = 1:nlevels(as.factor(AP_PER_STIM$animal_id)))
+  #scale_shape_manual(values = 1:nlevels(as.factor(AP_PER_STIM$animal_id))) +
+  theme_minimal() + 
+  geom_label_repel(
+    data = AP_PER_STIM %>% 
+      dplyr::filter(stim_number == 10),
+    aes(label = animal_id),
+    direction = "y",
+    hjust = -1
+    )
 
 
 
