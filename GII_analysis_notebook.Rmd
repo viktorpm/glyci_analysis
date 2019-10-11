@@ -760,13 +760,13 @@ Firing rate change **during** stimulus (photoactivation of the glycinergic fiber
 ggplot(data = cellranks_before_stim,
        mapping = aes(x = change_rank, y = activity_change)) +
   geom_point(data = cellranks_before_stim %>% 
-               dplyr::filter(control == F),size = 3,
+               dplyr::filter(control == F),size = 6,
              aes(col = position,
                  shape = pinch)
              ) +
-  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black")) + 
-  scale_shape_manual(values = c(T = "+", F = "-")) +
-  geom_point(data = cellranks_before_stim %>% 
+  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black", "control" = "magenta")) + 
+  scale_shape_manual(values = c("TRUE" = "+", "FALSE" = "-")) +
+  geom_point(data = cellranks_before_stim %>%
                dplyr::filter(control == T), size = 3, col = "magenta") +
   ### label for negative values
   geom_text_repel(data = cellranks_before_stim %>% 
@@ -797,7 +797,9 @@ ggplot(data = cellranks_before_stim,
     axis.text = element_text(size = 20),
     text = element_text(size = 20)
   ) +
-  ylim(-max(cellranks_before_stim$activity_change),max(cellranks_before_stim$activity_change))
+  xlab("Ranks") +
+  ylab("Change in firing rate [%]") +
+  ylim(-max(cellranks_before_stim$activity_change),max(cellranks_before_stim$activity_change)) 
 
 
 ```
