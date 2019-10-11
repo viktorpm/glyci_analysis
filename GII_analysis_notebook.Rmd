@@ -228,7 +228,32 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell27" |
       .$cell_id == "cell28" |
       .$cell_id == "cell29",
-    T))
+    T)) %>% 
+  mutate(position = "unknown") %>%
+  mutate(position = replace(
+    position,
+    .$cell_id == "cell01" |
+      .$cell_id == "cell02" |
+      .$cell_id == "cell03" |
+      .$cell_id == "cell10" |
+      .$cell_id == "cell11" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell15",
+    "IL")) %>%
+  mutate(position = replace(
+    position,
+    .$cell_id == "cell20" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell22",
+    "transient")) %>% 
+  mutate(position = replace(
+    position,
+    .$cell_id == "cell08" |
+      .$cell_id == "cell16" |
+      .$cell_id == "cell17" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24",
+    "PF"))
 
 datatable(CELL_INFO, 
           caption = "CELL_INFO table",
@@ -515,7 +540,7 @@ cellranks <- b_d_a_MFR %>%
                               -rank(-activity_change)) ) %>% 
   ungroup() %>% 
   left_join(CELL_INFO %>% 
-              select(cell_id, control, pinch),
+              select(cell_id, control, pinch, position),
             by = "cell_id")
 cellranks
 ```
@@ -544,7 +569,7 @@ cellranks_before_stim <- b_d_a_MFR %>%
                               -rank(-activity_change))
          ) %>% 
   left_join(CELL_INFO %>% 
-              select(cell_id, control, pinch),
+              select(cell_id, control, pinch, position),
             by = "cell_id")
 cellranks_before_stim
 ```
@@ -736,7 +761,11 @@ ggplot(data = cellranks_before_stim,
        mapping = aes(x = change_rank, y = activity_change)) +
   geom_point(data = cellranks_before_stim %>% 
                dplyr::filter(control == F),size = 3,
-             aes(col = pinch)) +
+             aes(col = position,
+                 shape = pinch)
+             ) +
+  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black")) + 
+  scale_shape_manual(values = c(T = "+", F = "-")) +
   geom_point(data = cellranks_before_stim %>% 
                dplyr::filter(control == T), size = 3, col = "magenta") +
   ### label for negative values
