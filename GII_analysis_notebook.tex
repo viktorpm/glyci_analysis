@@ -235,9 +235,9 @@ files:
   \end{itemize}
 \end{itemize}
 
-\hypertarget{htmlwidget-2ddff7c553eeec48f2fd}{}
+\hypertarget{htmlwidget-86ab837c6ef0a33c718d}{}
 
-\hypertarget{htmlwidget-f6dd8818fcbbec2f7ff0}{}
+\hypertarget{htmlwidget-ef282fb4a4e4ffe83a65}{}
 
 \textbf{CELL\_INFO} table to store the cell categories. It was created
 manually using the information from the summary excel table
@@ -266,7 +266,7 @@ manually using the information from the summary excel table
   \end{itemize}
 \end{itemize}
 
-\hypertarget{htmlwidget-969bf125be8db52e7d35}{}
+\hypertarget{htmlwidget-a001e3e2cbab664722e2}{}
 
 \hypertarget{calculations}{%
 \subsection{Calculations}\label{calculations}}
@@ -322,14 +322,14 @@ the glycinergic fibers) compared to baseline:
 \StringTok{    "d"}\NormalTok{) }\OperatorTok{%>%}\StringTok{ }\KeywordTok{mutate}\NormalTok{(}\DataTypeTok{change_rank =} \KeywordTok{ifelse}\NormalTok{(activity_change }\OperatorTok{>}\StringTok{ }
 \StringTok{    }\DecValTok{0}\NormalTok{, }\KeywordTok{rank}\NormalTok{(activity_change), }\OperatorTok{-}\KeywordTok{rank}\NormalTok{(}\OperatorTok{-}\NormalTok{activity_change))) }\OperatorTok{%>%}\StringTok{ }
 \StringTok{    }\KeywordTok{ungroup}\NormalTok{() }\OperatorTok{%>%}\StringTok{ }\KeywordTok{left_join}\NormalTok{(CELL_INFO }\OperatorTok{%>%}\StringTok{ }
-\StringTok{    }\KeywordTok{select}\NormalTok{(cell_id, control, pinch), }
-    \DataTypeTok{by =} \StringTok{"cell_id"}\NormalTok{)}
+\StringTok{    }\KeywordTok{select}\NormalTok{(cell_id, control, pinch, }
+\NormalTok{        position), }\DataTypeTok{by =} \StringTok{"cell_id"}\NormalTok{)}
 \NormalTok{cellranks}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## # A tibble: 29 x 8
+## # A tibble: 29 x 9
 ##    stim_cond cell_id   MFR base_MFR activity_change change_rank control
 ##    <fct>     <chr>   <dbl>    <dbl>           <dbl>       <dbl> <lgl>  
 ##  1 d         cell01  5.34    25.4            -79.0          -18 FALSE  
@@ -342,7 +342,7 @@ the glycinergic fibers) compared to baseline:
 ##  8 d         cell08  7.97     1.74           357.            28 FALSE  
 ##  9 d         cell09  0.688    1.59           -56.7          -14 FALSE  
 ## 10 d         cell10  4.25     5.08           -16.3          -10 FALSE  
-## # ... with 19 more rows, and 1 more variable: pinch <lgl>
+## # ... with 19 more rows, and 2 more variables: pinch <lgl>, position <chr>
 \end{verbatim}
 
 \textbf{cellranks\_before\_stim}: Calculating ranks based on the
@@ -366,13 +366,14 @@ the glycinergic fibers) compared to before stimulus:
 \StringTok{        }\DecValTok{0}\NormalTok{, }\KeywordTok{rank}\NormalTok{(activity_change), }
         \OperatorTok{-}\KeywordTok{rank}\NormalTok{(}\OperatorTok{-}\NormalTok{activity_change))) }\OperatorTok{%>%}\StringTok{ }
 \StringTok{    }\KeywordTok{left_join}\NormalTok{(CELL_INFO }\OperatorTok{%>%}\StringTok{ }\KeywordTok{select}\NormalTok{(cell_id, }
-\NormalTok{        control, pinch), }\DataTypeTok{by =} \StringTok{"cell_id"}\NormalTok{)}
+\NormalTok{        control, pinch, position), }
+        \DataTypeTok{by =} \StringTok{"cell_id"}\NormalTok{)}
 \NormalTok{cellranks_before_stim}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## # A tibble: 29 x 8
+## # A tibble: 29 x 9
 ##    cell_id      b     d      a activity_change change_rank control pinch
 ##    <chr>    <dbl> <dbl>  <dbl>           <dbl>       <dbl> <lgl>   <lgl>
 ##  1 cell01  14.5   5.34  22.3            -63.2          -13 FALSE   FALSE
@@ -385,7 +386,7 @@ the glycinergic fibers) compared to before stimulus:
 ##  8 cell08  12.5   7.97  12.1            -36.5           -9 FALSE   FALSE
 ##  9 cell09   0.708 0.688  0.749           -2.86          -5 FALSE   TRUE 
 ## 10 cell10   9.52  4.25   6.53           -55.4          -10 FALSE   TRUE 
-## # ... with 19 more rows
+## # ... with 19 more rows, and 1 more variable: position <chr>
 \end{verbatim}
 
 \hypertarget{data-to-plot}{%
@@ -416,7 +417,7 @@ to baseline.
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{htmlwidget-ab7c3d295b8c6b1754be}{}
+\hypertarget{htmlwidget-1636ee18d6f8dcbb26ca}{}
 
 \hypertarget{plotting}{%
 \subsection{Plotting}\label{plotting}}

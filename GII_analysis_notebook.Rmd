@@ -2,14 +2,14 @@
 title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
 author: "Viktor Plattner"
 output:
-  pdf_document:
-    number_sections: yes
-    toc: yes
-    keep_tex: true
   html_notebook:
     number_sections: yes
     toc: yes
     toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    keep_tex: true
   html_document:
     number_sections: yes
     df_print: paged
@@ -958,6 +958,4 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 ------- insert code here --------
  
 (spont_desynchron_analysis.R), 7 recordings
-
-
 
