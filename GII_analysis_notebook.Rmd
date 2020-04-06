@@ -79,6 +79,10 @@ library(exactRankTests) ### wilcox.test for ties
 library(WaveletComp) ### wavelet
 library(signal)
 
+library(STAR)
+library(see) #for half violinplot
+library(gghalves) #for half violinplot
+
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 
 knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff=30))
@@ -958,4 +962,70 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 ------- insert code here --------
  
 (spont_desynchron_analysis.R), 7 recordings
+
+# Terminals
+
+## Loading data
+
+```{r message=FALSE, warning=FALSE, tidy=TRUE}
+file_path <- file.path('data',
+                       'Emi_terminals',
+                       'terminal_measures.csv' )  
+TERMINALS <- read.table(file = file_path, sep = ';', header = T, na.string = 'na')
+head(TERMINALS)
+
+```
+
+## Bouton area on different dendritic domains
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(data = TERMINALS, mapping = aes(x = postion, y = b_area)) +
+  geom_half_violin(position = position_nudge(x=-.15),
+                  trim = F,
+                  side = "l",
+                  scale = "area",
+                  draw_quantiles = c(0.5),
+                  aes(fill = postion)) +
+  geom_jitter(position = position_jitter(0.1))
+
+```
+
+## Area of boutons with *m2* and *unknown* origin
+
+```{r fig.width=10, echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = TERMINALS,
+       mapping = aes(x = origin, y = b_area)) +
+  geom_half_violin(position = position_nudge(x=-.15),
+                   trim = F,
+                   side = "l",
+                   scale = "count",
+                   draw_quantiles = c(0.5)
+                   #fill = alpha(0.1),
+                   #aes(col = postion)
+                   ) +
+  geom_jitter(position = position_jitter(0.1),
+              aes(col = postion)) +
+  annotate("text",
+           x = 0.7, 
+           y = 1, 
+           label = paste("n = ", 
+                         TERMINALS %>%
+                           group_by(origin) %>% 
+                           summarise(n = length(b_area)) %>%
+                           dplyr::filter(origin == "m2") %>% 
+                           select(n) %>%
+                           as.character())
+           ) +
+  annotate("text",
+           x = 1.6, 
+           y = 1, 
+           label = paste("n = ", 
+                         TERMINALS %>%
+                           group_by(origin) %>% 
+                           summarise(n = length(b_area)) %>%
+                           dplyr::filter(origin == "unknown") %>% 
+                           select(n) %>%
+                           as.character())
+  )
+```
 

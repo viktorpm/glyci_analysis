@@ -9,6 +9,8 @@ library(R.matlab)
 library(STAR)
 library(plyr)
 library(ggplot2)
+library(see) #for half violinplot
+library(gghalves) #for half violinplot
 library(beanplot)
 library(tidyverse)
 
@@ -20,18 +22,57 @@ file_path <- file.path('data',
 
 
 TERMINALS <- read.table(file = file_path, sep = ';', header = T, na.string = 'na')
-str(TERMINALS)
+head(TERMINALS)
 
 
 
 
 ggplot(data = TERMINALS, mapping = aes(x = postion, y = b_area)) +
-  geom_violin() +
+  geom_half_violin(position = position_nudge(x=-.15),
+                  trim = F,
+                  side = "l",
+                  scale = "area",
+                  draw_quantiles = c(0.5),
+                  aes(fill = postion)) +
   geom_jitter(position = position_jitter(0.1))
 
 
 
-
+  
+ggplot(data = TERMINALS,
+       mapping = aes(x = origin, y = b_area)) +
+  geom_half_violin(position = position_nudge(x=-.15),
+                   trim = F,
+                   side = "l",
+                   scale = "count",
+                   draw_quantiles = c(0.5)
+                   #fill = alpha(0.1),
+                   #aes(col = postion)
+                   ) +
+  geom_jitter(position = position_jitter(0.1),
+              aes(col = postion)) +
+  annotate("text",
+           x = 0.7, 
+           y = 1, 
+           label = paste("n = ", 
+                         TERMINALS %>%
+                           group_by(origin) %>% 
+                           summarise(n = length(b_area)) %>%
+                           dplyr::filter(origin == "m2") %>% 
+                           select(n) %>%
+                           as.character())
+           ) +
+  annotate("text",
+           x = 1.6, 
+           y = 1, 
+           label = paste("n = ", 
+                         TERMINALS %>%
+                           group_by(origin) %>% 
+                           summarise(n = length(b_area)) %>%
+                           dplyr::filter(origin == "unknown") %>% 
+                           select(n) %>%
+                           as.character())
+  )
 
 
 
