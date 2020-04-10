@@ -1,3 +1,45 @@
+readLines(con = "firing_rate_interaction_plot.R") %>% grep(pattern = "library", x = ., value = T)
+
+
+lines <- map(list.files(pattern = ".R"),
+             ~ readLines(con = .x) %>% 
+               grep(pattern = "library\\(", x = ., value = T)
+             ) %>%
+  unlist()
+  
+lines %>% substr(start = 1,
+                 stop = regexpr(text = ., pattern = "\\)") %>%
+                   as.vector()
+                 ) # regexpr: in case of multiple matches it only takes the first one
+
+
+
+
+map(list.files(pattern = ".R"),
+    ~ readLines(con = .x) %>% 
+      grep(pattern = "library\\(", x = ., value = T)
+) %>%
+  unlist() %>%
+  substr(start = 1,
+         stop = regexpr(text = ., pattern = "\\)") %>% # regexpr: in case of multiple matches it only takes the first one
+           as.vector()
+  ) %>% `[` (!duplicated(.)) 
+  
+
+
+  
+
+gregexpr(pattern = "\\)") %>% unlist()
+  regexpr(pattern = "\\)") 
+
+  gregexpr(pattern = "\\)")
+  
+  
+  
+  
+  
+  
+
 a <- c(1:20)
 
 a <- a[-(seq(2, length(a), 2))] 

@@ -198,6 +198,8 @@ CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
   )
 
   ### constructing tibble to store first AP reltimes ------------------------------
+  
+  dir.create("output_data")
 
   file_exist_test <- file.exists(file.path("output_data", "cortical_stim_analysis.csv"))
   write_csv(tibble(
