@@ -875,7 +875,7 @@ ggplot(
 # Activity of PRF glycinergic cells during PFC photoactivation
 
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
+```{r loading data, echo=FALSE, message=FALSE, warning=FALSE}
 ### LOADING RECORDINGS (tibble with AP and stim times) ###############
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 RECORDINGS <- CreateRecTibble(
@@ -883,15 +883,6 @@ RECORDINGS <- CreateRecTibble(
   stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
 )
 
-```
-
-* List of tibbles used to store data:
-  + RECORDINGS tibble: stores AP and stim time stamps, number of stimuli in each train, stimulus frequency categories (eg. 8 10 and 12 Hz belong to 10 Hz category)
-  + STIM_RESULTS: stores the data for PSTHs 
-
-
-
-```{r}
 ### adding stimulus number within train
 RECORDINGS <- RECORDINGS %>%
   mutate(stim_number = 0)
@@ -922,6 +913,38 @@ repeat{
     break
   }
 }
+
+### replacing stim_number with NA at "AP"
+RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
+
+### categorizing stimuli
+RECORDINGS <- RECORDINGS %>%
+  mutate(stim_freq_categ = stim_freq) %>%
+  mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 12 | stim_freq_categ == 8),
+    values = 10
+  )) %>%
+  mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 18),
+    values = 20
+  ))
+
+```
+
+* List of tibbles used to store data:
+  + RECORDINGS tibble: stores AP and stim time stamps, number of stimuli in each train, stimulus frequency categories (eg. 8 10 and 12 Hz belong to 10 Hz category)
+  + STIM_RESULTS: stores the data for PSTHs 
+
+
+
+```{r message=FALSE, warning=FALSE, tidy=TRUE}
+datatable(RECORDINGS, 
+          caption ="RECORDINGS tibble", 
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
+
 
 ```
 

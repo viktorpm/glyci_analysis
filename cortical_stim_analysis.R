@@ -8,6 +8,8 @@ library(WaveletComp) ### wavelet
 library(diptest) ### to test distribution uni/multimodality (ISI)
 library(ggsignif)
 library(ggrepel)
+library(gghalves) #half violin plot
+library(see) # half violin half dot
 
 ### LOADING RECORDINGS (tibble with AP and stim times) ###############
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
@@ -226,6 +228,8 @@ CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
 #freq_filter_1
 #freq_filter_20
 
+
+### Replace freq_filter_*, running it multiple times cretes duplicates!!!!!
 lapply(animal_ID_list, 
        CreatePSTHTibble, 
        RECORDINGS = RECORDINGS, 
@@ -252,10 +256,16 @@ gp_box_1 <- ggplot(
     ),
   mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
-  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
-  # geom_flat_violin() +
-  geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  gghalves::geom_half_violin(side = "r", trim = T, scale = "width") +
+  # geom_dotplot(binaxis = "y", 
+  #              dotsize = 4, 
+  #              stackdir = "down", 
+  #              binwidth = 0.0002,method = "histodot",binpositions = "all",
+  #              ) +
+  # see::geom_violindot(binwidth = 0.0001,size_dots = 6,) +
+  geom_jitter(position = position_jitter(0), shape = "|") +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0)
 
 gp_box_10 <- ggplot(
@@ -269,8 +279,10 @@ gp_box_10 <- ggplot(
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
+  geom_half_violin(side = "r", trim = T, scale = "width") +
+  geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_flat_violin() +
-  geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0)
 
 gp_box_20 <- ggplot(
@@ -284,15 +296,29 @@ gp_box_20 <- ggplot(
 ) +
   # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
   coord_flip() +
+  geom_half_violin(side = "r", trim = T, scale = "width") +
+  geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_flat_violin() +
-  geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0)
 
 source(file.path("supplementary_functions", "multiplot.R"))
 multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 
 
-
+PSTH_range <- c(0, 0.05)
+ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 1
+    ),
+  mapping = aes(x = first_ap_reltimes)
+) +
+  geom_histogram() +
+  facet_wrap(~animal_id)
+  
 
 ### Histograms ----------------------------------------
 
@@ -300,7 +326,7 @@ multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 ### PLOT: PSTH all cells -----------
 PSTH_range <- c(0, 0.05)
 ### 1, 8, 18
-freq_to_plot <- 18 %>% as.character()
+freq_to_plot <- 1 %>% as.character()
 
 ### main plot
 gp_hist <- ggplot(
