@@ -1,6 +1,6 @@
 ---
 title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
-author: "Viktor Plattner"
+author: "Viktor Plattner, Emilia Bosz, Laszlo Acsady"
 output:
   html_notebook:
     number_sections: yes
@@ -874,15 +874,21 @@ ggplot(
 
 # Activity of PRF glycinergic cells during PFC photoactivation
 
+## Loading and transforming (hidden code) data
 
-```{r loading data, echo=FALSE, message=FALSE, warning=FALSE}
-### LOADING RECORDINGS (tibble with AP and stim times) ###############
+
+```{r loading data, message=FALSE, warning=FALSE}
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 RECORDINGS <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
 )
 
+STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
+```
+
+
+```{r transforming data, echo=FALSE, message=FALSE, warning=FALSE}
 ### adding stimulus number within train
 RECORDINGS <- RECORDINGS %>%
   mutate(stim_number = 0)
@@ -938,8 +944,7 @@ RECORDINGS <- RECORDINGS %>%
   + STIM_RESULTS: stores the data for PSTHs 
 
 
-
-```{r message=FALSE, warning=FALSE, tidy=TRUE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
 datatable(RECORDINGS, 
           caption ="RECORDINGS tibble", 
           rownames = TRUE, 
@@ -947,6 +952,86 @@ datatable(RECORDINGS,
 
 
 ```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
+datatable(STIM_RESULTS, 
+          caption ="STIM_RESULTS tibble", 
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
+
+```
+
+## Plotting
+
+### Distribution of frist APs after cortical activation
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+
+source(file.path("supplementary_functions", "geom_flat_violin.R"))
+PSTH_range <- c(0, 0.05)
+gp_box_1 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 1
+    ),
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
+) +
+  coord_flip() +
+  gghalves::geom_half_violin(side = "r", trim = T, scale = "width") +
+  # geom_dotplot(binaxis = "y", 
+  #              dotsize = 4, 
+  #              stackdir = "down", 
+  #              binwidth = 0.0002,method = "histodot",binpositions = "all",
+  #              ) +
+  # see::geom_violindot(binwidth = 0.0001,size_dots = 6,) +
+  geom_jitter(position = position_jitter(0), shape = "|") +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  geom_hline(yintercept = 0) +
+  ggtitle("1 Hz")
+
+gp_box_10 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 8
+    ),
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
+) +
+  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
+  coord_flip() +
+  geom_half_violin(side = "r", trim = T, scale = "width") +
+  geom_jitter(position = position_jitter(0), shape = "|") +
+  # geom_flat_violin() +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  geom_hline(yintercept = 0) +
+  ggtitle("10 Hz")
+
+gp_box_20 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == 18
+    ),
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
+) +
+  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
+  coord_flip() +
+  geom_half_violin(side = "r", trim = T, scale = "width") +
+  geom_jitter(position = position_jitter(0), shape = "|") +
+  # geom_flat_violin() +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  geom_hline(yintercept = 0) +
+  ggtitle("20 Hz")
+
+source(file.path("supplementary_functions", "multiplot.R"))
+multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
+```
+
 
 
 # Spontaneous desynchronization of the FC slow oscillation 

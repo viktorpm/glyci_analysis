@@ -268,7 +268,8 @@ gp_box_1 <- ggplot(
   # see::geom_violindot(binwidth = 0.0001,size_dots = 6,) +
   geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ggtitle("1 Hz")
 
 gp_box_10 <- ggplot(
   data = STIM_RESULTS %>%
@@ -285,7 +286,8 @@ gp_box_10 <- ggplot(
   geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_flat_violin() +
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ggtitle("10 Hz")
 
 gp_box_20 <- ggplot(
   data = STIM_RESULTS %>%
@@ -302,7 +304,8 @@ gp_box_20 <- ggplot(
   geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_flat_violin() +
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ggtitle("20 Hz")
 
 source(file.path("supplementary_functions", "multiplot.R"))
 multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
@@ -367,6 +370,7 @@ gp_hist <- ggplot(
 source(file.path("supplementary_functions", "HistStats.R"))
 gp_hist_stats <- HistStats(gplot_object = gp_hist)
 
+gp_hist_stats %>% as.tibble() %>% View()
 
 ### vertical lines
 for (i in seq_along(animal_ID_list)) {
