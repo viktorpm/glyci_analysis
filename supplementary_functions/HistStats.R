@@ -3,8 +3,11 @@
 ### extracts the data the plot was drawn from
 
 HistStats <- function(gplot_object) {
+  # browser()
   # gplot_object <- gp_hist
   plot_data <- ggplot_build(gplot_object)$data
+  
+  animal_id <- gplot_object$data$animal_id %>% unique()
 
   peak <- plot_data[[1]] %>%
     group_by(PANEL) %>%
@@ -14,16 +17,19 @@ HistStats <- function(gplot_object) {
 
   mean <- gplot_object$data %>%
     group_by(animal_id) %>%
+    dplyr::filter(first_ap_reltimes > 0) %>% 
     summarise(means = mean(first_ap_reltimes)) %>%
     pull(means)
 
   median <- gplot_object$data %>%
     group_by(animal_id) %>%
+    dplyr::filter(first_ap_reltimes > 0) %>% 
     summarise(medians = median(first_ap_reltimes)) %>%
     pull(medians)
 
   Q <- gplot_object$data %>%
     group_by(animal_id) %>%
+    dplyr::filter(first_ap_reltimes > 0) %>% 
     summarise(Qs = list(quantile(first_ap_reltimes))) %>%
     pull(Qs)
 
@@ -100,6 +106,8 @@ HistStats <- function(gplot_object) {
     length()
 
   output <- list(
+    animal_id = animal_id,
+    #stim_freq = frequency,
     peak = peak, ### x positin of the peak of the histogram
     mean = mean, ### x positin of the mean of the data
     median = median, ### x positin of the median of the data
