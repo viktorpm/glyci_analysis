@@ -50,7 +50,9 @@ ggplot(data = TERMINALS,
                    #aes(col = postion)
                    ) +
   geom_jitter(position = position_jitter(0.1),
-              aes(col = postion)) +
+              aes(col = postion, alpha = abs(b_area-median(b_area))
+                  )
+              ) +
   annotate("text",
            x = 0.7, 
            y = 1, 
