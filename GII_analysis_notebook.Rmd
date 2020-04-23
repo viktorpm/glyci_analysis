@@ -1029,13 +1029,12 @@ datatable(hist_stats,
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
-PSTH_range <- c(0, 0.05)
-gp_box_1 <- ggplot(
+#PSTH_range <- c(0, 0.05)
+ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 1
+      first_ap_reltimes < PSTH_range[2]
     ),
   mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
@@ -1050,46 +1049,8 @@ gp_box_1 <- ggplot(
   geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0) +
-  ggtitle("1 Hz")
+  facet_wrap(~freq)
 
-gp_box_10 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 8
-    ),
-  mapping = aes(y = first_ap_reltimes, x = animal_id)
-) +
-  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
-  coord_flip() +
-  geom_half_violin(side = "r", trim = T, scale = "width") +
-  geom_jitter(position = position_jitter(0), shape = "|") +
-  # geom_flat_violin() +
-  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0) +
-  ggtitle("10 Hz")
-
-gp_box_20 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 18
-    ),
-  mapping = aes(y = first_ap_reltimes, x = animal_id)
-) +
-  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
-  coord_flip() +
-  geom_half_violin(side = "r", trim = T, scale = "width") +
-  geom_jitter(position = position_jitter(0), shape = "|") +
-  # geom_flat_violin() +
-  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0) +
-  ggtitle("20 Hz")
-
-source(file.path("supplementary_functions", "multiplot.R"))
-multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
 ```
 
 ### PSTH @ 1 Hz cortical activation
@@ -1298,7 +1259,7 @@ gp_hist +
 
 ### PSTH @ 20 Hz cortical activation
 
-```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.width=10, fig.height=8, message=FALSE, warning=FALSE}
 ### main plot
 
 ### set PSTH range: see earlier (calculating hist stats chunk)
