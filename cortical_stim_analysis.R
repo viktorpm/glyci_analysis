@@ -279,13 +279,12 @@ STIM_RESULTS$animal_id %>%
 ### Boxplots ----------------------------------------
 
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
-PSTH_range <- c(0, 0.05)
-gp_box_1 <- ggplot(
+PSTH_range <- c(-0.01, 0.04)
+ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 1
+      first_ap_reltimes < PSTH_range[2]
     ),
   mapping = aes(y = first_ap_reltimes, x = animal_id)
 ) +
@@ -300,60 +299,10 @@ gp_box_1 <- ggplot(
   geom_jitter(position = position_jitter(0), shape = "|") +
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0) +
-  ggtitle("1 Hz")
-
-gp_box_10 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 8
-    ),
-  mapping = aes(y = first_ap_reltimes, x = animal_id)
-) +
-  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
-  coord_flip() +
-  geom_half_violin(side = "r", trim = T, scale = "width") +
-  geom_jitter(position = position_jitter(0), shape = "|") +
-  # geom_flat_violin() +
-  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0) +
-  ggtitle("10 Hz")
-
-gp_box_20 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 18
-    ),
-  mapping = aes(y = first_ap_reltimes, x = animal_id)
-) +
-  # geom_dotplot(binaxis = "y", dotsize = 0.5, stackdir = "up", binwidth = 0.001) +
-  coord_flip() +
-  geom_half_violin(side = "r", trim = T, scale = "width") +
-  geom_jitter(position = position_jitter(0), shape = "|") +
-  # geom_flat_violin() +
-  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
-  geom_hline(yintercept = 0) +
-  ggtitle("20 Hz")
-
-source(file.path("supplementary_functions", "multiplot.R"))
-multiplot(gp_box_1, gp_box_10, gp_box_20, cols = 3)
+  facet_wrap(~freq)
 
 
-PSTH_range <- c(0, 0.05)
-ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == 1
-    ),
-  mapping = aes(x = first_ap_reltimes)
-) +
-  geom_histogram() +
-  facet_wrap(~animal_id)
+
 
 
 ### Histograms ----------------------------------------
@@ -433,7 +382,7 @@ gp_hist <- ggplot(
           dplyr::filter(freq == freq_to_plot) %>% 
           dplyr::group_by(animal_id) %>% 
           pull(y_max),
-        col = animal_id
+        alpha = -abs(first_ap_reltimes-mean(first_ap_reltimes))
         ),inherit.aes = T
     ) +
 
@@ -683,26 +632,6 @@ resp_probability <- RECORDINGS %>%
   add_column(peak_latency = hist_stats %>% dplyr::filter(freq == 1) %>% pull(peak)) %>%
   add_column(mean_latency = hist_stats %>% dplyr::filter(freq == 1) %>% pull(mean))
 
-
-  RECORDINGS %>%
-  dplyr::filter(
-    signal_type == "stim"
-    #| stim_freq == 20 
-    #| stim_freq == 12
-  ) %>%
-  group_by(animal_id, stim_freq_categ) %>%
-  summarise(No_stim = length(signal_time)) %>% 
-  do(No_APs = hist_stats %>% pull(all_count_sum)) %>% 
-  pull(No_APs)
-
-  add_column(freq = 1, .after = "animal_id") %>%
-  add_column(No_APs = hist_stats %>% dplyr::filter(freq == 1) %>% pull(all_count_sum)) %>%
-  add_column(No_APs_range = hist_stats %>% dplyr::filter(freq == 1) %>% pull(range_count_sum)) %>%
-  add_column(peak_latency = hist_stats %>% dplyr::filter(freq == 1) %>% pull(peak)) %>%
-  add_column(mean_latency = hist_stats %>% dplyr::filter(freq == 1) %>% pull(mean))
-
-
-
 resp_probability10 <- RECORDINGS %>%
   dplyr::filter(
     signal_type == "stim",
@@ -713,10 +642,10 @@ resp_probability10 <- RECORDINGS %>%
   group_by(animal_id) %>%
   summarise(No_stim = length(signal_time)) %>%
   add_column(freq = 10, .after = "animal_id") %>%
-  add_column(No_APs = gp_hist_stats$all_count_sum) %>%
-  add_column(No_APs_range = gp_hist_stats$range_count_sum) %>%
-  add_column(peak_latency = gp_hist_stats$peak) %>%
-  add_column(mean_latency = gp_hist_stats$mean)
+  add_column(No_APs = hist_stats %>% dplyr::filter(freq == 8) %>% pull(all_count_sum)) %>%
+  add_column(No_APs_range = hist_stats %>% dplyr::filter(freq == 8) %>% pull(range_count_sum)) %>%
+  add_column(peak_latency = hist_stats %>% dplyr::filter(freq == 8) %>% pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>% dplyr::filter(freq == 8) %>% pull(mean))
 
 resp_probability20 <- RECORDINGS %>%
   dplyr::filter(
@@ -727,10 +656,10 @@ resp_probability20 <- RECORDINGS %>%
   group_by(animal_id) %>%
   summarise(No_stim = length(signal_time)) %>%
   add_column(freq = 20, .after = "animal_id") %>%
-  add_column(No_APs = gp_hist_stats$all_count_sum) %>%
-  add_column(No_APs_range = gp_hist_stats$range_count_sum) %>%
-  add_column(peak_latency = gp_hist_stats$peak) %>%
-  add_column(mean_latency = gp_hist_stats$mean)
+  add_column(No_APs = hist_stats %>% dplyr::filter(freq == 18) %>% pull(all_count_sum)) %>%
+  add_column(No_APs_range = hist_stats %>% dplyr::filter(freq == 18) %>% pull(range_count_sum)) %>%
+  add_column(peak_latency = hist_stats %>% dplyr::filter(freq == 18) %>% pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>% dplyr::filter(freq == 18) %>% pull(mean))
 
 
 
@@ -742,14 +671,15 @@ RESP_PROB <- RESP_PROB %>%
 
 # save(RESP_PROB, file = file.path("output_data","RData", "RESP_PROB.RData"))
 
-?RESload()
+
+
 
 ### PLOT: resp brob ----------
 ggplot(
   data = RESP_PROB %>%
     dplyr::filter(animal_id != "GII_20"),
   mapping = aes(
-    x = as.factor(freq),
+    x = as.factor(stim_freq),
     y = resp_prob_range
   )
 ) +
@@ -822,15 +752,15 @@ ggplot(
 ) +
 
   ### theme, design, labels
-  theme_bw() +
-  theme(
-    text = element_text(size = 35),
-    axis.text = element_text(size = 35),
-    axis.ticks.length = unit(5, "mm"),
-    panel.grid = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_blank()
-  ) +
+  #theme_bw() +
+  # theme(
+  #   text = element_text(size = 35),
+  #   axis.text = element_text(size = 35),
+  #   axis.ticks.length = unit(5, "mm"),
+  #   panel.grid = element_blank(),
+  #   panel.border = element_blank(),
+  #   panel.background = element_blank()
+  # ) +
   # scale_color_brewer(palette = "Blacks") +
   xlab("Stimulus frequency") +
   ylab("Peak latency") +
@@ -887,11 +817,104 @@ ggplot(
 #   test = "mood.test")
 
 
-ggsave(file.path("output_data", "latency.eps"),
-  width = 8,
-  height = 10,
-  dpi = 300
-)
+
+### creating tibble
+RESP_PROB1 <- left_join(
+  STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2]
+    ) %>%
+    group_by(animal_id, freq) %>%
+    summarise(No_APs = length(first_ap_reltimes)) %>% 
+    rename(stim_freq = freq) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
+  
+  RECORDINGS %>%
+    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1","10","20")) %>%
+    group_by(animal_id, stim_freq_categ) %>%
+    summarise(No_stim = length(signal_time)) %>% 
+    mutate(stim_freq = as.numeric(stim_freq_categ)) %>% 
+    select(-stim_freq_categ)
+) %>% 
+  add_column(No_APs_range = hist_stats %>% 
+               arrange(animal_id) %>% 
+               mutate(freq = replace(freq, freq == 18, 20)) %>% 
+               mutate(freq = replace(freq, freq == 8, 10)) %>% 
+               rename(stim_freq = freq) %>% pull(range_count_sum)) %>% 
+  mutate(resp_prob = (No_APs / No_stim) * 100) %>% 
+  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>% 
+  add_column(peak_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(mean))
+
+
+
+### plotting latencies
+ggplot(data = RESP_PROB1 %>% 
+         gather(key = "latency_type", 
+                value = "latency_value",
+                peak_latency, 
+                mean_latency) %>% 
+         dplyr::filter(animal_id != "GII_20"),
+       mapping = aes(x = as.factor(stim_freq), 
+                     y = latency_value*1000)) +
+  ### data visualization layers
+  geom_point(
+    aes(color = latency_type),
+    position = position_dodge(0.4),
+    size = 3
+  ) +
+  geom_boxplot(
+    aes(color = latency_type),
+    position = position_dodge(0.4),
+    width = 0.3,
+    alpha = 0,
+    lwd = 1,
+    fatten = 1.2
+  ) +
+  ylim(0,25) +
+  xlab("Stimulus frequency") +
+  ylab("Peak latency") +
+  scale_color_discrete(name = "Latency",
+                       breaks = c("mean_latency", "peak_latency"),
+                       labels = c("Mean", "Peak"))
+
+
+### plotting response probability
+
+ggplot(
+  data = RESP_PROB1 %>%
+    dplyr::filter(animal_id != "GII_20"),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = resp_prob_range
+  )) +
+  geom_point(
+    aes(fill = animal_id),
+    color = "black",
+    size = 3,
+    shape = 21,
+    position = position_jitter(0.1)
+  ) +
+  # geom_line(aes(group = animal_id)) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  xlab("Stimulus frequency") +
+  ylab("Response probability") +
+  geom_signif(comparisons = list(c("1", "10")),
+                           map_signif_level = TRUE,
+                           test = "mood.test") +
+  geom_signif(comparisons = list(c("10", "20")),
+              map_signif_level = TRUE,
+              test = "mood.test")
+
+
+
+
 
 
 
