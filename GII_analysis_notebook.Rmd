@@ -1359,6 +1359,114 @@ gp_hist +
 ```
 
 
+### Response probability and latency
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+RESP_PROB <- left_join(
+  STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2]
+    ) %>%
+    group_by(animal_id, freq) %>%
+    summarise(No_APs = length(first_ap_reltimes)) %>% 
+    rename(stim_freq = freq) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
+
+  RECORDINGS %>%
+    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1","10","20")) %>%
+    group_by(animal_id, stim_freq_categ) %>%
+    summarise(No_stim = length(signal_time)) %>% 
+    mutate(stim_freq = as.numeric(stim_freq_categ)) %>% 
+    select(-stim_freq_categ)
+) %>% 
+  add_column(No_APs_range = hist_stats %>% 
+           arrange(animal_id) %>% 
+           mutate(freq = replace(freq, freq == 18, 20)) %>% 
+           mutate(freq = replace(freq, freq == 8, 10)) %>% 
+           rename(stim_freq = freq) %>% pull(range_count_sum)) %>% 
+  mutate(resp_prob = (No_APs / No_stim) * 100) %>% 
+  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>% 
+  add_column(peak_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(mean))
+
+```
+
+```{r message=FALSE, warning=FALSE}
+datatable(RESP_PROB,
+          caption = "Response probabilities",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
+
+```
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(
+  data = RESP_PROB %>%
+    dplyr::filter(animal_id != "GII_20"),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = resp_prob_range
+  )) +
+  geom_point(
+    aes(fill = animal_id),
+    color = "black",
+    size = 3,
+    shape = 21,
+    position = position_jitter(0.1)
+  ) +
+  # geom_line(aes(group = animal_id)) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  xlab("Stimulus frequency") +
+  ylab("Response probability") +
+  geom_signif(comparisons = list(c("1", "10")),
+                           map_signif_level = TRUE,
+                           test = "mood.test") +
+  geom_signif(comparisons = list(c("10", "20")),
+              map_signif_level = TRUE,
+              test = "mood.test")
+
+
+```
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(data = RESP_PROB1 %>% 
+         gather(key = "latency_type", 
+                value = "latency_value",
+                peak_latency, 
+                mean_latency) %>% 
+         dplyr::filter(animal_id != "GII_20"),
+       mapping = aes(x = as.factor(stim_freq), 
+                     y = latency_value*1000)) +
+  ### data visualization layers
+  geom_point(
+    aes(color = latency_type),
+    position = position_dodge(0.4),
+    size = 3
+  ) +
+  geom_boxplot(
+    aes(color = latency_type),
+    position = position_dodge(0.4),
+    width = 0.3,
+    alpha = 0,
+    lwd = 1,
+    fatten = 1.2
+  ) +
+  ylim(0,25) +
+  xlab("Stimulus frequency") +
+  ylab("Peak latency") +
+  scale_color_discrete(name = "Latency",
+                       breaks = c("mean_latency", "peak_latency"),
+                       labels = c("Mean", "Peak"))
+```
+
+
 # Spontaneous desynchronization of the FC slow oscillation 
 
 
