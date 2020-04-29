@@ -51,12 +51,12 @@ repeat{
 
 ### Alternative to repeat loop to number stimuli
 # RECORDINGS %>%
-#   filter(signal_type == "stim") %>%
+#   dplyr::filter(signal_type == "stim") %>%
 #   mutate(
 #     lag_sf = lag(stim_freq),
 #     asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
 #     cum_asd = cumsum(asd)
-#   ) %>%
+#   ) %>% 
 #   select(file_name, stim_freq, cum_asd, stim_number) %>%
 #   group_by(cum_asd) %>%
 #   mutate(stim_number_asd = row_number()) %>%
@@ -614,184 +614,283 @@ ggplot(
 ### AP number within stimulus train -----------------------------
 
 ### counting no APs after each stimuli in a train
-CountAPperStim <- function(animal, stim_frequency) {
-  numbered_stim <- list()
-  RTM_creator <- function(ap, stim) {
-    ap_vect <- ap %>% as.vector()
-    stim_vect <- stim %>% as.vector()
+# CountAPperStim <- function(animal, stim_frequency) {
+#   numbered_stim <- list()
+#   RTM_creator <- function(ap, stim) {
+#     ap_vect <- ap %>% as.vector()
+#     stim_vect <- stim %>% as.vector()
+# 
+#     mat_AP <- matrix(
+#       ap_vect,
+#       nrow = length(stim_vect),
+#       ncol = length(ap_vect), byrow = T
+#     )
+# 
+#     mat_stim <- matrix(
+#       stim_vect,
+#       nrow = length(stim_vect),
+#       ncol = length(ap_vect)
+#     )
+# 
+# 
+#     mat_reltimes <- mat_AP - mat_stim
+#     mat_reltimes[mat_reltimes == 0] <- NA
+#     return(mat_reltimes)
+#   }
+#   for (i in 1:10) {
+#     stim <- RECORDINGS %>%
+#       dplyr::filter(
+#         stim_freq_categ == stim_frequency,
+#         stim_number == i,
+#         animal_id == animal
+#       ) %>%
+#       pull(signal_time)
+# 
+#     ap <- RECORDINGS %>%
+#       dplyr::filter(
+#         signal_type == "AP",
+#         animal_id == animal
+#       ) %>%
+#       pull(signal_time)
+# 
+#     numbered_stim[[i]] <- RTM_creator(ap = ap, stim = stim)
+#   }
+# 
+# 
+#   AP_counts <- list()
+# 
+#   for (i in c(1:10)) {
+#     AP_counts[[i]] <- length(numbered_stim[[i]][numbered_stim[[i]] > 0 &
+#       numbered_stim[[i]] < 0.05 ])
+#   }
+# 
+#   AP_counts <- AP_counts %>%
+#     unlist() %>%
+#     tibble(No_AP = .) %>%
+#     mutate(stim_number = c(1:10)) %>%
+#     mutate(animal_id = animal)
+# 
+#   do.call(rbind, AP_counts)
+#   return(AP_counts)
+# }
+# 
+# AP_PER_STIM <- do.call(
+#   rbind,
+#   lapply(RECORDINGS$animal_id %>% as.factor() %>% levels(),
+#     CountAPperStim,
+#     stim_frequency = 20
+#   )
+# )
+# 
+# v1 = c()
+# v1 <- c(v1, AP_PER_STIM %>% pull(No_AP))
+# v1
+# 
+# 
+# hz1 <- AP_PER_STIM %>%
+#   # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
+#   group_by(stim_number) %>%
+#   summarise(
+#     No_AP_mean = mean(No_AP),
+#     No_AP_sd = sd(No_AP),
+#     SEM = sd(No_AP) / sqrt(length(No_AP))
+#   ) %>%
+#   add_column(freq = 1)
+# 
+# hz10 <- AP_PER_STIM %>%
+#   # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
+#   group_by(stim_number) %>%
+#   summarise(
+#     No_AP_mean = mean(No_AP),
+#     No_AP_sd = sd(No_AP),
+#     SEM = sd(No_AP) / sqrt(length(No_AP))
+#   ) %>%
+#   add_column(freq = 10)
+# 
+# hz20 <- AP_PER_STIM %>%
+#   # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
+#   group_by(stim_number) %>%
+#   summarise(
+#     No_AP_mean = mean(No_AP),
+#     No_AP_sd = sd(No_AP),
+#     SEM = sd(No_AP) / sqrt(length(No_AP))
+#   ) %>%
+#   add_column(freq = 20)
+# 
+# AP_COUNT <- bind_rows(hz1, hz10, hz20) ### GII26 and GII20 were removed
+# AP_COUNT_ALL <- bind_rows(hz1, hz10, hz20) ### with GII26 and GII20
+# save(AP_COUNT, file = file.path("output_data", "RData", "AP_COUNT.RData"))
+# save(AP_COUNT_ALL, file = file.path("output_data", "RData", "AP_COUNT_ALL.RData"))
 
-    mat_AP <- matrix(
-      ap_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect), byrow = T
-    )
 
-    mat_stim <- matrix(
-      stim_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect)
-    )
+######
 
 
-    mat_reltimes <- mat_AP - mat_stim
-    mat_reltimes[mat_reltimes == 0] <- NA
-    return(mat_reltimes)
-  }
-  for (i in 1:10) {
-    stim <- RECORDINGS %>%
-      dplyr::filter(
-        stim_freq_categ == stim_frequency,
-        stim_number == i,
-        animal_id == animal
-      ) %>%
-      pull(signal_time)
-
-    ap <- RECORDINGS %>%
-      dplyr::filter(
-        signal_type == "AP",
-        animal_id == animal
-      ) %>%
-      pull(signal_time)
-
-    numbered_stim[[i]] <- RTM_creator(ap = ap, stim = stim)
-  }
-
-
-  AP_counts <- list()
-
-  for (i in c(1:10)) {
-    AP_counts[[i]] <- length(numbered_stim[[i]][numbered_stim[[i]] > 0 &
-      numbered_stim[[i]] < 0.05 ])
-  }
-
-  AP_counts <- AP_counts %>%
-    unlist() %>%
-    tibble(No_AP = .) %>%
-    mutate(stim_number = c(1:10)) %>%
-    mutate(animal_id = animal)
-
-  do.call(rbind, AP_counts)
-  return(AP_counts)
+APCount <- function(animal) {
+  tmp_ap <- RECORDINGS %>% dplyr::filter(signal_type == "AP", animal_id == animal) %>% select(signal_time) %>% pull() 
+  
+  stim_trains <- RECORDINGS %>% 
+    dplyr::filter(signal_type == "stim") %>% 
+    mutate(lag_sfc = lag(stim_freq),
+           tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
+           cum_tmp_var = cumsum(tmp_var)) %>% 
+    group_by(animal_id, stim_freq, cum_tmp_var) %>% 
+    mutate(train_number = group_indices()) %>%
+    ungroup() %>%
+    select(-lag_sfc,-tmp_var,-cum_tmp_var) %>% View()
+    dplyr::filter(animal_id == animal) %>% 
+    group_by(stim_freq_categ, train_number, stim_number) %>% 
+    summarise(No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
+              AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
+              range_lower = signal_time,
+              range_upper = signal_time + 0.05,
+              animal_id = animal) 
+  return(stim_trains)
 }
+  
 
-AP_PER_STIM <- do.call(
-  rbind,
-  lapply(RECORDINGS$animal_id %>% as.factor() %>% levels(),
-    CountAPperStim,
-    stim_frequency = 20
-  )
-)
+APC <- lapply(RECORDINGS$animal_id %>% unique, APCount)  %>% bind_rows() 
 
 
-hz1 <- AP_PER_STIM %>%
-  # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
-  group_by(stim_number) %>%
-  summarise(
-    No_AP_mean = mean(No_AP),
-    No_AP_sd = sd(No_AP),
-    SEM = sd(No_AP) / sqrt(length(No_AP))
-  ) %>%
-  add_column(freq = 1)
+APC %>%
+  dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
+  group_by(animal_id, stim_freq_categ, stim_number) %>% 
+  summarise(No_APs = sum(No_APs)) %>% 
+  ungroup() %>% 
+  group_by(stim_freq_categ, stim_number) %>% 
+  summarise(No_AP_mean = mean(No_APs),
+            No_AP_sd = sd(No_APs),
+            SEM = sd(No_APs) / sqrt(length(No_APs))) 
+  
 
-hz10 <- AP_PER_STIM %>%
-  # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
-  group_by(stim_number) %>%
-  summarise(
-    No_AP_mean = mean(No_AP),
-    No_AP_sd = sd(No_AP),
-    SEM = sd(No_AP) / sqrt(length(No_AP))
-  ) %>%
-  add_column(freq = 10)
-
-hz20 <- AP_PER_STIM %>%
-  # dplyr::filter(animal_id != "GII_26", animal_id != "GII_20") %>%
-  group_by(stim_number) %>%
-  summarise(
-    No_AP_mean = mean(No_AP),
-    No_AP_sd = sd(No_AP),
-    SEM = sd(No_AP) / sqrt(length(No_AP))
-  ) %>%
-  add_column(freq = 20)
-
-AP_COUNT <- bind_rows(hz1, hz10, hz20) ### GII26 and GII20 were removed
-AP_COUNT_ALL <- bind_rows(hz1, hz10, hz20) ### with GII26 and GII20
-save(AP_COUNT, file = file.path("output_data", "RData", "AP_COUNT.RData"))
-save(AP_COUNT_ALL, file = file.path("output_data", "RData", "AP_COUNT_ALL.RData"))
-
-
-
-### PLOT: ap numbers ----------
 ggplot(
-  data = AP_COUNT_ALL,
+  data = APC %>%
+    dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
+    group_by(animal_id, stim_freq_categ, stim_number) %>% 
+    summarise(No_APs = sum(No_APs)) %>% 
+    ungroup() %>% 
+    group_by(stim_freq_categ, stim_number) %>% 
+    summarise(No_AP_mean = mean(No_APs),
+              No_AP_sd = sd(No_APs),
+              SEM = sd(No_APs) / sqrt(length(No_APs))) 
+  ,
   mapping = aes(
     x = stim_number,
     y = No_AP_mean,
-    fill = as.factor(freq),
-    group = as.factor(freq)
+    colour = as.factor(stim_freq_categ),
+    group = as.factor(stim_freq_categ)
   )
 ) +
-
-  ### theme, design, labels
-  theme_minimal() +
-  theme(
-    text = element_text(size = 20),
-    axis.text = element_text(size = 20),
-    legend.text = element_text(size = 20),
-    panel.grid = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_blank()
-  ) +
-  xlab("No. stimulus in train") +
-  ylab("Mean no. APs") +
-  scale_x_discrete(limits = as.character(c(1:10))) +
-  labs(fill = "Frequency", color = "Frequency") +
-  # scale_fill_brewer(type = "div", palette = "Reds") +
-  # scale_color_brewer(type = "div", palette = "Reds") +
-
-  ### data visualization layers
-  geom_point(aes(col = as.factor(freq)),
-    size = 3,
-    # shape = 21
-  ) +
-  geom_line(aes(color = as.factor(freq)), lwd = 1) +
-  geom_errorbar(aes(
-    ymin = No_AP_mean - SEM,
-    ymax = No_AP_mean + SEM,
-    color = as.factor(freq)
-  ),
-  width = .5,
-  position = position_dodge(0.3),
-  lty = 5
-  )
-
-
-ggsave(file.path("output_data", "ap_numbers.eps"),
-  width = 12,
-  height = 8,
-  device = "eps"
-  # dpi = 300
-)
-
-
-ggplot(
-  data = AP_PER_STIM,
-  mapping = aes(
-    x = stim_number,
-    y = No_AP,
-    # shape = as.factor(animal_id),
-    color = as.factor(animal_id),
-    linetype = as.factor(animal_id)
-  )
-) +
+  geom_point() +
   geom_line() +
-  geom_point(size = 3) +
-  scale_x_discrete(limits = as.character(c(1:10))) +
-  # scale_shape_manual(values = 1:nlevels(as.factor(AP_PER_STIM$animal_id))) +
-  theme_minimal() +
+  xlab("No. stimulus in train") +
+  ylab("Mean no. APs accross animals") +
+  labs(color = "Frequency") +
+  ylim(0,18) +
+  scale_x_discrete(limits = as.character(c(1:10))) 
+
+
+ggplot(data = APC %>%
+         dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
+         group_by(animal_id, stim_freq_categ, stim_number) %>% 
+         summarise(No_APs = sum(No_APs)),
+       mapping = aes(x = stim_number, 
+                     y = No_APs,
+                     color = as.factor(animal_id),
+                     linetype = as.factor(animal_id))) +
+  geom_point() +
+  geom_line() +
+  scale_x_discrete(limits = c(1:10),breaks = c(1:10)) +
   geom_label_repel(
-    data = AP_PER_STIM %>%
-      dplyr::filter(stim_number == 10),
-    aes(label = animal_id),
-    direction = "y",
-    hjust = -1
-  )
+        data = . %>% 
+          dplyr::filter(stim_number == 10),
+        aes(label = animal_id),
+        direction = "y",
+        hjust = -2
+      ) +
+  expand_limits(x = 12) +
+
+  #xlim(1,10) +
+  facet_wrap(~stim_freq_categ) +
+  labs(linetype = "Animals",color = "Animals") +
+  xlab("No. stimulus in train") +
+  ylab("Number of APs") 
+  
+
+
+### PLOT: ap numbers ----------
+# ggplot(
+#   data = AP_COUNT_ALL,
+#   mapping = aes(
+#     x = stim_number,
+#     y = No_AP_mean,
+#     fill = as.factor(freq),
+#     group = as.factor(freq)
+#   )
+# ) +
+#   
+# 
+#   ### theme, design, labels
+#   theme_minimal() +
+#   theme(
+#     text = element_text(size = 20),
+#     axis.text = element_text(size = 20),
+#     legend.text = element_text(size = 20),
+#     panel.grid = element_blank(),
+#     panel.border = element_blank(),
+#     panel.background = element_blank()
+#   ) +
+#   xlab("No. stimulus in train") +
+#   ylab("Mean no. APs") +
+#   scale_x_discrete(limits = as.character(c(1:10))) +
+#   labs(fill = "Frequency", color = "Frequency") +
+#   # scale_fill_brewer(type = "div", palette = "Reds") +
+#   # scale_color_brewer(type = "div", palette = "Reds") +
+# 
+#   ### data visualization layers
+#   geom_point(aes(col = as.factor(freq)),
+#     size = 3,
+#     # shape = 21
+#   ) +
+#   geom_line(aes(color = as.factor(freq)), lwd = 1) +
+#   geom_errorbar(aes(
+#     ymin = No_AP_mean - SEM,
+#     ymax = No_AP_mean + SEM,
+#     color = as.factor(freq)
+#   ),
+#   width = .5,
+#   position = position_dodge(0.3),
+#   lty = 5
+#   )
+# 
+# 
+# ggsave(file.path("output_data", "ap_numbers.eps"),
+#   width = 12,
+#   height = 8,
+#   device = "eps"
+#   # dpi = 300
+# )
+# 
+# 
+# ggplot(
+#   data = AP_PER_STIM,
+#   mapping = aes(
+#     x = stim_number,
+#     y = No_AP,
+#     # shape = as.factor(animal_id),
+#     color = as.factor(animal_id),
+#     linetype = as.factor(animal_id)
+#   )
+# ) +
+#   geom_line() +
+#   geom_point(size = 3) +
+#   scale_x_discrete(limits = as.character(c(1:10))) +
+#   # scale_shape_manual(values = 1:nlevels(as.factor(AP_PER_STIM$animal_id))) +
+#   theme_minimal() +
+#   geom_label_repel(
+#     data = AP_PER_STIM %>%
+#       dplyr::filter(stim_number == 10),
+#     aes(label = animal_id),
+#     direction = "y",
+#     hjust = -1
+#   )
