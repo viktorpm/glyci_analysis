@@ -15,7 +15,7 @@ liblist <- map(list.files(pattern = ".Rmd|.R"),
 
 ### list of installed packages
 pkgs <- installed.packages() %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   pull(1)
 
 ### packages that are needed but not installed
