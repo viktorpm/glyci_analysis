@@ -989,10 +989,77 @@ hist_stats <- STIM_RESULTS %>%
 ```
 
 
+```{r calculating response prob, echo=FALSE, message=FALSE, warning=FALSE}
+RESP_PROB <- left_join(
+  STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2]
+    ) %>%
+    group_by(animal_id, freq) %>%
+    summarise(No_APs = length(first_ap_reltimes)) %>% 
+    rename(stim_freq = freq) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>% 
+    mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
+
+  RECORDINGS %>%
+    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1","10","20")) %>%
+    group_by(animal_id, stim_freq_categ) %>%
+    summarise(No_stim = length(signal_time)) %>% 
+    mutate(stim_freq = as.numeric(stim_freq_categ)) %>% 
+    select(-stim_freq_categ)
+) %>% 
+  add_column(No_APs_range = hist_stats %>% 
+           arrange(animal_id) %>% 
+           mutate(freq = replace(freq, freq == 18, 20)) %>% 
+           mutate(freq = replace(freq, freq == 8, 10)) %>% 
+           rename(stim_freq = freq) %>% pull(range_count_sum)) %>% 
+  mutate(resp_prob = (No_APs / No_stim) * 100) %>% 
+  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>% 
+  add_column(peak_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>% 
+               arrange(animal_id) %>%
+               pull(mean))
+
+```
+
+```{r calculating AP count, echo=FALSE, message=FALSE, warning=FALSE}
+APCount <- function(animal) {
+  tmp_ap <- RECORDINGS %>% dplyr::filter(signal_type == "AP", animal_id == animal) %>% select(signal_time) %>% pull() 
+  
+  stim_trains <- RECORDINGS %>% 
+    dplyr::filter(signal_type == "stim") %>% 
+    mutate(lag_sfc = lag(stim_freq),
+           tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
+           cum_tmp_var = cumsum(tmp_var)) %>% 
+    group_by(animal_id, stim_freq, cum_tmp_var) %>% 
+    mutate(train_number = group_indices()) %>%
+    ungroup() %>%
+    select(-lag_sfc,-tmp_var,-cum_tmp_var) %>% 
+    dplyr::filter(animal_id == animal) %>% 
+    group_by(stim_freq_categ, train_number, stim_number) %>% 
+    summarise(No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
+              AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
+              range_lower = signal_time,
+              range_upper = signal_time + 0.05) %>% 
+    add_column(animal_id = animal, .before = 1) %>% 
+    ungroup()
+  return(stim_trains)
+}
+  
+APC <- lapply(RECORDINGS$animal_id %>% unique, APCount)  %>% bind_rows() 
+
+```
+
+
 * List of tibbles used to store data:
   + RECORDINGS tibble: stores AP and stim time stamps, number of stimuli in each train, stimulus frequency categories (eg. 8 10 and 12 Hz belong to 10 Hz category)
   + STIM_RESULTS: stores the data for PSTHs 
   + hist_stats: stores PSTH statistics calculated from ggplot 
+  + RESP_PROB: response probability and latency data calculated from stim results and recordings
+  + APC: number of APs after each stimulus in a 50 ms window
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
 datatable(RECORDINGS, 
@@ -1019,6 +1086,21 @@ datatable(hist_stats,
 
 ```
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+datatable(RESP_PROB,
+          caption = "Response probabilities",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+datatable(APC,
+          caption = "Number of APs folowing each stimulus",
+          rownames = TRUE, 
+          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
+
+```
 
 
 ## Plotting
@@ -1361,49 +1443,7 @@ gp_hist +
 
 ### Response probability and latency
 
-```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-RESP_PROB <- left_join(
-  STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2]
-    ) %>%
-    group_by(animal_id, freq) %>%
-    summarise(No_APs = length(first_ap_reltimes)) %>% 
-    rename(stim_freq = freq) %>% 
-    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>% 
-    mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
 
-  RECORDINGS %>%
-    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1","10","20")) %>%
-    group_by(animal_id, stim_freq_categ) %>%
-    summarise(No_stim = length(signal_time)) %>% 
-    mutate(stim_freq = as.numeric(stim_freq_categ)) %>% 
-    select(-stim_freq_categ)
-) %>% 
-  add_column(No_APs_range = hist_stats %>% 
-           arrange(animal_id) %>% 
-           mutate(freq = replace(freq, freq == 18, 20)) %>% 
-           mutate(freq = replace(freq, freq == 8, 10)) %>% 
-           rename(stim_freq = freq) %>% pull(range_count_sum)) %>% 
-  mutate(resp_prob = (No_APs / No_stim) * 100) %>% 
-  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>% 
-  add_column(peak_latency = hist_stats %>% 
-               arrange(animal_id) %>%
-               pull(peak)) %>%
-  add_column(mean_latency = hist_stats %>% 
-               arrange(animal_id) %>%
-               pull(mean))
-
-```
-
-```{r message=FALSE, warning=FALSE}
-datatable(RESP_PROB,
-          caption = "Response probabilities",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
-
-```
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 ggplot(
@@ -1436,7 +1476,7 @@ ggplot(
 
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-ggplot(data = RESP_PROB1 %>% 
+ggplot(data = RESP_PROB %>% 
          gather(key = "latency_type", 
                 value = "latency_value",
                 peak_latency, 
@@ -1465,6 +1505,69 @@ ggplot(data = RESP_PROB1 %>%
                        breaks = c("mean_latency", "peak_latency"),
                        labels = c("Mean", "Peak"))
 ```
+
+
+### Number of APs after each stimulus in stimulus trains (50 ms window)
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(
+  data = APC %>%
+    dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
+    group_by(animal_id, stim_freq_categ, stim_number) %>% 
+    summarise(No_APs = sum(No_APs)) %>% 
+    ungroup() %>% 
+    group_by(stim_freq_categ, stim_number) %>% 
+    summarise(No_AP_mean = mean(No_APs),
+              No_AP_sd = sd(No_APs),
+              SEM = sd(No_APs) / sqrt(length(No_APs))) 
+  ,
+  mapping = aes(
+    x = stim_number,
+    y = No_AP_mean,
+    colour = as.factor(stim_freq_categ),
+    group = as.factor(stim_freq_categ)
+  )
+) +
+  geom_point() +
+  geom_line() +
+  xlab("No. stimulus in train") +
+  ylab("Mean no. APs accross animals") +
+  labs(color = "Frequency") +
+  ylim(0,18) +
+  scale_x_discrete(limits = as.character(c(1:10))) 
+```
+
+```{r echo=FALSE, fig.width=10, fig.height=4, message=FALSE, warning=FALSE}
+ggplot(data = APC %>%
+         dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
+         group_by(animal_id, stim_freq_categ, stim_number) %>% 
+         summarise(No_APs = sum(No_APs)),
+       mapping = aes(x = stim_number, 
+                     y = No_APs,
+                     color = as.factor(animal_id),
+                     linetype = as.factor(animal_id))) +
+  geom_point() +
+  geom_line() +
+  scale_x_discrete(limits = c(1:10),breaks = c(1:10)) +
+  geom_label_repel(
+        data = . %>% 
+          dplyr::filter(stim_number == 10),
+        aes(label = animal_id),
+        direction = "y",
+        hjust = -2
+      ) +
+  expand_limits(x = 12) +
+
+  #xlim(1,10) +
+  facet_wrap(~stim_freq_categ) +
+  labs(linetype = "Animals",color = "Animals") +
+  xlab("No. stimulus in train") +
+  ylab("Number of APs") 
+  
+
+```
+
 
 
 # Spontaneous desynchronization of the FC slow oscillation 
