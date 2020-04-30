@@ -2,17 +2,17 @@
 title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
 author: "Viktor Plattner, Emilia Bosz, Laszlo Acsady"
 output:
-  html_document:
+  html_notebook:
     number_sections: yes
-    df_print: paged
     toc: yes
     toc_float: yes
   pdf_document:
     number_sections: yes
     toc: yes
     keep_tex: true
-  html_notebook:
+  html_document:
     number_sections: yes
+    df_print: paged
     toc: yes
     toc_float: yes
 spacing: single
@@ -1572,7 +1572,9 @@ ggplot(data = APC %>%
 
 # Spontaneous desynchronization of the FC slow oscillation 
 
+## Loading data 
 
+Loading mat files to *file_list* object
 
 ```{r,  echo=FALSE,warning=FALSE,message=FALSE}
 file_list <- list.files(
@@ -1582,6 +1584,34 @@ file_list <- list.files(
 
 ```
 
+Content of mat files:
+
+* AP channel
+  + **title:** channel name
+  + **comment:** notes about the channel
+  + **resolution:** 2.5e-06
+  + **interval:** time between two data points in sec (5e-05)
+  + **scale:** scaling factor (y scale), real = (data * scale) + offset
+  + **offset:** scale offset
+  + **units:** unit of the channel (volt)
+  + **length:** number of APs
+  + **items:** No. points easch AP is represented by
+  + **trigger:**
+  + **traces:**
+  + **times:** times of the APs (first data point of the waveform)
+  + **codes:** marker codes of the APs
+  + **values:** matrix containing the waveforms of the APs (described by a given No. points)
+ 
+* EEG channel
+  + **title:** channel name
+  + **comment:**
+  + **interval:**
+  + **scale:** scaling factor (y scale), real = (data * scale) + offset
+  + **offset:** scale offset
+  + **units:**
+  + **start:**
+  + **length:**
+  + **values:**
 
 ```{r}
 file_to_load <- file_list[[1]]
