@@ -2,17 +2,17 @@
 title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
 author: "Viktor Plattner, Emilia Bosz, Laszlo Acsady"
 output:
-  html_notebook:
+  html_document:
     number_sections: yes
+    df_print: paged
     toc: yes
     toc_float: yes
   pdf_document:
     number_sections: yes
     toc: yes
     keep_tex: true
-  html_document:
+  html_notebook:
     number_sections: yes
-    df_print: paged
     toc: yes
     toc_float: yes
 spacing: single
