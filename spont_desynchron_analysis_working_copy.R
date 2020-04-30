@@ -15,9 +15,9 @@ file_list <- list.files(
   path = "data",
   pattern = "*.mat", full.names = F, recursive = F
 )
-
+sd_threshold = 1
 SyncDesyncAnalysis <- function(file, sd_threshold) {
-  file_to_load <- file
+  file_to_load <- file_list[1]
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
   raw.rec <- readMat(file.path("data", file_to_load))
   
@@ -201,10 +201,10 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### frequency of the second peak
   second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][1]]
   
-  jpeg(file.path("output_data", paste0(filename, c("_burst_threshold_PSD.jpg"))),
-       width = 800,
-       height = 600
-  )
+  # jpeg(file.path("output_data", paste0(filename, c("_burst_threshold_PSD.jpg"))),
+  #      width = 800,
+  #      height = 600
+  # )
   
   plot(
     PSD$frequency * samp_rate_ds,

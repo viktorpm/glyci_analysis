@@ -826,8 +826,8 @@ ggplot(data = SYNC_DESYNC_RESULT %>%
                     )
 
 
-ggsave(file.path("output_data","MFR_clust_vs_nonclust.png"),
-       width = 8,
-       height = 12,
-       dpi = 300)
+# ggsave(file.path("output_data","MFR_clust_vs_nonclust.png"),
+#        width = 8,
+#        height = 12,
+#        dpi = 300)
 
