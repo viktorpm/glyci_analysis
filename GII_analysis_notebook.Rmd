@@ -80,12 +80,12 @@ library(WaveletComp) ### wavelet
 library(signal)
 
 library(STAR)
-library(see) #for half violinplot
-library(gghalves) #for half violinplot
+library(see) # for half violinplot
+library(gghalves) # for half violinplot
 
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 
-knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff=30))
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 30))
 ```
 
 
@@ -104,17 +104,17 @@ In these experiments glycinergic fibers were photactivated while the firing rate
 Loading AP and stimuli times from *stimulus* and from *baseline* data to **IL_stim_firing** and to **IL_baseline_firing** tables:
 
 ```{r, message=FALSE, warning=FALSE, tidy=TRUE}
-IL_stim_firing <- CreateRecTibble(    
-  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),  
-  stim_times = read_csv(file.path("data", "IL_MFR","stimulus", "stim_times.csv"))
-) 
+IL_stim_firing <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR", "stimulus", "stim_times.csv"))
+)
 IL_stim_firing %>% head()
 ```
 
 ```{r, message=FALSE, warning=FALSE}
 IL_baseline_firing <- CreateRecTibble(
-  AP_times = read_csv(file.path("data", "IL_MFR","baseline", "AP_times.csv")),
-  stim_times = read_csv(file.path("data", "IL_MFR","baseline", "stim_times.csv"))
+  AP_times = read_csv(file.path("data", "IL_MFR", "baseline", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR", "baseline", "stim_times.csv"))
 )
 IL_stim_firing %>% head()
 ```
@@ -141,20 +141,22 @@ Summary information of the *stimulus* and  *baseline* recording files:
 ```{r, message=FALSE,echo=FALSE }
 
 info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
-datatable(info_stim, 
-          caption ="Summary table of the stimulus recording files (info_stim)", 
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
+datatable(info_stim,
+  caption = "Summary table of the stimulus recording files (info_stim)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 <br>
 
 ```{r,message=FALSE,echo=FALSE}
-info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline","file_info.csv"))
-datatable(info_baseline, 
-          caption ="Summary table of the baseline recording files (info_baseline)",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))  
+info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline", "file_info.csv"))
+datatable(info_baseline,
+  caption = "Summary table of the baseline recording files (info_baseline)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 <br>
 
@@ -176,7 +178,7 @@ CELL_INFO <- info_baseline %>%
   add_column(cell_id = substr(info_baseline$file_name, 1, 6), .before = "file_name") %>%
   mutate(bl_activity = T) %>%
   mutate(bl_activity = replace(
-    bl_activity, 
+    bl_activity,
     .$cell_id == "cell05" |
       .$cell_id == "cell10" |
       .$cell_id == "cell12" |
@@ -189,7 +191,7 @@ CELL_INFO <- info_baseline %>%
   )) %>%
   mutate(pinch = T) %>%
   mutate(pinch = replace(
-    pinch, 
+    pinch,
     .$cell_id == "cell01" |
       .$cell_id == "cell06" |
       .$cell_id == "cell07" |
@@ -206,7 +208,7 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell28",
     F
   )) %>%
- mutate(ident = T) %>%
+  mutate(ident = T) %>%
   mutate(ident = replace(
     ident,
     .$cell_id == "cell06" |
@@ -223,8 +225,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell26" |
       .$cell_id == "cell27",
     F
-  )) %>% 
-  mutate(control = F) %>% 
+  )) %>%
+  mutate(control = F) %>%
   mutate(control = replace(
     control,
     .$cell_id == "cell25" |
@@ -232,7 +234,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell27" |
       .$cell_id == "cell28" |
       .$cell_id == "cell29",
-    T)) %>% 
+    T
+  )) %>%
   mutate(position = "unknown") %>%
   mutate(position = replace(
     position,
@@ -243,13 +246,15 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell11" |
       .$cell_id == "cell14" |
       .$cell_id == "cell15",
-    "IL")) %>%
+    "IL"
+  )) %>%
   mutate(position = replace(
     position,
     .$cell_id == "cell20" |
       .$cell_id == "cell21" |
       .$cell_id == "cell22",
-    "transient")) %>% 
+    "transient"
+  )) %>%
   mutate(position = replace(
     position,
     .$cell_id == "cell08" |
@@ -257,15 +262,17 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell17" |
       .$cell_id == "cell23" |
       .$cell_id == "cell24",
-    "PF"))
+    "PF"
+  ))
 
-datatable(CELL_INFO, 
-          caption = "CELL_INFO table",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))  
+datatable(CELL_INFO,
+  caption = "CELL_INFO table",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 
-#IL_stim_firing$file_name %>% unique() %>% length()
-#info_stim$file_name %>% length()
+# IL_stim_firing$file_name %>% unique() %>% length()
+# info_stim$file_name %>% length()
 ```
 
 
@@ -277,16 +284,19 @@ datatable(CELL_INFO,
 ```{r, include=FALSE}
 ### CALCULATING --------
 
-IL_stim_firing <- left_join(IL_stim_firing, 
-                            info_stim %>% 
-                              select(file_name,
-                                     rec_length,
-                                     train_starts,
-                                     train_ends,
-                                     train_length), 
-                            by = "file_name")
+IL_stim_firing <- left_join(IL_stim_firing,
+  info_stim %>%
+    select(
+      file_name,
+      rec_length,
+      train_starts,
+      train_ends,
+      train_length
+    ),
+  by = "file_name"
+)
 
-### calculating stim start times 
+### calculating stim start times
 start_times <- IL_stim_firing %>%
   group_by(file_name) %>%
   summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
@@ -298,7 +308,7 @@ start_times <- IL_stim_firing %>%
   set_names(substr(info_stim$file_name, 1, 6)) %>%
   lapply(as.numeric)
 
-### calculating stim end times 
+### calculating stim end times
 end_times <- IL_stim_firing %>%
   group_by(file_name) %>%
   summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
@@ -319,15 +329,15 @@ CELL_INFO$cell_id
 ### function to calculate the number of AP b/d/a stim. Arguments: data (IL_stim_firing table with rec_length and stimulus train information)
 BDACalculator <- function(data, list) {
   cell_list <- list
-  
-    train_length <- data %>%
-      dplyr::filter(substr(file_name, 1, 6) == cell_list) %>%
-      select(train_length) %>%
-      pull() %>%
-      `[[`(1)
-  
-  
-  
+
+  train_length <- data %>%
+    dplyr::filter(substr(file_name, 1, 6) == cell_list) %>%
+    select(train_length) %>%
+    pull() %>%
+    `[[`(1)
+
+
+
   if (
     (data %>%
       dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
@@ -341,7 +351,7 @@ BDACalculator <- function(data, list) {
       dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
       select(signal_time) %>%
       pull()
-    
+
     AP_numbers <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
     colnames(AP_numbers) <- c("b", "d", "a")
 
@@ -357,97 +367,94 @@ BDACalculator <- function(data, list) {
       AP_numbers[train_num, 3] <- length(AP_times[AP_times > end_times[[cell_list]][train_num] &
         AP_times < end_times[[cell_list]][train_num] + train_length])
     }
-    
+
     melt(AP_numbers, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
       as.tibble() %>%
-      add_column(cell_id = cell_list) %>% 
+      add_column(cell_id = cell_list) %>%
       add_column(train_length = train_length)
-    
-    
-  } else { 
+  } else {
     ### in case of multiple units in the file:
     AP_times_1 <- data %>%
       dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 1) %>%
       select(signal_time) %>%
       pull()
-    
+
     AP_numbers_1 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
     colnames(AP_numbers_1) <- c("b", "d", "a")
-    
+
     for (train_num in 1:length(start_times[[cell_list]])) {
       ### before
       AP_numbers_1[train_num, 1] <- length(AP_times_1[start_times[[cell_list]][train_num] - train_length
-                                                  < AP_times_1 & AP_times_1 < start_times[[cell_list]][train_num]])
-      
+      < AP_times_1 & AP_times_1 < start_times[[cell_list]][train_num]])
+
       ### during
-      AP_numbers_1[train_num, 2] <- length(AP_times_1[AP_times_1 > start_times[[cell_list]][train_num] & 
-                                                        AP_times_1 < end_times[[cell_list]][train_num]])
-      
+      AP_numbers_1[train_num, 2] <- length(AP_times_1[AP_times_1 > start_times[[cell_list]][train_num] &
+        AP_times_1 < end_times[[cell_list]][train_num]])
+
       ### after
       AP_numbers_1[train_num, 3] <- length(AP_times_1[AP_times_1 > end_times[[cell_list]][train_num] &
-                                                        AP_times_1 < end_times[[cell_list]][train_num] + train_length])
+        AP_times_1 < end_times[[cell_list]][train_num] + train_length])
     }
-    
-    
+
+
     AP_times_2 <- data %>%
       dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 2) %>%
       select(signal_time) %>%
       pull()
-    
+
     AP_numbers_2 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
     colnames(AP_numbers_2) <- c("b", "d", "a")
-    
+
     for (train_num in 1:length(start_times[[cell_list]])) {
       ### before
       AP_numbers_2[train_num, 1] <- length(AP_times_2[start_times[[cell_list]][train_num] - train_length
-                                                      < AP_times_2 & AP_times_2 < start_times[[cell_list]][train_num]])
-      
+      < AP_times_2 & AP_times_2 < start_times[[cell_list]][train_num]])
+
       ### during
-      AP_numbers_2[train_num, 2] <- length(AP_times_2[AP_times_2 > start_times[[cell_list]][train_num] & 
-                                                        AP_times_2 < end_times[[cell_list]][train_num]])
-      
+      AP_numbers_2[train_num, 2] <- length(AP_times_2[AP_times_2 > start_times[[cell_list]][train_num] &
+        AP_times_2 < end_times[[cell_list]][train_num]])
+
       ### after
       AP_numbers_2[train_num, 3] <- length(AP_times_2[AP_times_2 > end_times[[cell_list]][train_num] &
-                                                        AP_times_2 < end_times[[cell_list]][train_num] + train_length])
+        AP_times_2 < end_times[[cell_list]][train_num] + train_length])
     }
-    
-    
-    
-    if (cell_list %>% substr(5,6) %>% as.numeric() %>% nchar() == 1) {
+
+
+
+    if (cell_list %>% substr(5, 6) %>% as.numeric() %>% nchar() == 1) {
       new_name <- paste0(
         "cell0",
-        cell_list %>% substr(5,6) %>% as.numeric() + 1
-      )
-    } 
-      
-    if (cell_list %>% substr(5,6) %>% as.numeric() %>% nchar() == 2) {
-      new_name <- paste0(
-        "cell",
-        cell_list %>% substr(5,6) %>% as.numeric() + 1
+        cell_list %>% substr(5, 6) %>% as.numeric() + 1
       )
     }
-    
+
+    if (cell_list %>% substr(5, 6) %>% as.numeric() %>% nchar() == 2) {
+      new_name <- paste0(
+        "cell",
+        cell_list %>% substr(5, 6) %>% as.numeric() + 1
+      )
+    }
+
     bind_rows(
       melt(AP_numbers_1, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
         as.tibble() %>%
-        add_column(cell_id = cell_list) %>% 
+        add_column(cell_id = cell_list) %>%
         add_column(train_length = train_length),
-      
+
       melt(AP_numbers_2, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
         as.tibble() %>%
-        add_column(cell_id = new_name) %>% 
+        add_column(cell_id = new_name) %>%
         add_column(train_length = train_length)
     )
-   }#else
-
-}#foo
+  } # else
+} # foo
 ```
 
 **b_d_a_MFR**: Calculating the number of APs -using a custom made function (*BDACalculator*)- before during and after the stimulus trains (*b_d_a_MFR*). 
 
 ```{r}
-b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>% 
-  bind_rows() %>%  
+b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
+  bind_rows() %>%
   mutate(FR = No_AP / train_length) %>%
   dplyr::group_by(stim_cond, cell_id) %>%
   summarise(MFR = mean(FR))
@@ -504,8 +511,8 @@ SDMeanISI <- function(f_name) {
     mutate(file_name = f_name)
 }
 
-sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>% 
-  bind_rows() %>% 
+sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>%
+  bind_rows() %>%
   as.tibble()
 
 sd_mean_isi <- sd_mean_isi %>%
@@ -534,18 +541,20 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$
 <br>
 
 ```{r}
-cellranks <- b_d_a_MFR %>% 
+cellranks <- b_d_a_MFR %>%
   group_by(stim_cond) %>%
-  mutate(base_MFR = sd_mean_isi$MFR) %>% 
-  mutate(activity_change = ((MFR-base_MFR)/base_MFR*100) %>% round(2)) %>% 
-  dplyr::filter(stim_cond == "d") %>% 
-  mutate(change_rank = ifelse(activity_change>0, 
-                              rank(activity_change), 
-                              -rank(-activity_change)) ) %>% 
-  ungroup() %>% 
-  left_join(CELL_INFO %>% 
-              select(cell_id, control, pinch, position),
-            by = "cell_id")
+  mutate(base_MFR = sd_mean_isi$MFR) %>%
+  mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
+  dplyr::filter(stim_cond == "d") %>%
+  mutate(change_rank = ifelse(activity_change > 0,
+    rank(activity_change),
+    -rank(-activity_change)
+  )) %>%
+  ungroup() %>%
+  left_join(CELL_INFO %>%
+    select(cell_id, control, pinch, position),
+  by = "cell_id"
+  )
 cellranks
 ```
 
@@ -565,16 +574,17 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - before\_MFR}{before\_MFR} * 10
 
 
 ```{r}
-cellranks_before_stim <- b_d_a_MFR %>% 
-  spread(key = stim_cond,value = MFR) %>% 
-  mutate(activity_change = ((d - b)/b*100) %>% round(2)) %>% 
-  mutate(change_rank = ifelse(activity_change > 0, 
-                              rank(activity_change), 
-                              -rank(-activity_change))
-         ) %>% 
-  left_join(CELL_INFO %>% 
-              select(cell_id, control, pinch, position),
-            by = "cell_id")
+cellranks_before_stim <- b_d_a_MFR %>%
+  spread(key = stim_cond, value = MFR) %>%
+  mutate(activity_change = ((d - b) / b * 100) %>% round(2)) %>%
+  mutate(change_rank = ifelse(activity_change > 0,
+    rank(activity_change),
+    -rank(-activity_change)
+  )) %>%
+  left_join(CELL_INFO %>%
+    select(cell_id, control, pinch, position),
+  by = "cell_id"
+  )
 cellranks_before_stim
 ```
 
@@ -590,17 +600,21 @@ TO_PLOT <- bind_rows(
   sd_mean_isi %>%
     select(MFR, cell_id, stim_cond),
   b_d_a_MFR
-) %>% left_join(CELL_INFO %>% 
-                  select(-file_name),
-                by = "cell_id") %>% 
-  left_join(cellranks %>% 
-              select(cell_id, change_rank, activity_change), 
-            by = "cell_id")
+) %>%
+  left_join(CELL_INFO %>%
+    select(-file_name),
+  by = "cell_id"
+  ) %>%
+  left_join(cellranks %>%
+    select(cell_id, change_rank, activity_change),
+  by = "cell_id"
+  )
 
 datatable(TO_PLOT,
-          caption = "TO_PLOT table",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
+  caption = "TO_PLOT table",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 <br><br>
 
@@ -642,7 +656,7 @@ ggplot(
   xlab("Recording period") +
   facet_wrap(vars(pinch)) +
   stat_compare_means(method = "wilcox.test", paired = T) +
-   geom_label_repel(
+  geom_label_repel(
     data = TO_PLOT %>%
       dplyr::filter(
         control == F,
@@ -654,7 +668,6 @@ ggplot(
     # hjust = 2,
     segment.size = .2
   )
- 
 ```
 
 <br><br>
@@ -679,24 +692,23 @@ ggplot(
     axis.text = element_text(size = 20),
     text = element_text(size = 20)
   ) +
-  ggtitle("Pinch",) + 
+  ggtitle("Pinch", ) +
   xlab("Recording period") +
   ylim(0, 35) +
-
   geom_boxplot(width = 0.2, alpha = 0.5) +
   geom_point(
     shape = 21,
     fill = "#EB8104",
-    #color = "white",
+    # color = "white",
     size = 4
   ) +
   # stroke = 2) +
   geom_line(
-    aes(group = cell_id), 
+    aes(group = cell_id),
     color = "#EB8104"
   ) +
   geom_label_repel(
-    data =  TO_PLOT %>%
+    data = TO_PLOT %>%
       dplyr::filter(
         control == F,
         stim_cond == "a"
@@ -716,43 +728,46 @@ ggplot(
 Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **baseline**:
 
 ```{r, fig.width=10, echo=FALSE,warning=FALSE}
-ggplot(data = cellranks,
-       mapping = aes(x = change_rank, y = activity_change)) +
-  geom_point(data = cellranks %>% 
-               dplyr::filter(control == F),size = 3) +
-  geom_point(data = cellranks %>% 
-               dplyr::filter(control == T), size = 3, col = "magenta") +
+ggplot(
+  data = cellranks,
+  mapping = aes(x = change_rank, y = activity_change)
+) +
+  geom_point(data = cellranks %>%
+    dplyr::filter(control == F), size = 3) +
+  geom_point(data = cellranks %>%
+    dplyr::filter(control == T), size = 3, col = "magenta") +
   ### label for negative values
-  geom_text_repel(data = cellranks %>% 
-                    dplyr::filter(activity_change < 0),
+  geom_text_repel(
+    data = cellranks %>%
+      dplyr::filter(activity_change < 0),
     aes(label = cell_id),
     direction = "y",
     angle = 90,
     hjust = .5,
     nudge_y = -2
-    ) +
-  
+  ) +
+
   ### label for positive values
-  geom_text_repel(data = cellranks %>% 
-                    dplyr::filter(activity_change > 0),
+  geom_text_repel(
+    data = cellranks %>%
+      dplyr::filter(activity_change > 0),
     aes(label = cell_id),
     direction = "x",
     angle = 0,
     hjust = .5,
     nudge_x = -1
-    ) +
+  ) +
   geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
   annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
   geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
   annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
   annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
-  theme_minimal() + 
+  theme_minimal() +
   theme(
     axis.text = element_text(size = 20),
     text = element_text(size = 20)
   ) +
-  ylim(-max(cellranks$activity_change),max(cellranks$activity_change))
-
+  ylim(-max(cellranks$activity_change), max(cellranks$activity_change))
 ```
 
 <br><br>
@@ -761,51 +776,56 @@ Firing rate change **during** stimulus (photoactivation of the glycinergic fiber
 
 ```{r, fig.width=10, echo=FALSE,warning=FALSE}
 
-ggplot(data = cellranks_before_stim,
-       mapping = aes(x = change_rank, y = activity_change)) +
-  geom_point(data = cellranks_before_stim %>% 
-               dplyr::filter(control == F),size = 6,
-             aes(col = position,
-                 shape = pinch)
-             ) +
-  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black", "control" = "magenta")) + 
+ggplot(
+  data = cellranks_before_stim,
+  mapping = aes(x = change_rank, y = activity_change)
+) +
+  geom_point(
+    data = cellranks_before_stim %>%
+      dplyr::filter(control == F), size = 6,
+    aes(
+      col = position,
+      shape = pinch
+    )
+  ) +
+  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black", "control" = "magenta")) +
   scale_shape_manual(values = c("TRUE" = "+", "FALSE" = "-")) +
   geom_point(data = cellranks_before_stim %>%
-               dplyr::filter(control == T), size = 3, col = "magenta") +
+    dplyr::filter(control == T), size = 3, col = "magenta") +
   ### label for negative values
-  geom_text_repel(data = cellranks_before_stim %>% 
-                    dplyr::filter(activity_change < 0),
+  geom_text_repel(
+    data = cellranks_before_stim %>%
+      dplyr::filter(activity_change < 0),
     aes(label = cell_id),
     direction = "y",
     angle = 90,
     hjust = .5,
     nudge_y = -2
-    ) +
-  
+  ) +
+
   ### label for positive values
-  geom_text_repel(data = cellranks_before_stim %>% 
-                    dplyr::filter(activity_change > 0),
+  geom_text_repel(
+    data = cellranks_before_stim %>%
+      dplyr::filter(activity_change > 0),
     aes(label = cell_id),
     direction = "x",
     angle = 0,
     hjust = .5,
     nudge_x = -1
-    ) +
+  ) +
   geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
   annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
   geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
   annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
   annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
-  theme_minimal() + 
+  theme_minimal() +
   theme(
     axis.text = element_text(size = 20),
     text = element_text(size = 20)
   ) +
   xlab("Ranks") +
   ylab("Change in firing rate [%]") +
-  ylim(-max(cellranks_before_stim$activity_change),max(cellranks_before_stim$activity_change)) 
-
-
+  ylim(-max(cellranks_before_stim$activity_change), max(cellranks_before_stim$activity_change))
 ```
 
 
@@ -853,7 +873,7 @@ ggplot(
         stim_cond == "baseline"
       ),
     mapping = aes(label = cell_id, col = change_rank),
-    #nudge_x = -.1,
+    # nudge_x = -.1,
     direction = "y",
     hjust = 4,
     segment.size = .2
@@ -864,8 +884,7 @@ ggplot(
     text = element_text(size = 20)
   ) +
   xlab("Recording period") +
-  labs(fill = "Rank" ,col = "Rank")
-
+  labs(fill = "Rank", col = "Rank")
 ```
 
 
@@ -893,13 +912,13 @@ STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
 RECORDINGS <- RECORDINGS %>%
   mutate(stim_number = 0)
 
-### calculating stimulus number within train 
-initial_value <- RECORDINGS$stim_freq[1] %>% 
+### calculating stimulus number within train
+initial_value <- RECORDINGS$stim_freq[1] %>%
   `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
 
-stim_counter <- 1 %>% 
+stim_counter <- 1 %>%
   `comment<-`("Counts stimuli in a train")
-index <- 1 %>% 
+index <- 1 %>%
   `comment<-`("Tracks the position (index) of stim_freq")
 
 RECORDINGS$stim_number[1] <- stim_counter
@@ -914,7 +933,7 @@ repeat{
     RECORDINGS$stim_number[index + 1] <- stim_counter
     index <- index + 1
   }
-  
+
   if (index == length(RECORDINGS$stim_number)) {
     break
   }
@@ -936,7 +955,6 @@ RECORDINGS <- RECORDINGS %>%
     list = (stim_freq_categ == 18),
     values = 20
   ))
-
 ```
 
 ```{r calculating hist stats, echo=FALSE, message=FALSE, warning=FALSE}
@@ -997,60 +1015,65 @@ RESP_PROB <- left_join(
       first_ap_reltimes < PSTH_range[2]
     ) %>%
     group_by(animal_id, freq) %>%
-    summarise(No_APs = length(first_ap_reltimes)) %>% 
-    rename(stim_freq = freq) %>% 
-    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>% 
+    summarise(No_APs = length(first_ap_reltimes)) %>%
+    rename(stim_freq = freq) %>%
+    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>%
     mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
 
   RECORDINGS %>%
-    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1","10","20")) %>%
+    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1", "10", "20")) %>%
     group_by(animal_id, stim_freq_categ) %>%
-    summarise(No_stim = length(signal_time)) %>% 
-    mutate(stim_freq = as.numeric(stim_freq_categ)) %>% 
+    summarise(No_stim = length(signal_time)) %>%
+    mutate(stim_freq = as.numeric(stim_freq_categ)) %>%
     select(-stim_freq_categ)
-) %>% 
-  add_column(No_APs_range = hist_stats %>% 
-           arrange(animal_id) %>% 
-           mutate(freq = replace(freq, freq == 18, 20)) %>% 
-           mutate(freq = replace(freq, freq == 8, 10)) %>% 
-           rename(stim_freq = freq) %>% pull(range_count_sum)) %>% 
-  mutate(resp_prob = (No_APs / No_stim) * 100) %>% 
-  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>% 
-  add_column(peak_latency = hist_stats %>% 
-               arrange(animal_id) %>%
-               pull(peak)) %>%
-  add_column(mean_latency = hist_stats %>% 
-               arrange(animal_id) %>%
-               pull(mean))
-
+) %>%
+  add_column(No_APs_range = hist_stats %>%
+    arrange(animal_id) %>%
+    mutate(freq = replace(freq, freq == 18, 20)) %>%
+    mutate(freq = replace(freq, freq == 8, 10)) %>%
+    rename(stim_freq = freq) %>% pull(range_count_sum)) %>%
+  mutate(resp_prob = (No_APs / No_stim) * 100) %>%
+  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>%
+  add_column(peak_latency = hist_stats %>%
+    arrange(animal_id) %>%
+    pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>%
+    arrange(animal_id) %>%
+    pull(mean))
 ```
 
 ```{r calculating AP count, echo=FALSE, message=FALSE, warning=FALSE}
 APCount <- function(animal) {
-  tmp_ap <- RECORDINGS %>% dplyr::filter(signal_type == "AP", animal_id == animal) %>% select(signal_time) %>% pull() 
-  
-  stim_trains <- RECORDINGS %>% 
-    dplyr::filter(signal_type == "stim") %>% 
-    mutate(lag_sfc = lag(stim_freq),
-           tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
-           cum_tmp_var = cumsum(tmp_var)) %>% 
-    group_by(animal_id, stim_freq, cum_tmp_var) %>% 
+  tmp_ap <- RECORDINGS %>%
+    dplyr::filter(signal_type == "AP", animal_id == animal) %>%
+    select(signal_time) %>%
+    pull()
+
+  stim_trains <- RECORDINGS %>%
+    dplyr::filter(signal_type == "stim") %>%
+    mutate(
+      lag_sfc = lag(stim_freq),
+      tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
+      cum_tmp_var = cumsum(tmp_var)
+    ) %>%
+    group_by(animal_id, stim_freq, cum_tmp_var) %>%
     mutate(train_number = group_indices()) %>%
     ungroup() %>%
-    select(-lag_sfc,-tmp_var,-cum_tmp_var) %>% 
-    dplyr::filter(animal_id == animal) %>% 
-    group_by(stim_freq_categ, train_number, stim_number) %>% 
-    summarise(No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
-              AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
-              range_lower = signal_time,
-              range_upper = signal_time + 0.05) %>% 
-    add_column(animal_id = animal, .before = 1) %>% 
+    select(-lag_sfc, -tmp_var, -cum_tmp_var) %>%
+    dplyr::filter(animal_id == animal) %>%
+    group_by(stim_freq_categ, train_number, stim_number) %>%
+    summarise(
+      No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
+      AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
+      range_lower = signal_time,
+      range_upper = signal_time + 0.05
+    ) %>%
+    add_column(animal_id = animal, .before = 1) %>%
     ungroup()
   return(stim_trains)
 }
-  
-APC <- lapply(RECORDINGS$animal_id %>% unique, APCount)  %>% bind_rows() 
 
+APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>% bind_rows()
 ```
 
 
@@ -1062,44 +1085,43 @@ APC <- lapply(RECORDINGS$animal_id %>% unique, APCount)  %>% bind_rows()
   + APC: number of APs after each stimulus in a 50 ms window
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
-datatable(RECORDINGS, 
-          caption ="RECORDINGS tibble", 
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
-
-
+datatable(RECORDINGS,
+  caption = "RECORDINGS tibble",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
-datatable(STIM_RESULTS, 
-          caption ="STIM_RESULTS tibble", 
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
-
+datatable(STIM_RESULTS,
+  caption = "STIM_RESULTS tibble",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
-datatable(hist_stats, 
-          caption ="PSTH statistics (hist_stats tibble)", 
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY = "500px", dom = 't'))
-
+datatable(hist_stats,
+  caption = "PSTH statistics (hist_stats tibble)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 datatable(RESP_PROB,
-          caption = "Response probabilities",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
-
+  caption = "Response probabilities",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 datatable(APC,
-          caption = "Number of APs folowing each stimulus",
-          rownames = TRUE, 
-          options = list(pageLength = 50, scrollX=T, scrollY="500px",dom = 't'))
-
+  caption = "Number of APs folowing each stimulus",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
 ```
 
 
@@ -1111,7 +1133,7 @@ datatable(APC,
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
-#PSTH_range <- c(0, 0.05)
+# PSTH_range <- c(0, 0.05)
 ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
@@ -1122,9 +1144,9 @@ ggplot(
 ) +
   coord_flip() +
   gghalves::geom_half_violin(side = "r", trim = T, scale = "width") +
-  # geom_dotplot(binaxis = "y", 
-  #              dotsize = 4, 
-  #              stackdir = "down", 
+  # geom_dotplot(binaxis = "y",
+  #              dotsize = 4,
+  #              stackdir = "down",
   #              binwidth = 0.0002,method = "histodot",binpositions = "all",
   #              ) +
   # see::geom_violindot(binwidth = 0.0001,size_dots = 6,) +
@@ -1132,14 +1154,13 @@ ggplot(
   # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
   geom_hline(yintercept = 0) +
   facet_wrap(~freq)
-
 ```
 
 ### PSTH @ 1 Hz cortical activation
 
 ```{r echo=FALSE, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
 ### main plot
- 
+
 ### set PSTH range: see earlier (calculating hist stats chunk)
 
 ### select frequency to plot (1, 8, 18)
@@ -1169,7 +1190,7 @@ gp_hist <- ggplot(
 
 
 
-### lines 
+### lines
 gp_hist +
   ### median
   geom_segment(
@@ -1234,7 +1255,6 @@ gp_hist +
     size = 2,
     fill = "red"
   )
-
 ```
 
 ### PSTH @ 10 Hz cortical activation
@@ -1271,7 +1291,7 @@ gp_hist <- ggplot(
 
 
 
-### lines 
+### lines
 gp_hist +
   ### median
   geom_segment(
@@ -1336,7 +1356,6 @@ gp_hist +
     size = 2,
     fill = "red"
   )
-
 ```
 
 ### PSTH @ 20 Hz cortical activation
@@ -1373,7 +1392,7 @@ gp_hist <- ggplot(
 
 
 
-### lines 
+### lines
 gp_hist +
   ### median
   geom_segment(
@@ -1452,7 +1471,8 @@ ggplot(
   mapping = aes(
     x = as.factor(stim_freq),
     y = resp_prob_range
-  )) +
+  )
+) +
   geom_point(
     aes(fill = animal_id),
     color = "black",
@@ -1464,26 +1484,34 @@ ggplot(
   geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
   xlab("Stimulus frequency") +
   ylab("Response probability") +
-  geom_signif(comparisons = list(c("1", "10")),
-                           map_signif_level = TRUE,
-                           test = "mood.test") +
-  geom_signif(comparisons = list(c("10", "20")),
-              map_signif_level = TRUE,
-              test = "mood.test")
-
-
+  geom_signif(
+    comparisons = list(c("1", "10")),
+    map_signif_level = TRUE,
+    test = "mood.test"
+  ) +
+  geom_signif(
+    comparisons = list(c("10", "20")),
+    map_signif_level = TRUE,
+    test = "mood.test"
+  )
 ```
 
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-ggplot(data = RESP_PROB %>% 
-         gather(key = "latency_type", 
-                value = "latency_value",
-                peak_latency, 
-                mean_latency) %>% 
-         dplyr::filter(animal_id != "GII_20"),
-       mapping = aes(x = as.factor(stim_freq), 
-                     y = latency_value*1000)) +
+ggplot(
+  data = RESP_PROB %>%
+    gather(
+      key = "latency_type",
+      value = "latency_value",
+      peak_latency,
+      mean_latency
+    ) %>%
+    dplyr::filter(animal_id != "GII_20"),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = latency_value * 1000
+  )
+) +
   ### data visualization layers
   geom_point(
     aes(color = latency_type),
@@ -1498,12 +1526,14 @@ ggplot(data = RESP_PROB %>%
     lwd = 1,
     fatten = 1.2
   ) +
-  ylim(0,25) +
+  ylim(0, 25) +
   xlab("Stimulus frequency") +
   ylab("Peak latency") +
-  scale_color_discrete(name = "Latency",
-                       breaks = c("mean_latency", "peak_latency"),
-                       labels = c("Mean", "Peak"))
+  scale_color_discrete(
+    name = "Latency",
+    breaks = c("mean_latency", "peak_latency"),
+    labels = c("Mean", "Peak")
+  )
 ```
 
 
@@ -1513,15 +1543,16 @@ ggplot(data = RESP_PROB %>%
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 ggplot(
   data = APC %>%
-    dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
-    group_by(animal_id, stim_freq_categ, stim_number) %>% 
-    summarise(No_APs = sum(No_APs)) %>% 
-    ungroup() %>% 
-    group_by(stim_freq_categ, stim_number) %>% 
-    summarise(No_AP_mean = mean(No_APs),
-              No_AP_sd = sd(No_APs),
-              SEM = sd(No_APs) / sqrt(length(No_APs))) 
-  ,
+    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
+    group_by(animal_id, stim_freq_categ, stim_number) %>%
+    summarise(No_APs = sum(No_APs)) %>%
+    ungroup() %>%
+    group_by(stim_freq_categ, stim_number) %>%
+    summarise(
+      No_AP_mean = mean(No_APs),
+      No_AP_sd = sd(No_APs),
+      SEM = sd(No_APs) / sqrt(length(No_APs))
+    ),
   mapping = aes(
     x = stim_number,
     y = No_AP_mean,
@@ -1534,38 +1565,40 @@ ggplot(
   xlab("No. stimulus in train") +
   ylab("Mean no. APs accross animals") +
   labs(color = "Frequency") +
-  ylim(0,18) +
-  scale_x_discrete(limits = as.character(c(1:10))) 
+  ylim(0, 18) +
+  scale_x_discrete(limits = as.character(c(1:10)))
 ```
 
 ```{r echo=FALSE, fig.width=10, fig.height=4, message=FALSE, warning=FALSE}
-ggplot(data = APC %>%
-         dplyr::filter(stim_freq_categ %in% c("1","10", "20"), stim_number < 11) %>% 
-         group_by(animal_id, stim_freq_categ, stim_number) %>% 
-         summarise(No_APs = sum(No_APs)),
-       mapping = aes(x = stim_number, 
-                     y = No_APs,
-                     color = as.factor(animal_id),
-                     linetype = as.factor(animal_id))) +
+ggplot(
+  data = APC %>%
+    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
+    group_by(animal_id, stim_freq_categ, stim_number) %>%
+    summarise(No_APs = sum(No_APs)),
+  mapping = aes(
+    x = stim_number,
+    y = No_APs,
+    color = as.factor(animal_id),
+    linetype = as.factor(animal_id)
+  )
+) +
   geom_point() +
   geom_line() +
-  scale_x_discrete(limits = c(1:10),breaks = c(1:10)) +
+  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
   geom_label_repel(
-        data = . %>% 
-          dplyr::filter(stim_number == 10),
-        aes(label = animal_id),
-        direction = "y",
-        hjust = -2
-      ) +
+    data = . %>%
+      dplyr::filter(stim_number == 10),
+    aes(label = animal_id),
+    direction = "y",
+    hjust = -2
+  ) +
   expand_limits(x = 12) +
 
-  #xlim(1,10) +
+  # xlim(1,10) +
   facet_wrap(~stim_freq_categ) +
-  labs(linetype = "Animals",color = "Animals") +
+  labs(linetype = "Animals", color = "Animals") +
   xlab("No. stimulus in train") +
-  ylab("Number of APs") 
-  
-
+  ylab("Number of APs")
 ```
 
 
@@ -1618,18 +1651,16 @@ file_to_load <- file_list[[1]]
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
 raw.rec <- readMat(file.path("data", file_to_load))
 
-###takes the first AP (first row) and tells the index of point with the max value
+### takes the first AP (first row) and tells the index of point with the max value
 points_to_peak <- which(raw.rec$ap[, , 1]$values[1, ] ==
-    max(raw.rec$ap[, , 1]$values[1, ])) %>%
-    as.numeric()
+  max(raw.rec$ap[, , 1]$values[1, ])) %>%
+  as.numeric()
 
 ### time of the peak of the APs after its first point
 raw.rec$ap[, , 1]$interval * points_to_peak
 
 ap <- raw.rec$ap[, , 1]$times %>% as.double()
 ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
-
-
 ```
 
 
@@ -1642,64 +1673,74 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 ## Loading data
 
 ```{r message=FALSE, warning=FALSE, tidy=TRUE}
-file_path <- file.path('data',
-                       'Emi_terminals',
-                       'terminal_measures.csv' )  
-TERMINALS <- read.table(file = file_path, sep = ';', header = T, na.string = 'na')
+file_path <- file.path(
+  "data",
+  "Emi_terminals",
+  "terminal_measures.csv"
+)
+TERMINALS <- read.table(file = file_path, sep = ";", header = T, na.string = "na")
 head(TERMINALS)
-
 ```
 
 ## Bouton area on different dendritic domains
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 ggplot(data = TERMINALS, mapping = aes(x = postion, y = b_area)) +
-  geom_half_violin(position = position_nudge(x=-.15),
-                  trim = F,
-                  side = "l",
-                  scale = "area",
-                  draw_quantiles = c(0.5),
-                  aes(fill = postion)) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "area",
+    draw_quantiles = c(0.5),
+    aes(fill = postion)
+  ) +
   geom_jitter(position = position_jitter(0.1))
-
 ```
 
 ## Area of boutons with *m2* and *unknown* origin
 
 ```{r fig.width=10, echo=FALSE, warning=FALSE, message=FALSE}
-ggplot(data = TERMINALS,
-       mapping = aes(x = origin, y = b_area)) +
-  geom_half_violin(position = position_nudge(x=-.15),
-                   trim = F,
-                   side = "l",
-                   scale = "count",
-                   draw_quantiles = c(0.5)
-                   #fill = alpha(0.1),
-                   #aes(col = postion)
-                   ) +
-  geom_jitter(position = position_jitter(0.1),
-              aes(col = postion)) +
+ggplot(
+  data = TERMINALS,
+  mapping = aes(x = origin, y = b_area)
+) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "count",
+    draw_quantiles = c(0.5)
+    # fill = alpha(0.1),
+    # aes(col = postion)
+  ) +
+  geom_jitter(
+    position = position_jitter(0.1),
+    aes(col = postion)
+  ) +
   annotate("text",
-           x = 0.7, 
-           y = 1, 
-           label = paste("n = ", 
-                         TERMINALS %>%
-                           group_by(origin) %>% 
-                           summarise(n = length(b_area)) %>%
-                           dplyr::filter(origin == "m2") %>% 
-                           select(n) %>%
-                           as.character())
-           ) +
+    x = 0.7,
+    y = 1,
+    label = paste(
+      "n = ",
+      TERMINALS %>%
+        group_by(origin) %>%
+        summarise(n = length(b_area)) %>%
+        dplyr::filter(origin == "m2") %>%
+        select(n) %>%
+        as.character()
+    )
+  ) +
   annotate("text",
-           x = 1.6, 
-           y = 1, 
-           label = paste("n = ", 
-                         TERMINALS %>%
-                           group_by(origin) %>% 
-                           summarise(n = length(b_area)) %>%
-                           dplyr::filter(origin == "unknown") %>% 
-                           select(n) %>%
-                           as.character())
+    x = 1.6,
+    y = 1,
+    label = paste(
+      "n = ",
+      TERMINALS %>%
+        group_by(origin) %>%
+        summarise(n = length(b_area)) %>%
+        dplyr::filter(origin == "unknown") %>%
+        select(n) %>%
+        as.character()
+    )
   )
 ```
-
