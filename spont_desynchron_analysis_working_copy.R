@@ -264,13 +264,17 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### built in dip test to test ISI uni/multimodality (all ISIs are used)
   source(file.path("supplementary_functions", "BurstThresholdDetect.R"))
   
+  EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
+    mutate(isi_times = c(diff(times),NA)) %>% pull(isi_times)
+  
   burst_threshold_detect <- BurstThresholdDetect(
-    hist_data = EEG_ds_df %>%
-      dplyr::filter(eeg_state == "sync" | eeg_state == "desync") %>% 
-      pull(isi) %>% 
+    hist_data = EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
+      mutate(isi_times = c(diff(times),NA)) %>% pull(isi_times), 
     histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
   )
   
+  
+  burst_threshold_detect %>% unlist()
   burst_threshold_isi <- burst_threshold_detect[[1]]
   
   
@@ -355,7 +359,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       guide = guide_legend(override.aes = list(shape = c(rep(NA, 6)))),
       breaks = c("gray", gg_color_hue(4)[1], gg_color_hue(4)[2], gg_color_hue(4)[3], "black", gg_color_hue(4)[4]),
       labels = c("EEG", "Moving SD", "Moving average", "Levels", "SD threshold", "APs")
-    )
+    ) 
   eeg_sum_plot
 
 
