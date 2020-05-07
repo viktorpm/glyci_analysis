@@ -10,13 +10,14 @@ library(diptest) ### to test distribution uni/multimodality (ISI)
 library(ggrepel)
 library(exactRankTests) ### wilcox.test for ties
 library(ggsignif)
+library(plyr)
 
 file_list <- list.files(
   path = "data",
   pattern = "*.mat", full.names = F, recursive = F
 )
 sd_threshold <- -.4
-SyncDesyncAnalysis <- function(file, sd_threshold) {
+#SyncDesyncAnalysis <- function(file, sd_threshold) {
   file_to_load <- file_list[1]
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
   raw.rec <- readMat(file.path("data", file_to_load))
@@ -48,8 +49,10 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   raw.rec$ap[, , 1]$interval * points_to_peak
 
   ap <- raw.rec$ap[, , 1]$times %>% as.double()
-  # ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
   ap_peaks <- ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)
+  
+  ap_peaks_tibble <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
+  
 
 
   ### EEG ----------------------------------------------------------
@@ -186,25 +189,69 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ap_peak_times <- ap_peaks
   length(ap_peak_times) <- length(times)
   
-  EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
-    ts(
-      start = 0,
-      end = rec_length_ds - interval_ds,
-      deltat = 1 / samp_rate_ds
-    ) %>%
-    data.frame() %>%
-    rename(eeg_values = Series.1) %>%
-    add_column(times, .before = 1) %>%
-    mutate(moving_sd = slide_sd) %>%
-    mutate(moving_average = slide_mean) %>%
-    mutate(ap_peak_times) %>% 
-    mutate(isi = c(diff(ap_peak_times),NA)) %>% 
-    mutate(AP = NA) %>% 
-    mutate(levels = 1) %>%
-    mutate(levels = replace(levels, moving_sd < SD_THRESHOLD, 0)) %>%
-    mutate(eeg_state = ifelse(levels == 1, yes = "sync", no = "desync")) %>% 
-    mutate(ID = file_to_load) %>% 
-    mutate(AP = replace(AP, c(lapply(ap_peak_times, function(x) {which(abs(times-x) == min(abs(times-x)))}) %>% unlist()), 1 ))
+  # EEG_ds_df <- as.matrix(EEG_ds_scaled) %>% ### only works with wavelet if it is a matrix!
+  #   ts(
+  #     start = 0,
+  #     end = rec_length_ds - interval_ds,
+  #     deltat = 1 / samp_rate_ds
+  #   ) %>%
+  #   data.frame() %>%
+  #   rename(eeg_values = Series.1) %>%
+  #   add_column(times, .before = 1) %>%
+  #   mutate(moving_sd = slide_sd) %>%
+  #   mutate(moving_average = slide_mean) %>%
+  #   mutate(ap_peak_times) %>% 
+  #   mutate(isi = c(diff(ap_peak_times),NA)) %>% 
+  #   mutate(AP = NA) %>% 
+  #   mutate(levels = 1) %>%
+  #   mutate(levels = replace(levels, moving_sd < SD_THRESHOLD, 0)) %>%
+  #   mutate(eeg_state = ifelse(levels == 1, yes = "sync", no = "desync")) %>% 
+  #   mutate(ID = file_to_load) %>% 
+  #   mutate(AP = replace(AP, 
+  #                       list = c(lapply(ap_peak_times, 
+  #                                       function(x) {which(abs(times-x) == min(abs(times-x)))}) %>% 
+  #                                  unlist()),
+  #                       values = 1)
+  #          )
+  
+  replace_index <- sapply(ap_peaks, 
+                          function(x) {((times - x) %>% abs() %>% min() == (times - x) %>% abs()) %>% which()})
+  replace_index %>% duplicated() %>% plyr::count()
+  
+  repeat{
+    duplicate_check <- any(replace_index %>% duplicated())
+    if(duplicate_check == T) {
+      replace_index[duplicated(replace_index)] <-  replace_index[duplicated(replace_index)] + 1  
+    } else {
+      break()
+    }
+  }
+  
+  
+  EEG_ds_df <- tibble(
+    ### only works with wavelet if it is a matrix!
+    times = times,
+    eeg_values = as.matrix(EEG_ds_scaled) %>%
+      ts(
+        start = 0,
+        end = rec_length_ds - interval_ds,
+        deltat = 1 / samp_rate_ds
+      ),
+    moving_sd = slide_sd,
+    moving_average = slide_mean,
+    levels = ifelse(moving_sd < SD_THRESHOLD, yes = 0, no = 1),
+    eeg_state = ifelse(levels == 1, yes = "sync", no = "desync"),
+    isi = c(diff(ap_peak_times),NA),
+    AP = NA,
+    #ap_peak_times = ap_peak_times,
+    ID = file_to_load
+  ) %>% 
+    mutate(AP = replace(x =  AP, 
+                        list = c(replace_index),
+                        values = 1))
+  
+  left_join(EEG_ds_df,EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
+              mutate(ap_peak_times = ap_peaks))
   
   
   ggplot(data = EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
@@ -212,6 +259,24 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
          mapping = aes(x = isi_times)) +
     geom_histogram(aes(fill = eeg_state))
   
+  ### burst thershold based on ISI peaks in xlim = c(0,1) window, FILTERS DATA INSIDE
+  ### built in dip test to test ISI uni/multimodality (all ISIs are used)
+  source(file.path("supplementary_functions", "BurstThresholdDetect.R"))
+  
+  EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
+    mutate(isi_times = c(diff(times),NA))
+  
+  burst_threshold_detect <- BurstThresholdDetect(
+    hist_data = EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
+      mutate(isi_times = c(diff(times),NA)) %>% pull(isi_times), 
+    histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
+  )
+  
+  
+  burst_threshold_detect %>% unlist()
+  burst_threshold_isi <- burst_threshold_detect[[1]]
+  
+    
   
   
   ### Find burst_threshold based on power spectrum (oscillation frequency of the EEG)
@@ -253,32 +318,14 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### calculating time from frequency in miliseconds and in seconds
   burst_threshold_power <- 1000 / second_peak / 1000
   
+  ap_peaks_tibble <- ap_peaks_tibble %>%
+    dplyr::mutate(eeg_state = "desync") %>%
+    dplyr::mutate(isi = c(diff(peak_times), NA)) %>%
+    dplyr::mutate(burst = 0) %>%
+    dplyr::mutate(burst_PSD = 0)
   
   
-  
-  
-      
-    
-  
-  ### burst thershold based on ISI peaks in xlim = c(0,1) window, FILTERS DATA INSIDE
-  ### built in dip test to test ISI uni/multimodality (all ISIs are used)
-  source(file.path("supplementary_functions", "BurstThresholdDetect.R"))
-  
-  EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
-    mutate(isi_times = c(diff(times),NA)) %>% pull(isi_times)
-  
-  burst_threshold_detect <- BurstThresholdDetect(
-    hist_data = EEG_ds_df %>% dplyr::filter(AP == 1) %>% 
-      mutate(isi_times = c(diff(times),NA)) %>% pull(isi_times), 
-    histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
-  )
-  
-  
-  burst_threshold_detect %>% unlist()
-  burst_threshold_isi <- burst_threshold_detect[[1]]
-  
-  
-  ap_peaks <- ap_peaks %>%
+  ap_peaks_tibble <- ap_peaks_tibble %>%
     dplyr::mutate(burst = replace(burst, lag(isi > burst_threshold_isi[1]), 1)) %>%
     dplyr::mutate(burst_PSD = replace(
       burst_PSD,
@@ -287,29 +334,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     )) ### lag(): to find the firs APs in a cluster (burst) instead of the last one
   
   
-    
-
-  ap_values <- raw.rec$ap[, , 1]$values %>% apply(MARGIN = 1, list)
-  ap_start_times <- raw.rec$ap[, , 1]$values
-  D <- raw.rec$ap[, , 1]$interval %>% c()
-  ap_values %>% t() %>% matplot(type = "l",)
   
-  
-  M <- mapply(function(X,Y) {sapply(X, ts, start = Y, deltat = D)}, 
-              X = ap_values,
-              Y = ap_start_times) 
-  
-  
-  M <- mapply(ts, ap_values, start = ap_start_times, delta = D)
-  
-  
-  M <- lapply(ap_start_times, function(x){ap_values %>% t() %>% ts(start = x, deltat = D)})
-  M[[1]]
-  
-  
-  
-  
-
   ### PLOT: eeg, APs (last 80 seconds of the recording) -----------
   plotting_region <- c(times[length(times)] - 80, times[length(times)])
 
@@ -469,8 +494,8 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
 
 
-  ### adding columns to ap_peaks
-  ap_peaks <- ap_peaks %>%
+  ### adding columns to ap_peaks_tibble
+  ap_peaks_tibble <- ap_peaks_tibble %>%
     dplyr::mutate(eeg_state = "desync") %>%
     dplyr::mutate(isi = c(diff(peak_times), NA)) %>%
     dplyr::mutate(burst = 0) %>%
@@ -478,7 +503,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
   ### finding sync periods based on conditions
   for (i in 1:length(eeg_periods$sync_start)) {
-    ap_peaks <- ap_peaks %>%
+    ap_peaks_tibble <- ap_peaks_tibble %>%
       dplyr::mutate(eeg_state = replace(
         eeg_state,
         peak_times > eeg_periods$sync_start[i] & peak_times < eeg_periods$sync_end[i],
@@ -488,17 +513,17 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
  
   ### save to file at the end:
-  EEG_STATE_ap <- ap_peaks %>%
+  EEG_STATE_ap <- ap_peaks_tibble %>%
     group_by(eeg_state) %>%
     summarise(length(peak_times)) %>%
     rename(No_APs = "length(peak_times)")
 
-  EEG_STATE_cluster <- ap_peaks %>%
+  EEG_STATE_cluster <- ap_peaks_tibble %>%
     group_by(eeg_state) %>%
     summarise(sum(burst)) %>%
     rename(No_clusters = "sum(burst)")
 
-  EEG_STATE_cluster_PSD <- ap_peaks %>%
+  EEG_STATE_cluster_PSD <- ap_peaks_tibble %>%
     group_by(eeg_state) %>%
     summarise(sum(burst_PSD)) %>%
     rename(No_clusters_PSD = "sum(burst_PSD)")
@@ -513,10 +538,10 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
   ### PLOT: ISI ------------------------
   ### calculating bw based on Freedman-Diaconis rule (max-min)/h (h: bin-width)
-  sync_isi_data <- ap_peaks %>%
+  sync_isi_data <- ap_peaks_tibble %>%
     dplyr::filter(eeg_state == "sync") %>%
     pull(isi)
-  desync_isi_data <- ap_peaks %>%
+  desync_isi_data <- ap_peaks_tibble %>%
     dplyr::filter(eeg_state == "desync") %>%
     pull(isi)
 
@@ -531,7 +556,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   y_norm <- F
   ggplot() +
     geom_histogram(
-      data = ap_peaks %>%
+      data = ap_peaks_tibble %>%
         dplyr::filter(eeg_state == "sync"),
       mapping = aes(
         x = isi,
@@ -547,7 +572,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
       bins = bins_isi_sync
     ) +
     geom_histogram(
-      data = ap_peaks %>%
+      data = ap_peaks_tibble %>%
         dplyr::filter(eeg_state == "desync"),
       mapping = aes(
         x = isi,
@@ -578,7 +603,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   #      height = 600
   # )
 
-  hist(ap_peaks %>% dplyr::filter(eeg_state == "sync") %>% pull(isi),
+  hist(ap_peaks_tibble %>% dplyr::filter(eeg_state == "sync") %>% pull(isi),
     breaks = "FD"
   )
 
@@ -663,7 +688,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   ### calculating rel_time matrices
 
   sync_AC <- RTM_creator(
-    ap_peaks %>%
+    ap_peaks_tibble %>%
       dplyr::filter(eeg_state == "sync") %>%
       pull(peak_times)
   ) %>%
@@ -671,7 +696,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     mutate(eeg_state = "sync")
 
   desync_AC <- RTM_creator(
-    ap_peaks %>%
+    ap_peaks_tibble %>%
       dplyr::filter(eeg_state == "desync") %>%
       pull(peak_times)
   ) %>%
@@ -805,7 +830,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
     ### APs
     geom_point(
-      data = ap_peaks %>%
+      data = ap_peaks_tibble %>%
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]),
       mapping = aes(x = peak_times, y = 100),
       shape = "|",
@@ -813,9 +838,9 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
     ) +
 
     ### first spikes of clusters defined by PSD
-    # (if (any(ap_peaks$burst_PSD == 1)) {
+    # (if (any(ap_peaks_tibble$burst_PSD == 1)) {
     #   geom_point(
-    #     data = ap_peaks %>%
+    #     data = ap_peaks_tibble %>%
     #       dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
     #       dplyr::filter(burst_PSD == 1),
     #     mapping = aes(x = peak_times, y = 96),
@@ -827,7 +852,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
 
     ### first spikes of clusters defined by ISI
     geom_point(
-      data = ap_peaks %>%
+      data = ap_peaks_tibble %>%
         dplyr::filter(peak_times > time_window[1], peak_times < time_window[2]) %>%
         dplyr::filter(burst == 1),
       mapping = aes(x = peak_times, y = 100),
@@ -872,7 +897,7 @@ SyncDesyncAnalysis <- function(file, sd_threshold) {
   out <- list(
     ID = file_to_load,
     AP_waveforms = raw.rec$ap[, , 1]$values,
-    AP_peaks = ap_peaks,
+    ap_peaks_tibble = ap_peaks_tibble,
     points_to_peak = points_to_peak,
     EEG_ds_df = EEG_ds_df,
     EGG_plot = eeg_sum_plot
