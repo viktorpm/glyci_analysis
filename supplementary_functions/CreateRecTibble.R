@@ -56,7 +56,7 @@ CreateRecTibble <- function(AP_times, stim_times) {
   ### https://stackoverflow.com/questions/40093595/dplyr-group-by-and-convert-multiple-columns-to-a-vector
   library(purrrlyr)
   stim_freqs_by_file <- stim_freqs_by_file %>%
-    slice_rows("file_name") %>%
+    purrrlyr::slice_rows("file_name") %>%
     by_slice(function(x) unlist(x), .to = "freqs_in_file")
 
   ### to filter by available freqs in the selected file

@@ -12,25 +12,25 @@ HistStats <- function(gplot_object) {
   peak <- plot_data[[1]] %>%
     group_by(PANEL) %>%
     dplyr::filter(count == max(count)) %>%
-    summarise(x = first(x), n = n()) %>%
+    dplyr::summarise(x = first(x), n = n()) %>%
     .$x
 
   mean <- gplot_object$data %>%
     group_by(animal_id) %>%
     dplyr::filter(first_ap_reltimes > 0) %>% 
-    summarise(means = mean(first_ap_reltimes)) %>%
+    dplyr::summarise(means = mean(first_ap_reltimes)) %>%
     pull(means)
 
   median <- gplot_object$data %>%
     group_by(animal_id) %>%
     dplyr::filter(first_ap_reltimes > 0) %>% 
-    summarise(medians = median(first_ap_reltimes)) %>%
+    dplyr::summarise(medians = median(first_ap_reltimes)) %>%
     pull(medians)
 
   Q <- gplot_object$data %>%
     group_by(animal_id) %>%
     dplyr::filter(first_ap_reltimes > 0) %>% 
-    summarise(Qs = list(quantile(first_ap_reltimes))) %>%
+    dplyr::summarise(Qs = list(quantile(first_ap_reltimes))) %>%
     pull(Qs)
 
   Q25 <- lapply(seq_along(Q), function(i) {
@@ -45,7 +45,7 @@ HistStats <- function(gplot_object) {
 
   all_count_sum <- plot_data[[1]] %>%
     group_by(PANEL) %>%
-    summarise(all_count_sum = sum(count)) %>%
+    dplyr::summarise(all_count_sum = sum(count)) %>%
     pull(all_count_sum)
 
 
@@ -71,7 +71,7 @@ HistStats <- function(gplot_object) {
   #     })
   #   ) %>%
   #   group_by(PANEL) %>%
-  #   summarise(range_count_sum = sum(count)) %>%
+  #   dplyr::summarise(range_count_sum = sum(count)) %>%
   #   pull(range_count_sum)
   
   
@@ -85,7 +85,7 @@ HistStats <- function(gplot_object) {
         x > low_range[i]
         
       ) %>% 
-      summarise(range_count_sum = sum(count)) %>%
+      dplyr::summarise(range_count_sum = sum(count)) %>%
       pull(range_count_sum) %>% `[[`(i)
       
   }
@@ -95,7 +95,7 @@ HistStats <- function(gplot_object) {
   y_axis_max <- plot_data[[1]] %>%
     group_by(PANEL) %>%
     dplyr::filter(count == max(count)) %>%
-    summarise(y = first(y), n = n()) %>%
+    dplyr::summarise(y = first(y), n = n()) %>%
     pull(y)
 
   No_PANELS <- plot_data[[1]] %>%

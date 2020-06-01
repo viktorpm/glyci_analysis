@@ -176,8 +176,8 @@ datatable(info_baseline,
 CELL_INFO <- info_baseline %>%
   select(file_name) %>%
   add_column(cell_id = substr(info_baseline$file_name, 1, 6), .before = "file_name") %>%
-  mutate(bl_activity = T) %>%
-  mutate(bl_activity = replace(
+  dplyr::mutate(bl_activity = T) %>%
+  dplyr::mutate(bl_activity = replace(
     bl_activity,
     .$cell_id == "cell05" |
       .$cell_id == "cell10" |
@@ -189,8 +189,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell24",
     F
   )) %>%
-  mutate(pinch = T) %>%
-  mutate(pinch = replace(
+  dplyr::mutate(pinch = T) %>%
+  dplyr::mutate(pinch = replace(
     pinch,
     .$cell_id == "cell01" |
       .$cell_id == "cell06" |
@@ -208,8 +208,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell28",
     F
   )) %>%
-  mutate(ident = T) %>%
-  mutate(ident = replace(
+  dplyr::mutate(ident = T) %>%
+  dplyr::mutate(ident = replace(
     ident,
     .$cell_id == "cell06" |
       .$cell_id == "cell07" |
@@ -226,8 +226,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell27",
     F
   )) %>%
-  mutate(control = F) %>%
-  mutate(control = replace(
+  dplyr::mutate(control = F) %>%
+  dplyr::mutate(control = replace(
     control,
     .$cell_id == "cell25" |
       .$cell_id == "cell26" |
@@ -236,8 +236,8 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell29",
     T
   )) %>%
-  mutate(position = "unknown") %>%
-  mutate(position = replace(
+  dplyr::mutate(position = "unknown") %>%
+  dplyr::mutate(position = replace(
     position,
     .$cell_id == "cell01" |
       .$cell_id == "cell02" |
@@ -248,14 +248,14 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell15",
     "IL"
   )) %>%
-  mutate(position = replace(
+  dplyr::mutate(position = replace(
     position,
     .$cell_id == "cell20" |
       .$cell_id == "cell21" |
       .$cell_id == "cell22",
     "transient"
   )) %>%
-  mutate(position = replace(
+  dplyr::mutate(position = replace(
     position,
     .$cell_id == "cell08" |
       .$cell_id == "cell16" |
@@ -298,11 +298,11 @@ IL_stim_firing <- left_join(IL_stim_firing,
 
 ### calculating stim start times
 start_times <- IL_stim_firing %>%
-  group_by(file_name) %>%
-  summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
-  mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
-  group_by(cell_id) %>%
-  summarise(train_starts = unique(train_starts)) %>%
+  dplyr::group_by(file_name) %>%
+  dplyr::summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  dplyr::mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::summarise(train_starts = unique(train_starts)) %>%
   pull(train_starts) %>%
   strsplit(",") %>%
   set_names(substr(info_stim$file_name, 1, 6)) %>%
@@ -310,11 +310,11 @@ start_times <- IL_stim_firing %>%
 
 ### calculating stim end times
 end_times <- IL_stim_firing %>%
-  group_by(file_name) %>%
-  summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
-  mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
-  group_by(cell_id) %>%
-  summarise(train_ends = unique(train_ends)) %>%
+  dplyr::group_by(file_name) %>%
+  dplyr::summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  dplyr::mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::summarise(train_ends = unique(train_ends)) %>%
   pull(train_ends) %>%
   strsplit(",") %>%
   set_names(substr(info_stim$file_name, 1, 6)) %>%
@@ -455,9 +455,9 @@ BDACalculator <- function(data, list) {
 ```{r}
 b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
   bind_rows() %>%
-  mutate(FR = No_AP / train_length) %>%
+  dplyr::mutate(FR = No_AP / train_length) %>%
   dplyr::group_by(stim_cond, cell_id) %>%
-  summarise(MFR = mean(FR))
+  dplyr::summarise(MFR = mean(FR))
 ```
 
 <br>
@@ -469,7 +469,7 @@ IL_baseline_firing <- left_join(IL_baseline_firing,
     select(file_name, rec_length),
   by = "file_name"
 ) %>%
-  mutate(stim_cond = "baseline")
+  dplyr::mutate(stim_cond = "baseline")
 
 ### function to calculate ISI mean and SD during baseline activity of the cells
 SDMeanISI <- function(f_name) {
@@ -502,13 +502,13 @@ SDMeanISI <- function(f_name) {
     mean() * 1000 %>%
       tibble(mean_isi = .)
   tmp2 %>%
-    mutate(sd_isi = IL_baseline_firing %>%
+    dplyr::mutate(sd_isi = IL_baseline_firing %>%
       dplyr::filter(file_name == f_name, signal_type == "AP") %>%
       select(signal_time) %>%
       pull() %>%
       diff() %>%
       sd() * 1000) %>%
-    mutate(file_name = f_name)
+    dplyr::mutate(file_name = f_name)
 }
 
 sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>%
@@ -516,15 +516,15 @@ sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>%
   as.tibble()
 
 sd_mean_isi <- sd_mean_isi %>%
-  mutate(cell_id = substr(sd_mean_isi$file_name, 1, 6)) %>%
-  mutate(MFR = 1000 / mean_isi) %>%
-  mutate(SD_FR = 1000 / sd_isi) %>%
-  mutate(MFR_inc = MFR + SD_FR) %>%
-  mutate(MFR_dec = MFR - SD_FR) %>%
-  # mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>%
-  # mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>%
-  mutate(stim_cond = "baseline") %>%
-  mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+  dplyr::mutate(cell_id = substr(sd_mean_isi$file_name, 1, 6)) %>%
+  dplyr::mutate(MFR = 1000 / mean_isi) %>%
+  dplyr::mutate(SD_FR = 1000 / sd_isi) %>%
+  dplyr::mutate(MFR_inc = MFR + SD_FR) %>%
+  dplyr::mutate(MFR_dec = MFR - SD_FR) %>%
+  # dplyr::mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>%
+  # dplyr::mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>%
+  dplyr::mutate(stim_cond = "baseline") %>%
+  dplyr::mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
 ```
 <br>
 
@@ -542,11 +542,11 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$
 
 ```{r}
 cellranks <- b_d_a_MFR %>%
-  group_by(stim_cond) %>%
-  mutate(base_MFR = sd_mean_isi$MFR) %>%
-  mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
+  dplyr::group_by(stim_cond) %>%
+  dplyr::mutate(base_MFR = sd_mean_isi$MFR) %>%
+  dplyr::mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
   dplyr::filter(stim_cond == "d") %>%
-  mutate(change_rank = ifelse(activity_change > 0,
+  dplyr::mutate(change_rank = ifelse(activity_change > 0,
     rank(activity_change),
     -rank(-activity_change)
   )) %>%
@@ -576,8 +576,8 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - before\_MFR}{before\_MFR} * 10
 ```{r}
 cellranks_before_stim <- b_d_a_MFR %>%
   spread(key = stim_cond, value = MFR) %>%
-  mutate(activity_change = ((d - b) / b * 100) %>% round(2)) %>%
-  mutate(change_rank = ifelse(activity_change > 0,
+  dplyr::mutate(activity_change = ((d - b) / b * 100) %>% round(2)) %>%
+  dplyr::mutate(change_rank = ifelse(activity_change > 0,
     rank(activity_change),
     -rank(-activity_change)
   )) %>%
@@ -910,7 +910,7 @@ STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
 ```{r transforming data, echo=FALSE, message=FALSE, warning=FALSE}
 ### adding stimulus number within train
 RECORDINGS <- RECORDINGS %>%
-  mutate(stim_number = 0)
+  dplyr::mutate(stim_number = 0)
 
 ### calculating stimulus number within train
 initial_value <- RECORDINGS$stim_freq[1] %>%
@@ -944,13 +944,13 @@ RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
 
 ### categorizing stimuli
 RECORDINGS <- RECORDINGS %>%
-  mutate(stim_freq_categ = stim_freq) %>%
-  mutate(stim_freq_categ = replace(
+  dplyr::mutate(stim_freq_categ = stim_freq) %>%
+  dplyr::mutate(stim_freq_categ = replace(
     x = stim_freq_categ,
     list = (stim_freq_categ == 12 | stim_freq_categ == 8),
     values = 10
   )) %>%
-  mutate(stim_freq_categ = replace(
+  dplyr::mutate(stim_freq_categ = replace(
     x = stim_freq_categ,
     list = (stim_freq_categ == 18),
     values = 20
@@ -962,7 +962,7 @@ source(file.path("supplementary_functions", "HistStats.R"))
 
 STIM_RESULTS %>%
   dplyr::group_by(freq) %>%
-  summarise(n_times = length(unique(animal_id))) %>%
+  dplyr::summarise(n_times = length(unique(animal_id))) %>%
   ungroup() %>%
   as.matrix() %>%
   unname() -> rep_matrix
@@ -992,7 +992,8 @@ hist_stats <- STIM_RESULTS %>%
     geom_vline(xintercept = 0) +
     xlab("Time (s)") +
     ylab("Count") +
-    ggtitle(paste0(.$freq, " Hz"))) %>%
+    ggtitle(paste0(.$freq, " Hz"))
+  ) %>%
   `[[`(2) %>%
   lapply(. %>% HistStats() %>% as.tibble()) %>%
   bind_rows() %>%
@@ -1014,26 +1015,26 @@ RESP_PROB <- left_join(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2]
     ) %>%
-    group_by(animal_id, freq) %>%
-    summarise(No_APs = length(first_ap_reltimes)) %>%
-    rename(stim_freq = freq) %>%
-    mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>%
-    mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
+    dplyr::group_by(animal_id, freq) %>%
+    dplyr::summarise(No_APs = length(first_ap_reltimes)) %>%
+    dplyr::rename(stim_freq = freq) %>%
+    dplyr::mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>%
+    dplyr::mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
 
   RECORDINGS %>%
     dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1", "10", "20")) %>%
-    group_by(animal_id, stim_freq_categ) %>%
-    summarise(No_stim = length(signal_time)) %>%
-    mutate(stim_freq = as.numeric(stim_freq_categ)) %>%
+    dplyr::group_by(animal_id, stim_freq_categ) %>%
+    dplyr::summarise(No_stim = length(signal_time)) %>%
+    dplyr::mutate(stim_freq = as.numeric(stim_freq_categ)) %>%
     select(-stim_freq_categ)
 ) %>%
   add_column(No_APs_range = hist_stats %>%
     arrange(animal_id) %>%
-    mutate(freq = replace(freq, freq == 18, 20)) %>%
-    mutate(freq = replace(freq, freq == 8, 10)) %>%
-    rename(stim_freq = freq) %>% pull(range_count_sum)) %>%
-  mutate(resp_prob = (No_APs / No_stim) * 100) %>%
-  mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>%
+    dplyr::mutate(freq = replace(freq, freq == 18, 20)) %>%
+    dplyr::mutate(freq = replace(freq, freq == 8, 10)) %>%
+    dplyr::rename(stim_freq = freq) %>% pull(range_count_sum)) %>%
+  dplyr::mutate(resp_prob = (No_APs / No_stim) * 100) %>%
+  dplyr::mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>%
   add_column(peak_latency = hist_stats %>%
     arrange(animal_id) %>%
     pull(peak)) %>%
@@ -1051,18 +1052,18 @@ APCount <- function(animal) {
 
   stim_trains <- RECORDINGS %>%
     dplyr::filter(signal_type == "stim") %>%
-    mutate(
+    dplyr::mutate(
       lag_sfc = lag(stim_freq),
       tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
       cum_tmp_var = cumsum(tmp_var)
     ) %>%
-    group_by(animal_id, stim_freq, cum_tmp_var) %>%
-    mutate(train_number = group_indices()) %>%
+    dplyr::group_by(animal_id, stim_freq, cum_tmp_var) %>%
+    dplyr::mutate(train_number = group_indices()) %>%
     ungroup() %>%
     select(-lag_sfc, -tmp_var, -cum_tmp_var) %>%
     dplyr::filter(animal_id == animal) %>%
-    group_by(stim_freq_categ, train_number, stim_number) %>%
-    summarise(
+    dplyr::group_by(stim_freq_categ, train_number, stim_number) %>%
+    dplyr::summarise(
       No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
       AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
       range_lower = signal_time,
@@ -1544,11 +1545,11 @@ ggplot(
 ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
-    group_by(animal_id, stim_freq_categ, stim_number) %>%
-    summarise(No_APs = sum(No_APs)) %>%
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(No_APs = sum(No_APs)) %>%
     ungroup() %>%
-    group_by(stim_freq_categ, stim_number) %>%
-    summarise(
+    dplyr::group_by(stim_freq_categ, stim_number) %>%
+    dplyr::summarise(
       No_AP_mean = mean(No_APs),
       No_AP_sd = sd(No_APs),
       SEM = sd(No_APs) / sqrt(length(No_APs))
@@ -1573,8 +1574,8 @@ ggplot(
 ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
-    group_by(animal_id, stim_freq_categ, stim_number) %>%
-    summarise(No_APs = sum(No_APs)),
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(No_APs = sum(No_APs)),
   mapping = aes(
     x = stim_number,
     y = No_APs,
@@ -1723,8 +1724,8 @@ ggplot(
     label = paste(
       "n = ",
       TERMINALS %>%
-        group_by(origin) %>%
-        summarise(n = length(b_area)) %>%
+        dplyr::group_by(origin) %>%
+        dplyr::summarise(n = length(b_area)) %>%
         dplyr::filter(origin == "m2") %>%
         select(n) %>%
         as.character()
@@ -1736,8 +1737,8 @@ ggplot(
     label = paste(
       "n = ",
       TERMINALS %>%
-        group_by(origin) %>%
-        summarise(n = length(b_area)) %>%
+        dplyr::group_by(origin) %>%
+        dplyr::summarise(n = length(b_area)) %>%
         dplyr::filter(origin == "unknown") %>%
         select(n) %>%
         as.character()
