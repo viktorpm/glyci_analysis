@@ -167,3 +167,35 @@ repeat{
 }
 
 recordings$stim_number[recordings$signal_type == "AP"] = NA
+
+
+###Hilbert ----
+
+library(seewave)
+
+hilbert(EEG_ds_scaled %>%
+          ts(
+            start = 0,
+            end = rec_length_ds - interval_ds,
+            deltat = 1 / samp_rate_ds
+          ), samp_rate_ds) %>% plot()
+
+
+EEG_ds_scaled %>%
+  ts(
+    start = 0,
+    end = rec_length_ds - interval_ds,
+    deltat = 1 / samp_rate_ds
+  ) %>%
+  plot(type = "l", col = "gray",xlim = c (0,20)) 
+
+
+Im(hilbert(EEG_ds_scaled, samp_rate_ds)) %>% 
+  ts(start = 0,
+     end = rec_length_ds - interval_ds,
+     deltat = 1 / samp_rate_ds) %>% 
+  points(xlim = c (0,20), type = "l")
+
+
+
+

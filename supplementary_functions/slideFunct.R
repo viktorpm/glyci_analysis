@@ -23,4 +23,12 @@ slideFunct <- function(data, window, step, type) {
     return(result)
   }
   
+  if (type == "cumsum") {
+    for(i in 1:length(spots)){
+      result[i] <- cumsum(data[spots[i]:(spots[i]+window)])
+    }
+    return(result)
+  }
+  
+  
 }

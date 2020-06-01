@@ -10,7 +10,7 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
                           breaks = histbreaks, 
                           plot = F)
   
-  
+  #browser()
   ### indices of maximal values in the first and second half of the histogram (max1 and max2)
   max1 <- which(
     isihist_threshold$counts[1:(length(isihist_threshold$counts) / 2)] ==
@@ -51,8 +51,9 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
   
   burst_threshold <- isihist_threshold$mids[((max2 - max1) / 2) + max1]
   return(list(bt = burst_threshold, 
-              p_val = diptest$p.value,
+              p_val_multipeak = diptest$p.value,
               p_val_density_log = diptest_density_log$p.value,
-              clustered = clustered,
-              clustered_d_log = clustered_d_log))
+              clustered = clustered %>% as.character(),
+              clustered_d_log = clustered_d_log %>% as.character(),
+              bins_n = isihist_threshold$breaks %>% length()))
 }
