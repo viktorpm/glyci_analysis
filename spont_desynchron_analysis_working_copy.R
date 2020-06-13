@@ -19,7 +19,7 @@ file_list <- list.files(
 )
 
 # SyncDesyncAnalysis <- function(file, sd_threshold) {
-file_to_load <- file_list[7]
+file_to_load <- file_list[3]
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
 raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -122,7 +122,9 @@ interval_ds <- 1 / samp_rate_ds
 ### n: order
 ### W: freq (digital filters: between 0 and 1, 1 is the Nyquist freq. eg: 20/10000 from 20 Hz)
 
-ButterBP <- butter(
+
+### constructing band pass filter
+ButterBP <- signal::butter(
   n = 3,
   W = c(1 / (samp_rate_ds / 2), 10 / (samp_rate_ds / 2)),
   type = "pass",
@@ -150,7 +152,7 @@ EEG_ds_scaled <- signal::filter(ButterBP, EEG_ds_scaled) %>%
 ### times of data points
 times <- seq(from = 0, to = rec_length_ds - interval_ds, by = interval_ds)
 
-
+### Power spectrum ------
 ### calculating Power Spectral Density to find the slow oscillation frequency
 PSD <- bspec::welchPSD(EEG_ds_scaled, seglength = 256, windowfun = hannwindow)
 
@@ -162,6 +164,7 @@ peaks <- FindPeaks(PSD$power, bw = 2)
 plot(PSD$power, type = "h")
 points(peaks[[1]], peaks[[2]], col = "red")
 
+PSD$frequency[peaks[[1]][1]]
 
 ### frequency of the first and second peak
 first_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][1]]
@@ -170,27 +173,27 @@ second_peak <- (PSD$frequency * samp_rate_ds)[peaks[[1]][2]]
 plot(
   PSD$frequency * samp_rate_ds,
   PSD$power,
-  type = "h",
-  lwd = 2,
+  type = "s",
+  # lwd = 2,
   xlim = c(0, 20),
   xlab = "Time",
   ylab = "Power"
 )
 abline(v = first_peak, col = "red")
-text(x = first_peak + 1, y = max(PSD$power) - 10, round(first_peak, 3), col = "red")
+text(x = first_peak + first_peak / 2, y = max(PSD$power) - 10, round(first_peak, 3), col = "red")
 
-dev.off()
+# dev.off()
 
 
 ### calculating moving SDs and means
 source(file.path("supplementary_functions", "slideFunct.R"))
 
-### window size: first_peak * samp_rate_ds 
+### window size: first_peak * samp_rate_ds
 
 slide_sd <- slideFunct(
   data = EEG_ds_scaled,
-  window = round(first_peak * samp_rate_ds),
-  step = round(first_peak/2 * samp_rate_ds),
+  window = round(1 / first_peak * samp_rate_ds),
+  step = round(1 / first_peak / 2 * samp_rate_ds),
   type = "sd"
 ) %>%
   scale() %>%
@@ -200,8 +203,8 @@ length(slide_sd) <- length(times)
 
 slide_mean <- slideFunct(
   data = EEG_ds_scaled,
-  window = round(first_peak * samp_rate_ds),
-  step = round(first_peak/2 * samp_rate_ds),
+  window = round(1 / first_peak * samp_rate_ds),
+  step = round(1 / first_peak / 2 * samp_rate_ds),
   type = "mean"
 ) %>%
   rep(each = (length(EEG_ds_scaled) / length(.)) %>% round())
@@ -212,7 +215,7 @@ length(slide_mean) <- length(times)
 #   window = round(2 * samp_rate_ds),
 #   step = round(2/2 * samp_rate_ds),
 #   type = "cumsum"
-# ) %>% 
+# ) %>%
 #   rep(each = (length(EEG_ds_scaled) / length(.)) %>% round())
 # length(slide_mean) <- length(times)
 
@@ -220,7 +223,7 @@ length(slide_mean) <- length(times)
 
 
 ### finding threshold for sync/desync periods (sd_threshold)
-par(mfrow = c(2,1))
+par(mfrow = c(2, 1))
 
 EEG_ds_scaled %>%
   ts(
@@ -244,21 +247,23 @@ slide_mean %>%
   ) %>%
   points(type = "l", col = "blue")
 abline(h = slide_sd %>% quantile(na.rm = T), col = "red")
-text(x = 0, y = c(slide_sd %>% quantile(na.rm = T)), labels = slide_sd %>% quantile(na.rm = T) %>% names() , col = "red")
-abline(h = (slide_sd %>% median(na.rm=T) + slide_sd %>% quantile(na.rm = T) %>% `[`(2))/2,
-       lty = 2, 
-       col = "magenta",
-       lwd = 2)
+text(x = 0, y = c(slide_sd %>% quantile(na.rm = T)), labels = slide_sd %>% quantile(na.rm = T) %>% names(), col = "red")
+abline(
+  h = (slide_sd %>% median(na.rm = T) + slide_sd %>% quantile(na.rm = T) %>% `[`(2)) / 2,
+  lty = 2,
+  col = "magenta",
+  lwd = 2
+)
 
 slide_sd %>% hist(breaks = "FD")
-abline(v = slide_sd %>% quantile(na.rm = T), type = "l", col = "red")
-text(x = c(slide_sd %>% quantile(na.rm = T)), y = 50, labels = slide_sd %>% quantile(na.rm = T) %>% names() , col = "red")
+abline(v = slide_sd %>% quantile(na.rm = T), col = "red")
+text(x = c(slide_sd %>% quantile(na.rm = T)), y = 50, labels = slide_sd %>% quantile(na.rm = T) %>% names(), col = "red")
 
-par(mfrow = c(1,1))
+par(mfrow = c(1, 1))
 
 ### constructing data frame with eeg values, moving SDs and means
 
-sd_threshold <- ((slide_sd %>% median(na.rm=T) + slide_sd %>% quantile(na.rm = T) %>% `[`(2))/2) %>% as.numeric()
+sd_threshold <- ((slide_sd %>% median(na.rm = T) + slide_sd %>% quantile(na.rm = T) %>% `[`(2)) / 2) %>% as.numeric()
 
 
 
@@ -281,14 +286,15 @@ repeat{
   }
 }
 
-
-### burst thershold based on ISI peaks in xlim = c(0,1) window, FILTERS DATA INSIDE
+#### burst threshold --------
+### burst thershold based on ISI peaks in xlim = c(0,1 / first_peak) window, FILTERS DATA INSIDE
 ### built in dip test to test ISI uni/multimodality (all ISIs are used)
 source(file.path("supplementary_functions", "BurstThresholdDetect.R"))
 
 burst_threshold_detect <- BurstThresholdDetect(
   hist_data = diff(ap_peaks),
-  histbreaks = "FD" ### Freedman-Diaconis rule for optimal bin-width
+  histbreaks = "FD", ### Freedman-Diaconis rule for optimal bin-width
+  isi_range = c(0, 1 / first_peak)
 )
 
 burst_threshold_detect %>% unlist()
@@ -331,10 +337,11 @@ EEG_ds_df <- left_join(
   dplyr::mutate(lag_levels = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>%
   dplyr::group_by(lag_levels) %>%
   dplyr::mutate(state_length = times[length(times)] - times[1]) %>%
+  dplyr::mutate(state_start = times[1], state_end = times[length(times)]) %>%
   ungroup() %>%
   select(-lag_levels) %>%
-  dplyr::mutate(levels2 = ifelse(levels == 0 & state_length <= 2, yes = abs(levels-1),no = levels)) %>% 
-  dplyr::mutate(levels2 = ifelse(levels == 1 & state_length <= 2, yes = abs(levels-1),no = levels))
+  dplyr::mutate(levels2 = ifelse(levels == 0 & state_length <= first_peak * 2, yes = abs(levels - 1), no = levels)) %>%
+  dplyr::mutate(levels2 = ifelse(levels == 1 & state_length <= first_peak * 2, yes = abs(levels - 1), no = levels))
 
 
 
@@ -351,32 +358,68 @@ EEG_ds_df <- left_join(
 
 
 
-ggplot(
-  data = EEG_ds_df %>% dplyr::filter(AP == 1, !is.na(eeg_state)), ### NAs in eeg_state becouse moving_sd has NAs at the end
-  mapping = aes(x = isi,fill = eeg_state, color = eeg_state)
+gg_isi_periods <- ggplot(
+  data = EEG_ds_df %>%
+    dplyr::filter(
+      AP == 1,
+      !is.na(eeg_state),
+      state_length >= 1 / first_peak * 2,
+      isi > 0, isi < 1 / first_peak
+    ), ### NAs in eeg_state because moving_sd has NAs at the end
+  mapping = aes(x = isi)
 ) +
-  geom_histogram(aes(y = stat(count / sum(count))), alpha = .6, bins = burst_threshold_detect$bins_n) +
-  #geom_histogram(aes(y=..count../sum(..count..))) +
-  #geom_histogram(aes(y=..density..), alpha=0.6, position="identity") +
-  #scale_y_log10() +
-  geom_vline(xintercept = burst_threshold_isi)
+  geom_histogram(aes(
+    fill = eeg_state,
+    color = eeg_state
+  ),
+  alpha = .3,
+  bins = burst_threshold_detect$bins_n
+  ) +
+  geom_vline(xintercept = burst_threshold_isi) +
+  annotate(
+    geom = "text",
+    x = burst_threshold_isi - burst_threshold_isi / 15,
+    y = Inf,
+    label = paste0("Burst threshold = ", burst_threshold_isi),
+    angle = 90,
+    hjust = 1.5
+  )
+# scale_y_log10() +
+# geom_histogram(aes(y = stat(count / sum(count)),
+#                    fill = eeg_state,
+#                    color = eeg_state),
+#                alpha = .6,
+#                bins = burst_threshold_detect$bins_n) +
+# geom_histogram(aes(y=..count../sum(..count..))) +
+# geom_histogram(aes(y=..density.., fill = eeg_state),
+#                alpha=0.6,
+#                bins = burst_threshold_detect$bins_n,
+#                position="identity") +
 
 
+
+gg_isi_all <- ggplot(
+  data = ap_peaks %>% diff() %>% tibble(isi = .),
+  mapping = aes(x = isi)
+) +
+  geom_histogram()
+
+ggpubr::ggarrange(gg_isi_all, gg_isi_periods, ncol = 2)
 
 
 EEG_ds_df %>%
-  dplyr::filter(!is.na(eeg_state)) %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
   dplyr::group_by(eeg_state) %>%
   dplyr::summarise(No_APs = length(ap_peak_times))
 
 EEG_ds_df %>%
-  dplyr::filter(!is.na(eeg_state)) %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
   dplyr::group_by(eeg_state) %>%
   dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T))
 
 
 EEG_ds_df %>%
-  dplyr::filter(!is.na(eeg_state)) %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
   dplyr::group_by(eeg_state) %>%
   dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 
@@ -384,7 +427,7 @@ EEG_ds_df %>%
 
 ### PLOT: eeg, APs (last 80 seconds of the recording) -----------
 plotting_region <- c(times[length(times)] - times[length(times)], times[length(times)])
-plotting_region <- c(110,190)
+plotting_region <- c(100, 180)
 
 
 # plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
@@ -396,6 +439,15 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
+### rect_index: stores the coordinates of the rectangles marking the omitted periods
+rect_index <- tibble(
+  state_start = subset(EEG_ds_df, state_length <= 1 / first_peak * 2) %>%
+    dplyr::select(state_start, state_end) %>% pull(state_start) %>% unique(),
+  state_end = subset(EEG_ds_df, state_length <= 1 / first_peak * 2) %>%
+    dplyr::select(state_start, state_end) %>% pull(state_end) %>% unique()
+)
+
+
 
 eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
   geom_line(aes(color = "gray")) +
@@ -403,7 +455,7 @@ eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = moving_sd, color = gg_color_hue(4)[1]), size = 1) +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = moving_average, color = gg_color_hue(4)[2]), size = 1) +
   geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels + 5, color = gg_color_hue(4)[3]), size = 1) +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels2 + 3, color = gg_color_hue(4)[3]), size = 1) +
+  # geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels2 + 3, color = gg_color_hue(4)[3]), size = 1) +
   geom_segment(
     mapping = aes(color = "black"),
     x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
@@ -439,6 +491,14 @@ eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values
     #   ),
     mapping = aes(x = times, y = burst_isi + 7), color = "red"
   ) +
+  geom_rect(
+    data = rect_index,
+    inherit.aes = F,
+    mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
+  ) +
+
+  # geom_rect(data = subset(EEG_ds_df, state_length <= 1/first_peak * 2),
+  #           mapping = aes(xmin = state_start, xmax = state_end, ymin=-Inf, ymax=+Inf), fill = 'pink', alpha = 0.03) +
   xlab("EEG [au]") +
   ylab("Time") +
   ### creating legend
@@ -449,6 +509,9 @@ eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values
     labels = c("EEG", "Moving SD", "Moving average", "Levels", "SD threshold", "APs")
   )
 eeg_sum_plot
+
+
+
 
 
 ### Analyzing firing based on EEG periods --------------------------------------------------
