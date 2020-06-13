@@ -19,7 +19,7 @@ file_list <- list.files(
 )
 
 # SyncDesyncAnalysis <- function(file, sd_threshold) {
-file_to_load <- file_list[3]
+file_to_load <- file_list[5]
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
 raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -88,33 +88,9 @@ EEG <- raw.rec$EEG[, , 1]$values
 
 
 EEG_scaled <- (EEG * as.double(raw.rec$EEG[, , 1]$scale)) + as.double(raw.rec$EEG[, , 1]$offset)
+samp_rate_original <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
+rec_length_original <- (raw.rec$EEG[,,1]$length/samp_rate_original) %>% as.double()
 
-
-
-### downsampling and standardizing in R -----------------------
-source(file.path("supplementary_functions", "downSamp.R"))
-
-ds_fun_out <- downSamp(
-  data = EEG_scaled,
-  ds_factor = 512,
-  samp_rate = 20000
-)
-EEG_ds_scaled <- ds_fun_out$data %>% scale()
-samp_rate_ds <- ds_fun_out$data_points / ds_fun_out$r_length
-rec_length_ds <- ds_fun_out$r_length
-interval_ds <- 1 / samp_rate_ds
-
-
-# source(file.path("supplementary_functions", "downSamp2.R"))
-# ds_fun_out <- downSamp2(
-#   data = EEG_scaled,
-#   samp_rate_orig = 20000,
-#   samp_rate_new = 40
-# )
-# EEG_ds_scaled <- ds_fun_out$data %>% scale()
-# rec_length_ds <- ds_fun_out$r_length_ds
-# samp_rate_ds <- ds_fun_out$data_points / ds_fun_out$r_length_ds
-# interval_ds <- 1 / samp_rate_ds
 
 
 ### Filtering ---------------
@@ -125,8 +101,8 @@ interval_ds <- 1 / samp_rate_ds
 
 ### constructing band pass filter
 ButterBP <- signal::butter(
-  n = 3,
-  W = c(1 / (samp_rate_ds / 2), 10 / (samp_rate_ds / 2)),
+  n = 2,
+  W = c(1 / (samp_rate_original / 2), 10 / (samp_rate_original / 2)),
   type = "pass",
   plane = "z"
 )
@@ -139,14 +115,44 @@ ButterBP <- signal::butter(
 #   plane = "z"
 # )
 
-EEG_ds_scaled <- signal::filter(ButterBP, EEG_ds_scaled) %>%
+EEG_scaled_bp <- signal::filter(ButterBP, EEG_scaled) %>%
   as.double() %>%
   scale()
+
 
 ### high pass filtering EEG
 # EEG_hp <- signal::filter(ButterHP, EEG_scaled) %>% as.double() %>% scale()
 # ds_fun_out_hp <- downSamp(data = EEG_hp, ds_factor = 8, samp_rate = 20000)
 # plot(ds_fun_out_hp$data[(6*2500):(11*2500)], type = "l")
+
+
+
+### downsampling and standardizing in R -----------------------
+source(file.path("supplementary_functions", "downSamp.R"))
+
+ds_fun_out <- downSamp(
+  data = EEG_scaled_bp,
+  ds_factor = 512,
+  samp_rate = 20000
+)
+
+EEG_ds_scaled <- ds_fun_out$data %>% scale()
+samp_rate_ds <- ds_fun_out$data_points / ds_fun_out$r_length
+rec_length_ds <- ds_fun_out$r_length
+interval_ds <- 1 / samp_rate_ds
+
+
+
+# source(file.path("supplementary_functions", "downSamp2.R"))
+# ds_fun_out <- downSamp2(
+#   data = EEG_scaled,
+#   samp_rate_orig = 20000,
+#   samp_rate_new = 40
+# )
+# EEG_ds_scaled <- ds_fun_out$data %>% scale()
+# rec_length_ds <- ds_fun_out$r_length_ds
+# samp_rate_ds <- ds_fun_out$data_points / ds_fun_out$r_length_ds
+# interval_ds <- 1 / samp_rate_ds
 
 
 ### times of data points
@@ -499,8 +505,8 @@ eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values
 
   # geom_rect(data = subset(EEG_ds_df, state_length <= 1/first_peak * 2),
   #           mapping = aes(xmin = state_start, xmax = state_end, ymin=-Inf, ymax=+Inf), fill = 'pink', alpha = 0.03) +
-  xlab("EEG [au]") +
-  ylab("Time") +
+  ylab("EEG [au]") +
+  xlab("Time") +
   ### creating legend
   scale_color_identity(
     name = "Lines",
