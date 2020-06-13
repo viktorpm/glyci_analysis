@@ -197,5 +197,59 @@ Im(hilbert(EEG_ds_scaled, samp_rate_ds)) %>%
   points(xlim = c (0,20), type = "l")
 
 
+##### multiple gausian separatin
+
+
+library(mixtools)
+
+
+h_freq <- hist(ap_peaks %>% diff(), breaks = "FD", freq = T)
+h_dens <- hist(ap_peaks %>% diff(), breaks = "FD", freq = F)
+h_dens$density <- h_dens$density/100
+
+plot(h_dens,freq = F)
+
+d <- h_dens$density
+
+
+par(mfrow = c(1,2))
+hist(ap_peaks %>% diff(), breaks = "FD", freq = T)
+hist(ap_peaks %>% diff(), breaks = "FD", freq = F)
+par(mfrow = c(1,1))
+
+
+fit <- normalmixEM(d, k = 2)
+summary(fit)
+
+plot(h_dens,freq = F)
+
+
+#show the respective curves
+lines(d,fit$lambda[1]*dnorm(d,fit$mu[1],fit$sigma[1]), col = "green")
+lines(d,fit$lambda[2]*dnorm(d,fit$mu[2],fit$sigma[2]), col = "red")
+
+
+gg_freq <- ggplot(data = tibble(isi = ap_peaks %>% diff()),
+                  mapping = aes(x= isi)) +
+  geom_histogram(bins = 100) +
+  ggtitle("Frequency histogram")
+
+gg_rel_freq_percent <- ggplot(data = tibble(isi = ap_peaks %>% diff()),
+                              mapping = aes(x= isi)) +
+  geom_histogram(bins = 100, aes(y = ..density..)) +
+  ggtitle("Relative frequency histogram (%)")
+
+gg_rel_freq <- ggplot(data = tibble(isi = ap_peaks %>% diff()),
+                      mapping = aes(x= isi)) +
+  geom_histogram(bins = 100, aes(y = ..count../sum(..count..))) +
+  ggtitle("Relative frequency histogram")
+
+gg_kernel_density <- ggplot(data = tibble(isi = ap_peaks %>% diff()),
+                            mapping = aes(x= isi)) +
+  geom_density() +
+  ggtitle("Kernel density estimate (smoothed histogram)")
+
+ggpubr::ggarrange(gg_freq,gg_rel_freq,gg_rel_freq_percent, gg_kernel_density, ncol = 2, nrow = 2)
+
 
 
