@@ -1,16 +1,20 @@
 ### detecting AP clusters ("bursts") based on ISI (distance between local maxima / 2)
 ### does not handel multiple local maxima
 
-BurstThresholdDetect <- function(hist_data, histbreaks) {
-  isihist_threshold <- hist(hist_data[hist_data > 0 & hist_data < 1], 
+BurstThresholdDetect <- function(hist_data, histbreaks, isi_range) {
+  # browser()
+  ### filtering data 
+  hist_data_filt <- hist_data[hist_data > isi_range[1] & hist_data < isi_range[2]]
+  
+  isihist_threshold <- hist(hist_data_filt, 
                             breaks = histbreaks, 
                             plot = F)
   
-  isihist_diptest <- hist(hist_data,
+  isihist_diptest <- hist(hist_data_filt,
                           breaks = histbreaks, 
                           plot = F)
   
-  #browser()
+  # browser()
   ### indices of maximal values in the first and second half of the histogram (max1 and max2)
   max1 <- which(
     isihist_threshold$counts[1:(length(isihist_threshold$counts) / 2)] ==
@@ -25,7 +29,7 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
   ) + length(isihist_threshold$counts) / 2
   
   diptest <- diptest::dip.test(isihist_diptest$counts, simulate.p.value = F)
-  density <- density(hist_data, na.rm = T)
+  density <- density(hist_data_filt, na.rm = T)
   diptest_density_log <- diptest::dip.test(log(density$y)[log(density$y) %>% is.finite()], 
                                            simulate.p.value = F)
   
@@ -42,7 +46,8 @@ BurstThresholdDetect <- function(hist_data, histbreaks) {
     clustered_d_log = F
   }
   
-  hist(hist_data, breaks = histbreaks, xlim = c(0,1))
+  
+  hist(hist_data_filt, breaks = histbreaks, xlim = isi_range)
   abline(v = isihist_threshold$mids[max1])
   abline(v = isihist_threshold$mids[max2])
   abline(v = isihist_threshold$mids[((max2 - max1) / 2) + max1], col = "red")
