@@ -88,8 +88,8 @@ EEG <- raw.rec$EEG[, , 1]$values
 
 
 EEG_scaled <- (EEG * as.double(raw.rec$EEG[, , 1]$scale)) + as.double(raw.rec$EEG[, , 1]$offset)
-samp_rate_original <- 1000/(raw.rec$EEG[,,1]$interval*1000) %>% as.double()
-rec_length_original <- (raw.rec$EEG[,,1]$length/samp_rate_original) %>% as.double()
+samp_rate_original <- 1000 / (raw.rec$EEG[, , 1]$interval * 1000) %>% as.double()
+rec_length_original <- (raw.rec$EEG[, , 1]$length / samp_rate_original) %>% as.double()
 
 
 
@@ -433,7 +433,7 @@ EEG_ds_df %>%
 
 ### PLOT: eeg, APs (last 80 seconds of the recording) -----------
 plotting_region <- c(times[length(times)] - times[length(times)], times[length(times)])
-plotting_region <- c(100, 180)
+plotting_region <- c(90, 155)
 
 
 # plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
@@ -455,13 +455,17 @@ rect_index <- tibble(
 
 
 
-eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values)) +
+eeg_sum_plot <- ggplot(
+  data = dplyr::filter(EEG_ds_df, times > plotting_region[1], times < plotting_region[2]),
+  mapping = aes(x = times, y = eeg_values)
+) +
   geom_line(aes(color = "gray")) +
-  xlim(plotting_region[1], plotting_region[2]) +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = moving_sd, color = gg_color_hue(4)[1]), size = 1) +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = moving_average, color = gg_color_hue(4)[2]), size = 1) +
-  geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels + 5, color = gg_color_hue(4)[3]), size = 1) +
-  # geom_line(data = EEG_ds_df, mapping = aes(x = times, y = levels2 + 3, color = gg_color_hue(4)[3]), size = 1) +
+  geom_line(
+    mapping = aes(x = times, y = moving_sd, color = gg_color_hue(2)[1]), size = 1
+  ) +
+  geom_line(
+    mapping = aes(x = times, y = levels + 3, color = gg_color_hue(2)[2]), size = 1
+  ) +
   geom_segment(
     mapping = aes(color = "black"),
     x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
@@ -469,51 +473,45 @@ eeg_sum_plot <- ggplot(data = EEG_ds_df, mapping = aes(x = times, y = eeg_values
     linetype = "dashed"
   ) +
   geom_point(
-    data = EEG_ds_df,
-    # %>%
-    #   dplyr::filter(
-    #     peak_times > plotting_region[1],
-    #     peak_times < plotting_region[2]
-    #   ),
-    mapping = aes(x = ap_peak_times, y = 7, color = gg_color_hue(4)[4]),
+    data = . %>% dplyr::filter(!is.na(ap_peak_times)),
+    mapping = aes(x = ap_peak_times, y = 5),
     shape = "|",
-    size = 4
+    size = 4,
+    color = "dark gray"
   ) +
+  # geom_point(
+  #   data = EEG_ds_df,
+  #   # %>%
+  #   #   dplyr::filter(
+  #   #     peak_times > plotting_region[1],
+  #   #     peak_times < plotting_region[2]
+  #   #   ),
+  #   mapping = aes(x = times, y = AP + 7)
+  # ) +
   geom_point(
-    data = EEG_ds_df,
-    # %>%
-    #   dplyr::filter(
-    #     peak_times > plotting_region[1],
-    #     peak_times < plotting_region[2]
-    #   ),
-    mapping = aes(x = times, y = AP + 7)
-  ) +
-  geom_point(
-    data = EEG_ds_df %>% dplyr::filter(burst_isi == 1),
-    # %>%
-    #   dplyr::filter(
-    #     peak_times > plotting_region[1],
-    #     peak_times < plotting_region[2]
-    #   ),
-    mapping = aes(x = times, y = burst_isi + 7), color = "red"
+    data = . %>% dplyr::filter(burst_isi == 1),
+    mapping = aes(x = times, y = burst_isi + 4),
+    color = "black",
+    shape = "|",
+    size = 5
   ) +
   geom_rect(
-    data = rect_index,
+    data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
     inherit.aes = F,
     mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
   ) +
-
-  # geom_rect(data = subset(EEG_ds_df, state_length <= 1/first_peak * 2),
-  #           mapping = aes(xmin = state_start, xmax = state_end, ymin=-Inf, ymax=+Inf), fill = 'pink', alpha = 0.03) +
   ylab("EEG [au]") +
   xlab("Time") +
+
   ### creating legend
   scale_color_identity(
     name = "Lines",
-    guide = guide_legend(override.aes = list(shape = c(rep(NA, 6)))),
-    breaks = c("gray", gg_color_hue(4)[1], gg_color_hue(4)[2], gg_color_hue(4)[3], "black", gg_color_hue(4)[4]),
-    labels = c("EEG", "Moving SD", "Moving average", "Levels", "SD threshold", "APs")
-  )
+    guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
+    breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
+    labels = c("EEG", "Moving SD", "Levels", "SD threshold")
+  ) +
+  theme_minimal()
+
 eeg_sum_plot
 
 
@@ -743,15 +741,15 @@ ggplot() +
 
 ### WAVELET -------------------------------------------------------------------
 
-time_window <- c(50, 100)
+time_window <- c(90, 150)
 
 ### calculating wavelet
 wave <- analyze.wavelet(EEG_ds_df %>%
   dplyr::filter(times > time_window[1], times < time_window[2]),
 "eeg_values",
 loess.span = 0,
-dt = 1 / 40, ### 1/sampling rate (number of intervals/time unit)
-dj = 1 / 20,
+dt = 1 / samp_rate_ds, ### 1/sampling rate (number of intervals/time unit)
+dj = 1 / samp_rate_ds / 2,
 # lowerPeriod = ,
 # upperPeriod = 2,
 make.pval = T,
@@ -763,14 +761,24 @@ n.sim = 1
 # wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
 
 powers <- wave$Power
-freqs <- (1 / wave$Period) %>% round(2)
+freqs <- (1 / wave$Period) # %>% round(2)
 period <- (wave$Period) %>% round(2)
 
 
 powers <- powers %>%
-  melt() # %>%
+  melt() %>%
+  group_by(Var2) %>%
+  dplyr::mutate(freqs = freqs) %>%
+  ungroup()
 
+### distance between freqs: logarithmic!!! in ggplot it only works if I set y scale to log10
+### y axis can be the index of each value (in that case I have to reverse y scale and add the freq values manually)
+powers$freqs %>%
+  unique() %>%
+  diff() %>%
+  plot()
 
+powers %>% View()
 ### PLOT: wavelet --------------------------------------------------------------
 
 ggplot() +
@@ -779,7 +787,7 @@ ggplot() +
     data = powers,
     mapping = aes(
       x = Var2 / samp_rate_ds + time_window[1],
-      y = Var1,
+      y = freqs, ### Var1: index of values, normal y scale but reversed!!!
       fill = scale(value)
     )
   ) +
@@ -788,14 +796,14 @@ ggplot() +
   geom_line(
     data = EEG_ds_df %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = times, y = -2 * eeg_values + 20), color = "white"
+    mapping = aes(x = times, y = -.5 * eeg_values + 5), color = "white"
   ) +
 
   ### APs
   geom_point(
     data = EEG_ds_df %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = ap_peak_times, y = 100),
+    mapping = aes(x = ap_peak_times, y = 10),
     shape = "|",
     color = "white", size = 5
   ) +
@@ -805,7 +813,7 @@ ggplot() +
     data = EEG_ds_df %>%
       dplyr::filter(ap_peak_times > time_window[1], ap_peak_times < time_window[2]) %>%
       dplyr::filter(burst_isi == 1),
-    mapping = aes(x = ap_peak_times, y = 100),
+    mapping = aes(x = ap_peak_times, y = 10),
     shape = "|",
     color = "red", size = 7
   ) +
@@ -814,8 +822,19 @@ ggplot() +
   geom_line(
     data = EEG_ds_df %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = times, y = -3 * levels + 5), color = "white"
+    mapping = aes(x = times, y = .5 * levels + 7), color = "white"
   ) +
+
+  ### PSD first peak
+  geom_segment(
+    aes(
+      x = time_window[1], xend = time_window[2],
+      y = first_peak, yend = first_peak
+    ),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  # geom_hline(yintercept = first_peak, size = 1, linetype = "dashed", col = "gray") +
 
   ### theme and scale settings
   theme_minimal() +
@@ -829,19 +848,17 @@ ggplot() +
     axis.ticks.length = unit(5, "mm")
   ) +
   xlab("Time (s)") +
-  scale_y_reverse(
-    name = "Frequency (Hz)",
-    breaks = c(1, 25, 50, 75, 100, 125, 150),
-    labels = c(
-      freqs[1],
-      freqs[25],
-      freqs[50],
-      freqs[75],
-      freqs[100],
-      freqs[125],
-      freqs[150]
-    )
-  ) +
+  scale_y_log10() +
+  # scale_y_reverse(
+  #   name = "Frequency (Hz)",
+  #   breaks = c(1, 200, 400, 600),
+  #   labels = c(
+  #     freqs[1],
+  #     freqs[200],
+  #     freqs[400],
+  #     freqs[600]
+  #   )
+  # ) +
   scale_fill_distiller(palette = "RdGy", name = "Power")
 
 
