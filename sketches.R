@@ -253,3 +253,33 @@ ggpubr::ggarrange(gg_freq,gg_rel_freq,gg_rel_freq_percent, gg_kernel_density, nc
 
 
 
+########################################
+### random stim PSTH
+
+
+ctx_stim_info <- read.csv(file.path("data","cortical_stim","file_info.csv")) %>% as_tibble()
+
+ctx_stim_info$rec_length[1] %>% as.numeric() 
+
+
+
+train_starts <- seq(
+  from = 1, 
+  to = ctx_stim_info$rec_length[1] %>% as.numeric() - 10,
+  length.out = 10) * runif(min = 0, max = 1, n = 10) %>%
+  sort()
+
+
+train_freq <- 10
+train_length <- 10
+
+train_starts <- runif(min = 1, max = ctx_stim_info$rec_length[1] %>% as.numeric() - 10, n = 10) %>% sort()
+train_ends <- train_starts + 1/train_freq * train_length
+
+
+seq(from = train_starts[1], to = train_ends[1], by = 1/train_freq) 
+
+seq(from = train_starts[1], to = train_ends[1], length.out = 10) %>% diff() %>% round(1)
+
+
+
