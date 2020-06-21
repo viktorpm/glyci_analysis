@@ -270,16 +270,18 @@ train_starts <- seq(
   sort()
 
 
-train_freq <- 10
+train_freq <- 20
 train_length <- 10
 
 train_starts <- runif(min = 1, max = ctx_stim_info$rec_length[1] %>% as.numeric() - 10, n = 10) %>% sort()
-train_ends <- train_starts + 1/train_freq * train_length
+train_ends <- train_starts + (1/train_freq * train_length) - 1/train_freq
 
 
-seq(from = train_starts[1], to = train_ends[1], by = 1/train_freq) 
+seq(from = train_starts[1], to = train_ends[1], by = 1/train_freq)
 
-seq(from = train_starts[1], to = train_ends[1], length.out = 10) %>% diff() %>% round(1)
 
+stim_times <- mapply(function(x,y) seq(from = x, to = y, by = 1/train_freq),
+       train_starts,
+       train_ends)
 
 
