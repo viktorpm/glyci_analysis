@@ -18,8 +18,9 @@ file_list <- list.files(
   pattern = "*.mat", full.names = F, recursive = F
 )
 
-# SyncDesyncAnalysis <- function(file, sd_threshold) {
-file_to_load <- file_list[5]
+SyncDesyncAnalysis <- function(file) {
+#browser()
+file_to_load <- file
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
 raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -305,7 +306,7 @@ burst_threshold_detect <- BurstThresholdDetect(
 
 burst_threshold_detect %>% unlist()
 burst_threshold_isi <- burst_threshold_detect[[1]]
-
+length(burst_threshold_isi) = 1
 
 EEG_ds_df <- tibble(
   ### only works with wavelet if it is a matrix!
@@ -316,6 +317,10 @@ EEG_ds_df <- tibble(
       end = rec_length_ds - interval_ds,
       deltat = 1 / samp_rate_ds
     ),
+  first_peak,
+  sd_threshold,
+  burst_threshold_isi,
+  nbins = burst_threshold_detect$bins_n,
   moving_sd = slide_sd,
   moving_average = slide_mean,
   levels = ifelse(moving_sd < sd_threshold, yes = 0, no = 1),
@@ -351,18 +356,21 @@ EEG_ds_df <- left_join(
 
 
 
-# return(EEG_ds_df)
-#
-# }
+return(EEG_ds_df)
 
-# all_eeg_df <- lapply(file_list, SyncDesyncAnalysis, sd_threshold = -0.4)
+}
 
+all_eeg_df <- lapply(file_list, SyncDesyncAnalysis)
+
+EEG_ds_df <- purrr::reduce(all_eeg_df, bind_rows)
 
 # all_eeg_df[[1]]
 # EEG_ds_df
 
 
-
+EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(sd_threshold) %>% unique()
+EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(nbins) %>% unique()
+EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(burst_threshold_isi) %>% unique()
 
 gg_isi_periods <- ggplot(
   data = EEG_ds_df %>%
@@ -379,17 +387,19 @@ gg_isi_periods <- ggplot(
     color = eeg_state
   ),
   alpha = .3,
-  bins = burst_threshold_detect$bins_n
+  #bins = burst_threshold_detect$bins_n
   ) +
-  geom_vline(xintercept = burst_threshold_isi) +
-  annotate(
-    geom = "text",
-    x = burst_threshold_isi - burst_threshold_isi / 15,
-    y = Inf,
-    label = paste0("Burst threshold = ", burst_threshold_isi),
-    angle = 90,
-    hjust = 1.5
-  )
+  # geom_vline(
+  #   xintercept = burst_threshold_isi) +
+  # annotate(
+  #   geom = "text",
+  #   x = burst_threshold_isi - burst_threshold_isi / 15,
+  #   y = Inf,
+  #   label = paste0("Burst threshold = ", burst_threshold_isi),
+  #   angle = 90,
+  #   hjust = 1.5
+  # ) +
+  facet_wrap(~ID)
 # scale_y_log10() +
 # geom_histogram(aes(y = stat(count / sum(count)),
 #                    fill = eeg_state,
@@ -413,27 +423,76 @@ gg_isi_all <- ggplot(
 ggpubr::ggarrange(gg_isi_all, gg_isi_periods, ncol = 2)
 
 
+left_join(
 EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
-  dplyr::group_by(eeg_state) %>%
-  dplyr::summarise(No_APs = length(ap_peak_times))
+  dplyr::group_by(ID,eeg_state) %>%
+  dplyr::summarise(No_APs = length(ap_peak_times)),
 
 EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
-  dplyr::group_by(eeg_state) %>%
-  dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T))
+  dplyr::group_by(ID,eeg_state) %>%
+  dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>% 
+  ggplot(aes(x = eeg_state, y = No_APs/state_length_sum, group = ID)) +
+  geom_point() +
+  geom_line() +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray",
+    
+  ) +
+  geom_text_repel(
+    data = . %>% dplyr::filter(eeg_state == "sync"),
+    aes(label = ID),
+    direction = "y",
+    hjust = -.5)
+
+left_join(
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+  dplyr::group_by(ID,eeg_state) %>%
+  dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+  dplyr::group_by(ID,eeg_state) %>%
+  dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>% 
+  ggplot(aes(x = eeg_state, y = No_clusters/state_length_sum, group = ID)) +
+  geom_point(aes(col = ID),size = 3) +
+  geom_line(aes(col = ID)) +
+  geom_boxplot(
+    aes(x = eeg_state, y = No_clusters/state_length_sum), 
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray",
+    
+  ) 
+  # geom_text_repel(
+  #   data = . %>% dplyr::filter(eeg_state == "sync"),
+  #   aes(label = ID),
+  #   direction = "y",
+  #   hjust = -.5)
 
 
 EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
-  dplyr::group_by(eeg_state) %>%
+  dplyr::group_by(ID,eeg_state) %>%
   dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 
 
 
 ### PLOT: eeg, APs (last 80 seconds of the recording) -----------
 plotting_region <- c(times[length(times)] - times[length(times)], times[length(times)])
-plotting_region <- c(90, 155)
+plotting_region <- c(90, 150)
 
 
 # plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
@@ -454,6 +513,13 @@ rect_index <- tibble(
 )
 
 
+EEG_ds_df %>% 
+  dplyr::filter(times > plotting_region[1], times < plotting_region[2]) %>% 
+  dplyr::mutate(lag_levels = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>% 
+  dplyr::group_by(lag_levels)
+
+
+
 
 eeg_sum_plot <- ggplot(
   data = dplyr::filter(EEG_ds_df, times > plotting_region[1], times < plotting_region[2]),
@@ -466,12 +532,12 @@ eeg_sum_plot <- ggplot(
   geom_line(
     mapping = aes(x = times, y = levels + 3, color = gg_color_hue(2)[2]), size = 1
   ) +
-  geom_segment(
-    mapping = aes(color = "black"),
-    x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
-    y = sd_threshold, yend = sd_threshold,
-    linetype = "dashed"
-  ) +
+  # geom_segment(
+  #   mapping = aes(color = "black"),
+  #   x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
+  #   y = sd_threshold, yend = sd_threshold,
+  #   linetype = "dashed"
+  # ) +
   geom_point(
     data = . %>% dplyr::filter(!is.na(ap_peak_times)),
     mapping = aes(x = ap_peak_times, y = 5),
@@ -495,22 +561,23 @@ eeg_sum_plot <- ggplot(
     shape = "|",
     size = 5
   ) +
-  geom_rect(
-    data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
-    inherit.aes = F,
-    mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
-  ) +
+  # geom_rect(
+  #   data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
+  #   inherit.aes = F,
+  #   mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
+  # ) +
   ylab("EEG [au]") +
   xlab("Time") +
 
   ### creating legend
-  scale_color_identity(
-    name = "Lines",
-    guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
-    breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
-    labels = c("EEG", "Moving SD", "Levels", "SD threshold")
-  ) +
-  theme_minimal()
+  # scale_color_identity(
+  #   name = "Lines",
+  #   guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
+  #   breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
+  #   labels = c("EEG", "Moving SD", "Levels", "SD threshold")
+  # ) +
+  theme_minimal() +
+  facet_wrap(~ID, ncol = 3)
 
 eeg_sum_plot
 
