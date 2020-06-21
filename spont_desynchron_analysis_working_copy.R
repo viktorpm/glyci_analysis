@@ -372,8 +372,40 @@ EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(sd_threshold) %>% unique()
 EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(nbins) %>% unique()
 EEG_ds_df %>% dplyr::group_by(ID) %>% dplyr::select(burst_threshold_isi) %>% unique()
 
+gg_isi_periods <- lapply(all_eeg_df, function(x){
+  ggplot(
+    data = x %>%
+      dplyr::filter(
+        AP == 1,
+        !is.na(eeg_state),
+        state_length >= 1 / first_peak * 2,
+        isi > 0, isi < 1 / first_peak
+      ), ### NAs in eeg_state because moving_sd has NAs at the end
+    mapping = aes(x = isi)
+  ) +
+    geom_histogram(aes(
+      fill = eeg_state,
+      color = eeg_state
+    ),
+    alpha = .3,
+    bins = x$nbins %>% unique()
+    ) + 
+    geom_vline(
+      xintercept = x$burst_threshold_isi %>% unique()) +
+    annotate(
+      geom = "text",
+      x = x$burst_threshold_isi %>% unique() - x$burst_threshold_isi %>% unique() / 15,
+      y = Inf,
+      label = paste0("Burst threshold = ", x$burst_threshold_isi %>% unique()),
+      angle = 90,
+      hjust = 1.5
+    ) 
+})
+
+ggpubr::ggarrange(plotlist =  gg_isi_periods)
+
 gg_isi_periods <- ggplot(
-  data = EEG_ds_df %>%
+  data = all_eeg_df[[1]] %>%
     dplyr::filter(
       AP == 1,
       !is.na(eeg_state),
@@ -387,19 +419,19 @@ gg_isi_periods <- ggplot(
     color = eeg_state
   ),
   alpha = .3,
-  #bins = burst_threshold_detect$bins_n
-  ) +
-  # geom_vline(
-  #   xintercept = burst_threshold_isi) +
-  # annotate(
-  #   geom = "text",
-  #   x = burst_threshold_isi - burst_threshold_isi / 15,
-  #   y = Inf,
-  #   label = paste0("Burst threshold = ", burst_threshold_isi),
-  #   angle = 90,
-  #   hjust = 1.5
-  # ) +
-  facet_wrap(~ID)
+  bins = all_eeg_df[[1]]$nbins %>% unique()
+  ) + 
+  geom_vline(
+    xintercept = all_eeg_df[[1]]$burst_threshold_isi %>% unique()) +
+  annotate(
+    geom = "text",
+    x = all_eeg_df[[1]]$burst_threshold_isi %>% unique() - all_eeg_df[[1]]$burst_threshold_isi %>% unique() / 15,
+    y = Inf,
+    label = paste0("Burst threshold = ", all_eeg_df[[1]]$burst_threshold_isi %>% unique()),
+    angle = 90,
+    hjust = 1.5
+  ) 
+  #facet_wrap(~ID)
 # scale_y_log10() +
 # geom_histogram(aes(y = stat(count / sum(count)),
 #                    fill = eeg_state,
@@ -581,6 +613,70 @@ eeg_sum_plot <- ggplot(
 
 eeg_sum_plot
 
+
+eeg_sum_plot <- lapply(all_eeg_df, function(x){
+ ggplot(
+  data = dplyr::filter(x, times > plotting_region[1], times < plotting_region[2]),
+  mapping = aes(x = times, y = eeg_values)
+) +
+  geom_line(aes(color = "gray")) +
+  geom_line(
+    mapping = aes(x = times, y = moving_sd, color = gg_color_hue(2)[1]), size = 1
+  ) +
+  geom_line(
+    mapping = aes(x = times, y = levels + 3, color = gg_color_hue(2)[2]), size = 1
+  ) +
+  # geom_segment(
+  #   mapping = aes(color = "black"),
+  #   x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
+  #   y = sd_threshold, yend = sd_threshold,
+  #   linetype = "dashed"
+  # ) +
+  geom_point(
+    data = . %>% dplyr::filter(!is.na(ap_peak_times)),
+    mapping = aes(x = ap_peak_times, y = 5),
+    shape = "|",
+    size = 4,
+    color = "dark gray"
+  ) +
+  # geom_point(
+  #   data = EEG_ds_df,
+  #   # %>%
+  #   #   dplyr::filter(
+  #   #     peak_times > plotting_region[1],
+  #   #     peak_times < plotting_region[2]
+  #   #   ),
+  #   mapping = aes(x = times, y = AP + 7)
+  # ) +
+  geom_point(
+    data = . %>% dplyr::filter(burst_isi == 1),
+    mapping = aes(x = times, y = burst_isi + 4),
+    color = "black",
+    shape = "|",
+    size = 5
+  ) +
+  # geom_rect(
+  #   data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
+  #   inherit.aes = F,
+  #   mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
+  # ) +
+  ylab("EEG [au]") +
+  xlab("Time") +
+  
+  ### creating legend
+  # scale_color_identity(
+  #   name = "Lines",
+  #   guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
+  #   breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
+  #   labels = c("EEG", "Moving SD", "Levels", "SD threshold")
+  # ) +
+  theme_minimal() 
+  }
+)
+
+eeg_sum_plot
+
+ggpubr::ggarrange(plotlist = eeg_sum_plot)
 
 
 
