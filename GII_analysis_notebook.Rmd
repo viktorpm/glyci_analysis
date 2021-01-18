@@ -1737,11 +1737,11 @@ gg_isi_periods <- lapply(all_eeg_df, function(x) {
     ) +
     annotate(
       geom = "text",
-      x = x$burst_threshold_isi %>% unique() - x$burst_threshold_isi %>% unique() / 15,
+      x = x$burst_threshold_isi %>% unique() - x$burst_threshold_isi %>% unique() / 7,
       y = Inf,
       label = paste0("Burst threshold = ", x$burst_threshold_isi %>% unique()),
       angle = 90,
-      hjust = 1.5
+      hjust = 1.2
     ) +
     labs(caption = x$ID %>% unique())
 })
