@@ -3,10 +3,13 @@ scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
 
-coords <- read.csv(file.path("turning", "video2_coords.csv")) %>%
+
+coords <- read.csv(file.path("turning", "video4_coords.csv")) %>%
   as_tibble() %>%
+  #dplyr::group_by(session) %>% 
   dplyr::mutate(rec_time = (frame / fps) %>% round(digits = 2)) %>%
-  dplyr::mutate(stim = ifelse(
+  dplyr::mutate(
+    stim = ifelse(
     frame >= 8359 & frame <= 8609 |
       frame >= 1869  & frame <= 2119 |
       frame >= 3625 & frame <= 3875 |
@@ -57,7 +60,7 @@ coords <- read.csv(file.path("turning", "video2_coords.csv")) %>%
 
 
 coords %>%
-  dplyr::filter(body_part == "center") %>%
+  dplyr::filter(body_part == "head") %>%
   # dplyr::slice(1:200) %>%
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
@@ -81,18 +84,22 @@ coords %>%
 
 
 coords %>%
-  dplyr::filter(body_part == "center") %>%
+  dplyr::filter(body_part == "head") %>%
   ggplot(mapping = aes(x = Y_diff)) +
   geom_histogram()
 
 coords %>%
-  dplyr::filter(body_part == "center") %>%
+  dplyr::filter(body_part == "tail") %>% 
   # dplyr::summarise(mean_mps = mean(mps, na.rm = T))
   # dplyr::mutate(d_mm = ifelse(d_mm > 30, NA, d_mm)) %>%
   # dplyr::mutate(speed_instant = ifelse(speed_instant > 1000, NA, speed_instant)) %>%
   ggplot() +
-  geom_point(mapping = aes(x = rec_time, y = mean_mps_roll, color = stim, group = stim)) + 
-  geom_line(mapping = aes(x = rec_time, y = mps, color = stim, group = stim))
+  #geom_point(mapping = aes(x = rec_time, y = mean_mps_roll, color = stim, group = stim)) + 
+  geom_line(mapping = aes(x = frame, y = mps, color = stim, group = 1)) 
+  #geom_point(mapping = aes(x = as.factor(rec_time), y = mps, color = stim, group = 1)) 
+
+
+
   
 # geom_smooth(method = "gam")
 # geom_line(mapping = aes(x = rec_time, y = speed))
