@@ -198,7 +198,7 @@ coords %>%
 coords %>%
   dplyr::filter(body_part == "head") %>% 
   ggplot(mapping = aes(x = rec_time, y = mps)) +
-  geom_line(aes(color = stim_number, group = 1)) + 
+  geom_line(aes(color = stim, group = 1)) + 
   # geom_line(data = as_tibble(spline(coords$rec_time, coords$d_mm)), aes(x=x, y=y)) +
   ylim(c(0,100)) + 
   #scale_color_discrete(na.translate=F) +
