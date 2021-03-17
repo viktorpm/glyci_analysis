@@ -3,20 +3,24 @@ scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
 
-
-coords <- read.csv(file.path("turning", "video4_coords.csv")) %>%
+stims <- read.csv(file.path("data", "turning", "GIIFM19",  "GIIFM19Frames_20201116.csv")) %>% 
   as_tibble() %>%
-  #dplyr::group_by(session) %>% 
+  mutate(session = str_remove(session, "_")) %>% 
+  gather(key = "timing", value = "frame", start, end)
+
+
+coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
+  as_tibble() %>%
+  mutate(session = str_remove(session, pattern = ".dat")) %>%
+  full_join(stims) %>% 
+  dplyr::group_by(session) %>% 
+  group_by(grp = cumsum(!is.na(stim.number))) %>% 
+  mutate(stim = F, 
+         stim = replace(stim, first(timing) == 'start', T)) %>% 
+  ungroup() %>% 
+  select(-grp, -timing, -animal) %>% 
+  group_by(session) %>% 
   dplyr::mutate(rec_time = (frame / fps) %>% round(digits = 2)) %>%
-  dplyr::mutate(
-    stim = ifelse(
-    frame >= 8359 & frame <= 8609 |
-      frame >= 1869  & frame <= 2119 |
-      frame >= 3625 & frame <= 3875 |
-      frame >= 4914 & frame <= 5164 |
-      frame >= 6319 & frame <= 6569,
-    yes = T, no = F
-  )) %>%
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
   unite(col = "tail", tail1, tail2, sep = "_") %>%
@@ -26,16 +30,24 @@ coords <- read.csv(file.path("turning", "video4_coords.csv")) %>%
     head, center, tail
   ) %>%
   tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>%
-  dplyr::mutate(X = as.integer(X), Y = as.integer(Y)) %>%
+  dplyr::mutate(
+    X = ifelse(
+      as.integer(X) == 0 & as.integer(Y) == 0, 
+      yes = NA,
+      no = as.integer(X)),
+    Y = ifelse(
+      as.integer(X) == 0 & as.integer(Y) == 0, 
+      yes = NA,
+      no = as.integer(Y))) %>%
   dplyr::group_by(body_part) %>%
   mutate(
     X_diff = c(diff(X), NA),
     Y_diff = c(diff(Y), NA)
-  ) %>%
-  dplyr::mutate(
-    X_diff = ifelse(abs(X_diff) > 30, NA, X_diff),
-    Y_diff = ifelse(abs(Y_diff) > 30, NA, Y_diff)
-  ) %>%
+  ) %>%##
+  # dplyr::mutate(
+  #   X_diff = ifelse(abs(X_diff) > 30, NA, X_diff),
+  #   Y_diff = ifelse(abs(Y_diff) > 30, NA, Y_diff)
+  # ) %>%
   dplyr::mutate(
     d = sqrt(X_diff^2 + Y_diff^2),
     d_mm = d / scale
@@ -50,18 +62,27 @@ coords <- read.csv(file.path("turning", "video4_coords.csv")) %>%
   ) %>%
   group_by(sec, body_part) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup() %>% 
-  group_by(stim) %>% 
-  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = mps, k = 60,fill = NA))
+  ungroup() 
+  
+  # group_by(stim) %>% 
+  # dplyr::mutate(mean_mps_roll = zoo::rollmean(x = mps, k = 60,fill = NA))
 # ungroup() %>%
 # mutate(sum_d = NA) %>%
 # dplyr::group_by(body_part) %>%
 # dplyr::mutate(sum_d = replace(sum_d, list = (rec_time %% 1 == 0), values = rowSums(d, 30)))
 
 
+
+# generating ggplot default colors
+gg_color_hue <- function(n) {
+  hues <- seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+n <- 2
+cols <- gg_color_hue(n)
+
 coords %>%
-  dplyr::filter(body_part == "head") %>%
-  # dplyr::slice(1:200) %>%
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
@@ -77,32 +98,26 @@ coords %>%
     labels = c("Center", "Head", "Tail")
   ) +
   xlim(c(0,1280)) +
-  ylim(c(0,720))
+  ylim(c(0,720)) +
+  facet_wrap(~ session)
 #  geom_label_repel()
 
 
 
 
 coords %>%
-  dplyr::filter(body_part == "head") %>%
-  ggplot(mapping = aes(x = Y_diff)) +
+  dplyr::filter(body_part == "center") %>%
+  ggplot(mapping = aes(x = X_diff)) +
   geom_histogram()
 
 coords %>%
-  dplyr::filter(body_part == "tail") %>% 
-  # dplyr::summarise(mean_mps = mean(mps, na.rm = T))
-  # dplyr::mutate(d_mm = ifelse(d_mm > 30, NA, d_mm)) %>%
-  # dplyr::mutate(speed_instant = ifelse(speed_instant > 1000, NA, speed_instant)) %>%
+  dplyr::filter(body_part == "head") %>% 
   ggplot() +
-  #geom_point(mapping = aes(x = rec_time, y = mean_mps_roll, color = stim, group = stim)) + 
-  geom_line(mapping = aes(x = frame, y = mps, color = stim, group = 1)) 
-  #geom_point(mapping = aes(x = as.factor(rec_time), y = mps, color = stim, group = 1)) 
+  geom_line(mapping = aes(x = rec_time, y = d_mm, color = stim, group = 1)) + 
+  ylim(c(0,100)) + 
+  facet_wrap(~ session)
 
 
-
-  
-# geom_smooth(method = "gam")
-# geom_line(mapping = aes(x = rec_time, y = speed))
 
 
 
@@ -123,14 +138,6 @@ library(transformr)
 library(gifski)
 
 
-# generating ggplot default colors
-gg_color_hue <- function(n) {
-  hues <- seq(15, 375, length = n + 1)
-  hcl(h = hues, l = 65, c = 100)[1:n]
-}
-
-n <- 2
-cols <- gg_color_hue(n)
 
 p <- coords %>%
   ggplot(
@@ -148,9 +155,14 @@ p <- coords %>%
     labels = c("Center", "Head", "Tail")
   ) +
   xlim(c(0,1280)) +
-  ylim(c(0,720))
+  ylim(c(0,720)) +
+  facet_wrap(~session)
 p
 
+p +
+  gganimate::transition_time(rec_time)
+  
+  
 anim <- p +
   gganimate::transition_time(rec_time) +
   labs(title = "Time: {frame_time %>% round(digits = 2)}s") +
