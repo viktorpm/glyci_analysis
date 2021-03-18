@@ -79,19 +79,19 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-n <- 2
+n <- 5
 cols <- gg_color_hue(n)
 
 coords %>%
+  # dplyr::filter(rec_time < 20) %>% 
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
   geom_point(aes(shape = body_part), size = 2) +
-  geom_line(aes(group = frame, col = stim)) +
+  geom_line(aes(group = frame, col = stim_number)) +
   scale_color_manual(
-    values = c("black", cols[2]),
-    name = "Stimulus",
-    labels = c("Off", "On")
+    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
+    name = "Stimulus"
   ) +
   scale_shape(
     name = "Body part",
@@ -99,8 +99,8 @@ coords %>%
   ) +
   xlim(c(0,1280)) +
   ylim(c(0,720)) +
-  facet_wrap(~ session)
-#  geom_label_repel()
+  facet_wrap(~ session) +
+  gganimate::transition_time(rec_time,range = c(0,20))
 
 
 

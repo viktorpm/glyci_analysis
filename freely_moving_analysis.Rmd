@@ -2,17 +2,17 @@
 title: "Freely moving analysis"
 author: "Viktor Plattner"
 output:
-  html_document:
+  html_notebook:
     number_sections: yes
-    df_print: paged
     toc: yes
     toc_float: yes
   pdf_document:
     number_sections: yes
     toc: yes
     keep_tex: true
-  html_notebook:
+  html_document:
     number_sections: yes
+    df_print: paged
     toc: yes
     toc_float: yes
 spacing: single
@@ -63,7 +63,7 @@ pre { /* Code block - determines code spacing between lines */
 
 # Loading data
 
-Defining global values
+Defining global constants
 
 scale: pixels/mm
 fps: frame rate
@@ -104,12 +104,13 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   ungroup(grp) %>% 
   group_by(stim) %>% 
   fill(stim_number) %>% 
+  fill(intensity) %>% 
   select(-grp, -animal, -timing, -stim_length) %>%
   ungroup(stim) %>% 
   group_by(session) %>% 
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
-    segments = cumsum(ifelse(rec_time %% 8 == 0, 1, 0))) %>% # length of the stimulus 
+    segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0))) %>% # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
   unite(col = "tail", tail1, tail2, sep = "_") %>%
@@ -145,7 +146,8 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   ) %>%
   group_by(sec_counter, body_part) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim" ))
 
 coords
 ```
@@ -159,7 +161,7 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-n <- 2
+n <- 5
 cols <- gg_color_hue(n)
 ```
 
@@ -171,11 +173,10 @@ coords %>%
     mapping = aes(x = X, y = Y, label = frame)
   ) +
   geom_point(aes(shape = body_part), size = 2) +
-  geom_line(aes(group = frame, col = stim)) +
+  geom_line(aes(group = frame, col = stim_number %>% as.character())) +
   scale_color_manual(
-    values = c("black", cols[2]),
-    name = "Stimulus",
-    labels = c("Off", "On")
+    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
+    name = "Stimulus"
   ) +
   scale_shape(
     name = "Body part",
@@ -185,6 +186,32 @@ coords %>%
   ylim(c(0,720)) +
   facet_wrap(~ session)
 ```
+
+```{r}
+coords %>% 
+  dplyr::filter(body_part == "center") %>%
+  group_by(session, sec_counter) %>% 
+  mutate(d_sec = sum(d_mm)) %>% 
+
+  ggplot(
+    mapping = aes(x = X, y = Y, label = frame)
+  ) +
+  geom_point(aes(color = d_sec %>% scale(), size = stim)) +
+  # geom_line(aes(group = frame, col = stim_number %>% as.character())) +
+  # scale_color_manual(
+  #   values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
+  #   name = "Stimulus"
+  # ) +
+  # scale_shape(
+  #   name = "Body part",
+  #   labels = c("Center", "Head", "Tail")
+  # ) +
+  xlim(c(0,1280)) +
+  ylim(c(0,720)) +
+  facet_wrap(~ session)
+```
+
+
 
 ```{r}
 coords %>%
@@ -197,21 +224,32 @@ coords %>%
 ```{r}
 coords %>%
   dplyr::filter(body_part == "head") %>% 
-  ggplot(mapping = aes(x = rec_time, y = mps)) +
+  ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) + 
   # geom_line(data = as_tibble(spline(coords$rec_time, coords$d_mm)), aes(x=x, y=y)) +
   ylim(c(0,100)) + 
   #scale_color_discrete(na.translate=F) +
-  facet_wrap(~ session)
+  facet_wrap(~ session, scales = "free_x")
 ```
 
 ```{r}
 coords %>% 
-  dplyr::group_by(stim_number) %>% 
-  summarise(rec_time, mps) #%>% 
-  #ggplot(mapping = aes(x = rec_time, y = mps, color = stim, group = 1)) + 
-  # ylim(c(0,100)) +
-  # geom_line()
+  dplyr::group_by(session, stim) %>% 
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30,fill = NA)) %>% 
+  ggplot(aes(x = rec_time, y = d_mm)) +
+  ylim(c(0,100)) +
+  geom_point(aes(color = stim)) +
+  geom_line(aes(x = rec_time, y = mean_mps_roll)) + 
+  facet_wrap(~ session, scales = "free_x")
+  
 
+```
+
+
+```{r}
+coords %>% 
+  dplyr::group_by(session, stim, segments = 50) %>% 
+  summarise(mean(d_mm, na.rm = T))
+  
 ```
 
