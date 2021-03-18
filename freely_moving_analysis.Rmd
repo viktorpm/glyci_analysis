@@ -110,7 +110,8 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   group_by(session) %>% 
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
-    segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0))) %>% # length of the stimulus
+    segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0)),
+    before_stim = lead(stim, n = 250)) %>% # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
   unite(col = "tail", tail1, tail2, sep = "_") %>%
