@@ -65,9 +65,9 @@ pre { /* Code block - determines code spacing between lines */
 
 Defining global constants
 
-scale: pixels/mm
-fps: frame rate
-time_res: time between frames
+scale: pixels/mm <br>
+fps: frame rate <br>
+time_res: time between frames <br>
 
 ```{r}
 scale <- 1.38 ### pixel/mm
@@ -98,7 +98,6 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   dplyr::group_by(session) %>% 
   mutate(grp = cumsum(!is.na(stim_number))) %>% 
   dplyr::group_by(grp) %>%
-  # dplyr::group_by(grp = cumsum(!is.na(stim_number))) %>% 
   mutate(stim = F,
          stim = replace(stim, first(timing) == "start" | timing == "end", T)) %>%
   ungroup(grp) %>% 
@@ -173,8 +172,15 @@ coords %>%
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
-  geom_point(aes(shape = body_part), size = 2) +
-  geom_line(aes(group = frame, col = stim_number %>% as.character())) +
+  geom_point(
+    aes(shape = body_part, col = stim_number), 
+    size = 2,
+    alpha = .1
+    ) +
+  geom_line(
+    aes(group = frame, col = stim_number %>% as.character()),
+    alpha = .1
+    ) +
   scale_color_manual(
     values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
     name = "Stimulus"
@@ -192,12 +198,12 @@ coords %>%
 coords %>% 
   dplyr::filter(body_part == "center") %>%
   group_by(session, sec_counter) %>% 
-  mutate(d_sec = sum(d_mm)) %>% 
+  mutate(d_sec = sum(d_mm, na.rm = T)) %>% 
 
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
-  geom_point(aes(color = d_sec %>% scale(), size = stim)) +
+  geom_point(aes(color = d_sec %>% scale(), alpha = stim)) +
   # geom_line(aes(group = frame, col = stim_number %>% as.character())) +
   # scale_color_manual(
   #   values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
