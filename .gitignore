@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 data/
+!data/turning
 output_data/
 *.html
 GII_analysis_notebook.nb.html
