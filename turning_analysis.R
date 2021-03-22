@@ -183,23 +183,23 @@ gganimate::anim_save(
 
 coords %>%
   dplyr::group_by(body_part) %>%
-  slice(1:6) %>%
+  slice(1:3) %>%
   dplyr::filter(body_part != "tail") %>%
   ggplot(
     mapping = aes(x = X, y = Y)
   ) +
   geom_point(aes(shape = body_part), size = 2) +
   geom_line(aes(group = frame, color = as.character(frame))) +
-  geom_text_repel(aes(label = paste0(X, ",", Y))) +
-  geom_label_repel(
-    data = coords %>%
-      dplyr::group_by(body_part) %>%
-      slice(1:6) %>%
-      dplyr::filter(body_part != "tail") %>%
-      dplyr::group_by(frame) %>%
-      summarise(vect_X = diff(X), vect_Y = diff(Y)),
-    aes(x = 750, y = 525, label = paste0(vect_X, ",", vect_Y), col = as.character(frame))
-  )
+  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame))) 
+  # geom_label_repel(
+  #   data = coords %>%
+  #     dplyr::group_by(body_part) %>%
+  #     slice(1:3) %>%
+  #     dplyr::filter(body_part != "tail") %>%
+  #     dplyr::group_by(frame) %>%
+  #     summarise(vect_X = diff(X), vect_Y = diff(Y)),
+  #   aes(x = 750, y = 525, label = paste0(vect_X, ",", vect_Y), col = as.character(frame))
+  # )
 
 
 coords %>%
@@ -207,7 +207,7 @@ coords %>%
   # dplyr::group_by(body_part) %>%
   # slice(1:3) %>%
   ### each frame is present twice (for each body part)
-  dplyr::group_by(frame) %>%
+  dplyr::group_by(session,frame) %>%
   summarise(
     # vectxabs = diff(X) %>% abs(),
     # vectyabs = diff(Y) %>% abs(),
@@ -220,7 +220,7 @@ coords %>%
     leadx = lead(vectx),
     leady = lead(vecty)
   ) %>%
-  dplyr::group_by(frame) %>%
+  # dplyr::group_by(frame) %>%
   mutate(
     angle = matlib::angle(
       x = c(vectx, vecty),
@@ -238,8 +238,8 @@ coords %>%
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim)
   ) %>%
   ungroup() %>%
-  dplyr::group_by(stim) %>%
-  mutate(sum_angle = cumsum(signed_angle))
+  dplyr::group_by(session, stim) %>%
+  mutate(sum_angle = cumsum(signed_angle)) %>% View() 
 dplyr::group_by(stim) %>%
   summarise(sum(signed_angle, na.rm = T))
 
@@ -284,6 +284,8 @@ vectors %>%
   as.matrix() %>%
   as.vector()
 
+
+
 matlib::angle(
   x = vectors %>%
     group_by(frame) %>%
@@ -299,5 +301,7 @@ matlib::angle(
 
 vectors %>%
   ggplot(mapping = aes(x = X, y = Y)) +
-  geom_point(aes(col = body)) +
-  geom_line(aes(group = frame))
+  geom_point(aes(shape = body)) +
+  geom_line(aes(group = frame, color = frame %>% as.character())) +
+  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame)))
+

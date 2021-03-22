@@ -63,7 +63,7 @@ pre { /* Code block - determines code spacing between lines */
 
 # Loading data
 
-Defining global constants
+## Defining global constants
 
 scale: pixels/mm <br>
 fps: frame rate <br>
@@ -76,7 +76,7 @@ time_res <- 1 / fps ### time between frames
 ```
 
 
-### Loading stimulus times (frames)
+## Loading stimulus times (frames)
 
 ```{r}
 stims <- read.csv(file.path("data", "turning", "GIIFM19",  "GIIFM19Frames_20201116.csv")) %>% 
@@ -88,7 +88,7 @@ stims <- read.csv(file.path("data", "turning", "GIIFM19",  "GIIFM19Frames_202011
 stims
 ```
 
-### Loading coordinates
+## Loading coordinates
 
 ```{r warning=FALSE, message=FALSE}
 coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
@@ -165,6 +165,7 @@ n <- 5
 cols <- gg_color_hue(n)
 ```
 
+## Plots
 ### Plotting trajectories
 
 ```{r warning=FALSE}
@@ -218,7 +219,7 @@ coords %>%
   facet_wrap(~ session)
 ```
 
-
+### Distribution of the distance between points on sequential frames
 
 ```{r}
 coords %>%
@@ -227,6 +228,7 @@ coords %>%
   facet_wrap(~ body_part)
 
 ```
+### Traveled distance
 
 ```{r}
 coords %>%
@@ -252,11 +254,118 @@ coords %>%
 
 ```
 
+## Calculating angles
+
+### Toy data
 
 ```{r}
-coords %>% 
-  dplyr::group_by(session, stim, segments = 50) %>% 
-  summarise(mean(d_mm, na.rm = T))
+vectors <- tibble(
+  body = c("cent", "h", "cent", "h", "cent", "h"),
+  frame = c(0, 0, 1, 1, 2, 2),
+  X = c(750, 760, 770, 770, 755, 765),
+  Y = c(500, 500, 500, 520, 510, 520)
+)
+vectors %>% arrange(body)
+```
+
+
+```{r}
+vectors %>%
+  group_by(frame) %>%
+  summarise(dx = diff(X), dy = diff(Y)) 
+```
+
+
+```{r}
+matlib::angle(
+  x = vectors %>%
+    group_by(frame) %>%
+    summarise(dx = diff(X), dy = diff(Y)) %>%
+    dplyr::filter(frame == "0") %>%
+    select(-1) %>% as.matrix() %>% as.vector(),
+  y = vectors %>%
+    group_by(frame) %>%
+    summarise(dx = diff(X), dy = diff(Y)) %>%
+    dplyr::filter(frame == "2") %>%
+    select(-1) %>% as.matrix() %>% as.vector()
+)
+```
+
+
+The dot product of two vectors x and y can be defined as:
+
+$x \cdot y = ||x|| * ||y|| \cos(\theta) $
+
+```{r}
+vectors %>%
+  ggplot(mapping = aes(x = X, y = Y)) +
+  geom_point(aes(shape = body)) +
+  geom_line(aes(group = frame, color = frame %>% as.character())) +
+  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame))) +
+  xlim(750,775) +
+  ylim(500,525)
+```
+
+## Real data (coords tibble)
+
+```{r}
+coords %>%
+  dplyr::group_by(body_part) %>%
+  slice(1:3) %>%
+  dplyr::filter(body_part != "tail") %>%
+  ggplot(
+    mapping = aes(x = X, y = Y)
+  ) +
+  geom_point(aes(shape = body_part), size = 2) +
+  geom_line(aes(group = frame, color = as.character(frame))) +
+  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame))) +
+  geom_segment(aes(x = 210 , xend = 255,
+               y = 345, yend = 345), linetype = "dashed", col = "red") +
+  geom_segment(aes(x = 255 , xend = 255,
+               y = 345, yend = 364), linetype = "dashed", col = "red")
+
+```
+
+
+```{r}
+coords %>%
+  dplyr::filter(body_part != "tail") %>%
+  dplyr::group_by(session,frame) %>%
+  summarise(
+    vectx = diff(X),
+    vecty = diff(Y)
+  ) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  mutate(
+    angle = matlib::angle(
+      x = c(vectx, vecty),
+      y = c(leadx, leady),
+      degree = T
+    ) %>% as.vector(),
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) %>% 
+  add_column(
+    rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
+    stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
+    before_stim = coords %>% dplyr::filter(body_part == "head") %>% pull(before_stim),
+    stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number)
+  ) %>% 
+  gather(key = "stim_categ" , value = "stim_value", stim, before_stim) %>% 
+  ggplot(
+    mapping = aes(x = rec_time, cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()  ))
+  ) + 
+    geom_line(aes(col = stim_categ, linetype = session)) +
+  facet_wrap(~ stim_number)
   
+
+
+  # ungroup() %>%
+  # dplyr::group_by(session, stim, before_stim) %>%
+  # summarise(mean(signed_angle, na.rm = T))
+# dplyr::group_by(stim) %>%
+#   summarise(sum(signed_angle, na.rm = T))
 ```
 
