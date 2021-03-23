@@ -73,6 +73,7 @@ time_res: time between frames <br>
 scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
+library(imputeTS)
 ```
 
 
@@ -104,17 +105,22 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
     stim = F,
     stim = replace(stim, first(timing) == "start" | timing == "end", T)
   ) %>%
-  ungroup(grp) %>%
+  # ungroup(grp) %>%
   group_by(stim) %>%
   fill(stim_number) %>%
   fill(intensity) %>%
   select(-grp, -animal, -timing, -stim_length) %>%
-  ungroup(stim) %>%
+  #ungroup(stim) %>%
   group_by(session) %>%
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
-    segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0)),
-    before_stim = lead(stim, n = 252)
+    # segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0)),
+    stim_categ = case_when(
+      stim == T ~ "stim",
+      lead(stim, n = 252) == T ~ "before stim",
+      lag(stim, n = 252) == T ~ "after stim",
+      stim == F ~ "no stim"
+    )
   ) %>% # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -137,22 +143,36 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
       no = as.integer(Y)
     )
   ) %>%
-  dplyr::group_by(body_part) %>%
-  mutate(
-    X_diff = c(diff(X), NA),
-    Y_diff = c(diff(Y), NA)
-  ) %>%
+  dplyr::group_by(session, body_part) %>%
   dplyr::mutate(
+    # X = zoo::na.approx(X),
+    # Y = zoo::na.approx(Y)
+    X_interp = imputeTS::na.interpolation(X),
+    Y_interp = imputeTS::na.interpolation(Y),
+    X_diff = c(diff(X_interp), NA),
+    Y_diff = c(diff(Y_interp), NA),
     d = sqrt(X_diff^2 + Y_diff^2),
-    d_mm = d / scale
-  ) %>%
-  dplyr::mutate(
+    d_mm = d / scale,
     speed_instant = d_mm / time_res,
     mmps = speed_instant * (1 / time_res),
     mps = (speed_instant * (1 / time_res)) / 1000,
     sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
   ) %>%
-  group_by(sec_counter, body_part) %>%
+  # mutate(
+  #   X_diff = c(diff(X_interp), NA),
+  #   Y_diff = c(diff(Y_interp), NA)
+  # ) %>%
+  # dplyr::mutate(
+  #   d = sqrt(X_diff^2 + Y_diff^2),
+  #   d_mm = d / scale
+  # ) %>%
+  # dplyr::mutate(
+  #   speed_instant = d_mm / time_res,
+  #   mmps = speed_instant * (1 / time_res),
+  #   mps = (speed_instant * (1 / time_res)) / 1000,
+  #   sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
+  # ) %>%
+  group_by(session, sec_counter, body_part) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
   ungroup() %>%
   mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
@@ -226,14 +246,44 @@ coords %>%
   facet_wrap(~session)
 ```
 
+```{r}
+coords %>%
+  dplyr::filter(body_part == "center") %>%
+  group_by(session, sec_counter) %>%
+  mutate(d_sec = sum(d_mm, na.rm = T)) %>%
+  ggplot(
+    mapping = aes(x = X_interp, y = Y_interp, label = frame)
+  ) +
+  geom_point(aes(color = miss %>% as.character())) +
+  xlim(c(0, 1280)) +
+  ylim(c(0, 720)) +
+  facet_wrap(~session) +
+  scale_color_discrete(name = "Interpolated values")
+
+```
+
+
+
+
 ### Distribution of the distance between points on sequential frames
 
 ```{r}
 coords %>%
-  ggplot(mapping = aes(x = Y_diff)) +
+  ggplot(mapping = aes(x = X_diff)) +
   geom_histogram() +
-  facet_wrap(~body_part)
+  facet_wrap(~body_part) +
+  scale_y_continuous(trans='log10') 
 ```
+```{r}
+coords %>%
+  ggplot(mapping = aes(x = d_mm)) +
+  geom_histogram() +
+  facet_wrap(~body_part) +
+  scale_y_continuous(trans='log10') 
+  
+```
+
+
 ### Traveled distance
 
 ```{r}
@@ -242,7 +292,7 @@ coords %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(data = as_tibble(spline(coords$rec_time, coords$d_mm)), aes(x=x, y=y)) +
-  ylim(c(0, 100)) +
+  #ylim(c(0, 100)) +
   # scale_color_discrete(na.translate=F) +
   facet_wrap(~session, scales = "free_x")
 ```
@@ -279,7 +329,7 @@ ang <- function(a, b) {
   return(theta * 180 / pi)
 }
 
-ang(a = c(10, 0), b = c(10, 10))
+#ang(a = c(10, 0), b = c(10, 10))
 
 vectors %>%
   group_by(frame) %>%
@@ -348,7 +398,7 @@ coords %>%
 ```
 
 
-```{r}
+```{r message=FALSE}
 coords %>%
   dplyr::filter(body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
@@ -360,27 +410,26 @@ coords %>%
     leadx = lead(vectx),
     leady = lead(vecty)
   ) %>%
-  rowwise() %>%
+  #rowwise() %>%
   mutate(
-    # angle = ang(
-    #   a = c(vectx, vecty),
-    #   b = c(leadx, leady)
-    # ) %>% as.vector(),
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
   ) %>%
   add_column(
     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
-    before_stim = coords %>% dplyr::filter(body_part == "head") %>% pull(before_stim),
+    stim_categ = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_categ),
     stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number)
   ) %>%
-  dplyr::filter(session == "video2coords") %>%
+  group_by(session) %>%
+  mutate(csum = cumsum(ifelse(is.na(signed_angle), 0, signed_angle)) %>% round(4)) %>%
+ # dplyr::filter(session == "video2coords") %>%
   # group_by(session) %>%
   # gather(key = "stim_categ" , value = "stim_value", stim, before_stim) %>%
   ggplot(
-    mapping = aes(x = rec_time, y = cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()))
+    mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
-  geom_line(aes(col = stim, group = 1))
+  geom_line(aes(col = stim, group = 1)) +
+  facet_wrap(~session)
 
 # mapping = aes(x = rec_time, y = cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()  ))
 
