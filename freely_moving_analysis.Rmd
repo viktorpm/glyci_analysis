@@ -147,10 +147,10 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   dplyr::mutate(
     # X = zoo::na.approx(X),
     # Y = zoo::na.approx(Y)
-    X_interp = imputeTS::na.interpolation(X),
-    Y_interp = imputeTS::na.interpolation(Y),
-    X_diff = c(diff(X_interp), NA),
-    Y_diff = c(diff(Y_interp), NA),
+    X_interp = imputeTS::na.interpolation(X) %>% round(),
+    Y_interp = imputeTS::na.interpolation(Y) %>% round(),
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
     d = sqrt(X_diff^2 + Y_diff^2),
     d_mm = d / scale,
     speed_instant = d_mm / time_res,
@@ -254,7 +254,7 @@ coords %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
   ) +
-  geom_point(aes(color = miss %>% as.character())) +
+  geom_point(aes(color = miss %>% as.character(), shape = stim)) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
   facet_wrap(~session) +
@@ -271,7 +271,7 @@ coords %>%
 coords %>%
   ggplot(mapping = aes(x = X_diff)) +
   geom_histogram() +
-  facet_wrap(~body_part) +
+  facet_wrap(~body_part) + 
   scale_y_continuous(trans='log10') 
 ```
 ```{r}
@@ -288,12 +288,11 @@ coords %>%
 
 ```{r}
 coords %>%
-  dplyr::filter(body_part == "head") %>%
+  dplyr::filter(body_part == "center") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
-  # geom_line(data = as_tibble(spline(coords$rec_time, coords$d_mm)), aes(x=x, y=y)) +
-  #ylim(c(0, 100)) +
-  # scale_color_discrete(na.translate=F) +
+  geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
+  geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
   facet_wrap(~session, scales = "free_x")
 ```
 
@@ -396,6 +395,93 @@ coords %>%
     y = 345, yend = 364
   ), linetype = "dashed", col = "red")
 ```
+```{r message=FALSE}
+coords %>%
+  dplyr::filter(body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>%
+  summarise(
+    vectx = diff(X_interp),
+    vecty = diff(Y_interp)
+  ) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  #rowwise() %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) %>% 
+  ggplot(aes(x = signed_angle)) +
+  geom_histogram()
+```
+
+```{r message=F}
+coords %>%
+  dplyr::filter(body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>%
+  #arrange(body_part) %>% 
+  summarise(
+    vectx = diff(X_interp),
+    vecty = diff(Y_interp)
+  ) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  #rowwise() %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) %>% 
+  add_column(
+    rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
+    stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim)
+  ) %>%
+  ggplot(aes(x = rec_time, y = signed_angle)) +
+  geom_line(aes(col = stim, group = 1)) +
+  facet_wrap(~session) +
+  xlim(0,1)
+
+```
+```{r}
+coords %>%
+  dplyr::filter(session == "video0coords", body_part != "tail") %>% 
+  dplyr::group_by(body_part) %>%
+  dplyr::slice(1:25) %>% 
+  ungroup() %>% 
+  dplyr::group_by(frame) %>%
+  summarise(
+    vectx = diff(X_interp),
+    vecty = diff(Y_interp)
+  ) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  #rowwise() %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) 
+  ggplot(
+    mapping = aes(x = X, y = Y, label = frame)
+  ) +
+  geom_point(
+    aes(shape = body_part, col = stim_number),
+    size = 2
+  ) +
+  geom_line(
+    aes(group = frame, col = stim_number %>% as.character())
+  ) +
+  scale_color_manual(
+    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
+    name = "Stimulus"
+  ) +
+  scale_shape(
+    name = "Body part",
+    labels = c("Center", "Head", "Tail")
+  ) +
+  xlim(c(0, 1280)) +
+  ylim(c(0, 720)) 
+```
 
 
 ```{r message=FALSE}
@@ -412,13 +498,16 @@ coords %>%
   ) %>%
   #rowwise() %>%
   mutate(
-    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi) 
   ) %>%
   add_column(
     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
     stim_categ = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_categ),
-    stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number)
+    stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number),
+    Y_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(Y_diff),
+    X_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(X_diff),
+    d_mm = coords %>% dplyr::filter(body_part == "head") %>% pull(d_mm),
   ) %>%
   group_by(session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle), 0, signed_angle)) %>% round(4)) %>%
@@ -429,7 +518,10 @@ coords %>%
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session)
+  # geom_line(aes(x = rec_time, y = d_mm %>% scale() -7), alpha = .5) + 
+  # geom_line(aes(x = rec_time, y = Y_diff %>% scale() -7), alpha = .5) + 
+  # geom_line(aes(x = rec_time, y = X_diff %>% scale() + 7), alpha = .5) +
+  facet_wrap(~session, scales = "free_x")
 
 # mapping = aes(x = rec_time, y = cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()  ))
 
