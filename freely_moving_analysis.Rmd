@@ -79,11 +79,13 @@ time_res <- 1 / fps ### time between frames
 ## Loading stimulus times (frames)
 
 ```{r}
-stims <- read.csv(file.path("data", "turning", "GIIFM19",  "GIIFM19Frames_20201116.csv")) %>% 
+stims <- read.csv(file.path("data", "turning", "GIIFM19", "GIIFM19Frames_20201116.csv")) %>%
   as_tibble() %>%
-  mutate(session = str_remove(session, "_"),
-         stim_length = end-start) %>% 
-  rename("stim_number" = stim.number) %>% 
+  mutate(
+    session = str_remove(session, "_"),
+    stim_length = end - start
+  ) %>%
+  rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 stims
 ```
@@ -94,23 +96,26 @@ stims
 coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   as_tibble() %>%
   mutate(session = str_remove(session, pattern = ".dat")) %>%
-  full_join(stims) %>% 
-  dplyr::group_by(session) %>% 
-  mutate(grp = cumsum(!is.na(stim_number))) %>% 
+  full_join(stims) %>%
+  dplyr::group_by(session) %>%
+  mutate(grp = cumsum(!is.na(stim_number))) %>%
   dplyr::group_by(grp) %>%
-  mutate(stim = F,
-         stim = replace(stim, first(timing) == "start" | timing == "end", T)) %>%
-  ungroup(grp) %>% 
-  group_by(stim) %>% 
-  fill(stim_number) %>% 
-  fill(intensity) %>% 
+  mutate(
+    stim = F,
+    stim = replace(stim, first(timing) == "start" | timing == "end", T)
+  ) %>%
+  ungroup(grp) %>%
+  group_by(stim) %>%
+  fill(stim_number) %>%
+  fill(intensity) %>%
   select(-grp, -animal, -timing, -stim_length) %>%
-  ungroup(stim) %>% 
-  group_by(session) %>% 
+  ungroup(stim) %>%
+  group_by(session) %>%
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
     segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0)),
-    before_stim = lead(stim, n = 250)) %>% # length of the stimulus
+    before_stim = lead(stim, n = 252)
+  ) %>% # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
   unite(col = "tail", tail1, tail2, sep = "_") %>%
@@ -122,13 +127,16 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>%
   dplyr::mutate(
     X = ifelse(
-      as.integer(X) == 0 & as.integer(Y) == 0, 
+      as.integer(X) == 0 & as.integer(Y) == 0,
       yes = NA,
-      no = as.integer(X)),
+      no = as.integer(X)
+    ),
     Y = ifelse(
-      as.integer(X) == 0 & as.integer(Y) == 0, 
+      as.integer(X) == 0 & as.integer(Y) == 0,
       yes = NA,
-      no = as.integer(Y))) %>%
+      no = as.integer(Y)
+    )
+  ) %>%
   dplyr::group_by(body_part) %>%
   mutate(
     X_diff = c(diff(X), NA),
@@ -146,8 +154,8 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   ) %>%
   group_by(sec_counter, body_part) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup() %>% 
-  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim" ))
+  ungroup() %>%
+  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
 
 coords
 ```
@@ -174,14 +182,14 @@ coords %>%
     mapping = aes(x = X, y = Y, label = frame)
   ) +
   geom_point(
-    aes(shape = body_part, col = stim_number), 
+    aes(shape = body_part, col = stim_number),
     size = 2,
     alpha = .1
-    ) +
+  ) +
   geom_line(
     aes(group = frame, col = stim_number %>% as.character()),
     alpha = .1
-    ) +
+  ) +
   scale_color_manual(
     values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
     name = "Stimulus"
@@ -190,17 +198,16 @@ coords %>%
     name = "Body part",
     labels = c("Center", "Head", "Tail")
   ) +
-  xlim(c(0,1280)) +
-  ylim(c(0,720)) +
-  facet_wrap(~ session)
+  xlim(c(0, 1280)) +
+  ylim(c(0, 720)) +
+  facet_wrap(~session)
 ```
 
 ```{r}
-coords %>% 
+coords %>%
   dplyr::filter(body_part == "center") %>%
-  group_by(session, sec_counter) %>% 
-  mutate(d_sec = sum(d_mm, na.rm = T)) %>% 
-
+  group_by(session, sec_counter) %>%
+  mutate(d_sec = sum(d_mm, na.rm = T)) %>%
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
@@ -214,9 +221,9 @@ coords %>%
   #   name = "Body part",
   #   labels = c("Center", "Head", "Tail")
   # ) +
-  xlim(c(0,1280)) +
-  ylim(c(0,720)) +
-  facet_wrap(~ session)
+  xlim(c(0, 1280)) +
+  ylim(c(0, 720)) +
+  facet_wrap(~session)
 ```
 
 ### Distribution of the distance between points on sequential frames
@@ -225,33 +232,30 @@ coords %>%
 coords %>%
   ggplot(mapping = aes(x = Y_diff)) +
   geom_histogram() +
-  facet_wrap(~ body_part)
-
+  facet_wrap(~body_part)
 ```
 ### Traveled distance
 
 ```{r}
 coords %>%
-  dplyr::filter(body_part == "head") %>% 
+  dplyr::filter(body_part == "head") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
-  geom_line(aes(color = stim, group = 1)) + 
+  geom_line(aes(color = stim, group = 1)) +
   # geom_line(data = as_tibble(spline(coords$rec_time, coords$d_mm)), aes(x=x, y=y)) +
-  ylim(c(0,100)) + 
-  #scale_color_discrete(na.translate=F) +
-  facet_wrap(~ session, scales = "free_x")
+  ylim(c(0, 100)) +
+  # scale_color_discrete(na.translate=F) +
+  facet_wrap(~session, scales = "free_x")
 ```
 
 ```{r}
-coords %>% 
-  dplyr::group_by(session, stim) %>% 
-  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30,fill = NA)) %>% 
+coords %>%
+  dplyr::group_by(session, stim) %>%
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
-  ylim(c(0,100)) +
+  ylim(c(0, 100)) +
   geom_point(aes(color = stim)) +
-  geom_line(aes(x = rec_time, y = mean_mps_roll)) + 
-  facet_wrap(~ session, scales = "free_x")
-  
-
+  geom_line(aes(x = rec_time, y = mean_mps_roll)) +
+  facet_wrap(~session, scales = "free_x")
 ```
 
 ## Calculating angles
@@ -260,19 +264,33 @@ coords %>%
 
 ```{r}
 vectors <- tibble(
-  body = c("cent", "h", "cent", "h", "cent", "h"),
-  frame = c(0, 0, 1, 1, 2, 2),
-  X = c(750, 760, 770, 770, 755, 765),
-  Y = c(500, 500, 500, 520, 510, 520)
+  body = c("cent", "h", "cent", "h", "cent", "h", "cent", "h"),
+  frame = c(0, 0, 1, 1, 2, 2, 3, 3),
+  X = c(750, 760, 770, 770, 755, 765, 755, 765),
+  Y = c(500, 500, 500, 520, 510, 520, 510, 500)
 )
 vectors %>% arrange(body)
 ```
 
 
 ```{r}
+ang <- function(a, b) {
+  theta <- acos(sum(a * b) / (sqrt(sum(a * a)) * sqrt(sum(b * b))))
+  return(theta * 180 / pi)
+}
+
+ang(a = c(10, 0), b = c(10, 10))
+
 vectors %>%
   group_by(frame) %>%
-  summarise(dx = diff(X), dy = diff(Y)) 
+  summarise(dx = diff(X), dy = diff(Y)) %>%
+  mutate(ldx = lead(dx), ldy = lead(dy)) %>%
+  rowwise() %>%
+  mutate(angle = ang(a = c(dx, dy), b = c(ldx, ldy))) %>%
+  ungroup() %>%
+  mutate(
+    signed_angle = (atan2(dx, dy) - atan2(ldx, ldy)) * 180 / (pi)
+  )
 ```
 
 
@@ -301,9 +319,9 @@ vectors %>%
   ggplot(mapping = aes(x = X, y = Y)) +
   geom_point(aes(shape = body)) +
   geom_line(aes(group = frame, color = frame %>% as.character())) +
-  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame))) +
-  xlim(750,775) +
-  ylim(500,525)
+  geom_text_repel(aes(label = paste0(X, ",", Y), col = as.character(frame))) +
+  xlim(750, 775) +
+  ylim(500, 525)
 ```
 
 ## Real data (coords tibble)
@@ -318,19 +336,22 @@ coords %>%
   ) +
   geom_point(aes(shape = body_part), size = 2) +
   geom_line(aes(group = frame, color = as.character(frame))) +
-  geom_text_repel(aes(label = paste0(X, ",", Y),col = as.character(frame))) +
-  geom_segment(aes(x = 210 , xend = 255,
-               y = 345, yend = 345), linetype = "dashed", col = "red") +
-  geom_segment(aes(x = 255 , xend = 255,
-               y = 345, yend = 364), linetype = "dashed", col = "red")
-
+  geom_text_repel(aes(label = paste0(X, ",", Y), col = as.character(frame))) +
+  geom_segment(aes(
+    x = 210, xend = 255,
+    y = 345, yend = 345
+  ), linetype = "dashed", col = "red") +
+  geom_segment(aes(
+    x = 255, xend = 255,
+    y = 345, yend = 364
+  ), linetype = "dashed", col = "red")
 ```
 
 
 ```{r}
 coords %>%
   dplyr::filter(body_part != "tail") %>%
-  dplyr::group_by(session,frame) %>%
+  dplyr::group_by(session, frame) %>%
   summarise(
     vectx = diff(X),
     vecty = diff(Y)
@@ -339,33 +360,33 @@ coords %>%
     leadx = lead(vectx),
     leady = lead(vecty)
   ) %>%
+  rowwise() %>%
   mutate(
-    angle = matlib::angle(
-      x = c(vectx, vecty),
-      y = c(leadx, leady),
-      degree = T
-    ) %>% as.vector(),
+    # angle = ang(
+    #   a = c(vectx, vecty),
+    #   b = c(leadx, leady)
+    # ) %>% as.vector(),
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
-  ) %>% 
+  ) %>%
   add_column(
     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
     before_stim = coords %>% dplyr::filter(body_part == "head") %>% pull(before_stim),
     stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number)
-  ) %>% 
-  gather(key = "stim_categ" , value = "stim_value", stim, before_stim) %>% 
+  ) %>%
+  dplyr::filter(session == "video2coords") %>%
+  # group_by(session) %>%
+  # gather(key = "stim_categ" , value = "stim_value", stim, before_stim) %>%
   ggplot(
-    mapping = aes(x = rec_time, cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()  ))
-  ) + 
-    geom_line(aes(col = stim_categ, linetype = session)) +
-  facet_wrap(~ stim_number)
-  
+    mapping = aes(x = rec_time, y = cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()))
+  ) +
+  geom_line(aes(col = stim, group = 1))
 
+# mapping = aes(x = rec_time, y = cumsum(ifelse(is.na(signed_angle), 0, signed_angle) %>% scale()  ))
 
-  # ungroup() %>%
-  # dplyr::group_by(session, stim, before_stim) %>%
-  # summarise(mean(signed_angle, na.rm = T))
+# ungroup() %>%
+# dplyr::group_by(session, stim, before_stim) %>%
+# summarise(mean(signed_angle, na.rm = T))
 # dplyr::group_by(stim) %>%
 #   summarise(sum(signed_angle, na.rm = T))
 ```
-
