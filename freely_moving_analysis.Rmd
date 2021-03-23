@@ -410,8 +410,15 @@ coords %>%
   #rowwise() %>%
   mutate(
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
-  ) %>% 
-  ggplot(aes(x = signed_angle)) +
+  ) %>%
+   mutate(
+    signed_angle2 = case_when(
+        signed_angle >= 180 ~ 360 - signed_angle,
+        signed_angle %>% abs() < 180 ~ signed_angle,
+        signed_angle <= -180 ~ -360 - signed_angle,
+        signed_angle > -180 | signed_angle < 0 ~ signed_angle
+      )) %>% 
+  ggplot(aes(x = signed_angle2)) +
   geom_histogram()
 ```
 
@@ -432,14 +439,22 @@ coords %>%
   mutate(
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
   ) %>% 
+  mutate(
+    signed_angle2 = case_when(
+        signed_angle >= 180 ~ 360 - signed_angle,
+        signed_angle %>% abs() < 180 ~ signed_angle,
+        signed_angle <= -180 ~ -360 - signed_angle,
+        signed_angle > -180 | signed_angle < 0 ~ signed_angle
+      )) %>% 
+
   add_column(
     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim)
   ) %>%
-  ggplot(aes(x = rec_time, y = signed_angle)) +
+  ggplot(aes(x = rec_time, y = signed_angle2)) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session) +
-  xlim(0,1)
+  facet_wrap(~session) 
+  #xlim(0,1)
 
 ```
 ```{r}
@@ -500,6 +515,13 @@ coords %>%
   mutate(
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi) 
   ) %>%
+   mutate(
+    signed_angle2 = case_when(
+        signed_angle >= 180 ~ 360 - signed_angle,
+        signed_angle %>% abs() < 180 ~ signed_angle,
+        signed_angle <= -180 ~ -360 - signed_angle,
+        signed_angle > -180 | signed_angle < 0 ~ signed_angle
+      )) %>% 
   add_column(
     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
@@ -510,7 +532,7 @@ coords %>%
     d_mm = coords %>% dplyr::filter(body_part == "head") %>% pull(d_mm),
   ) %>%
   group_by(session) %>%
-  mutate(csum = cumsum(ifelse(is.na(signed_angle), 0, signed_angle)) %>% round(4)) %>%
+  mutate(csum = cumsum(ifelse(is.na(signed_angle2), 0, signed_angle2)) %>% round(4)) %>%
  # dplyr::filter(session == "video2coords") %>%
   # group_by(session) %>%
   # gather(key = "stim_categ" , value = "stim_value", stim, before_stim) %>%
