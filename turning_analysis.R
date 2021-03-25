@@ -79,11 +79,11 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-n <- 5
+n <- 2
 cols <- gg_color_hue(n)
 
 coords %>%
-  # dplyr::filter(rec_time < 20) %>% 
+  dplyr::filter(session == "video0coords") %>% 
   ggplot(
     mapping = aes(x = X, y = Y, label = frame)
   ) +
@@ -99,7 +99,7 @@ coords %>%
   ) +
   xlim(c(0,1280)) +
   ylim(c(0,720)) +
-  facet_wrap(~ session) +
+  #facet_wrap(~ session) +
   gganimate::transition_time(rec_time,range = c(0,20))
 
 
@@ -140,8 +140,9 @@ library(gifski)
 
 
 p <- coords %>%
+  dplyr::filter(session == "video4coords") %>% 
   ggplot(
-    mapping = aes(x = X, y = Y)
+    mapping = aes(x = X_interp, y = Y_interp)
   ) +
   geom_point(aes(shape = body_part), size = 2) +
   geom_line(aes(group = frame, col = stim)) +
@@ -153,10 +154,10 @@ p <- coords %>%
   scale_shape(
     name = "Body part",
     labels = c("Center", "Head", "Tail")
-  ) +
+  ) + 
   xlim(c(0,1280)) +
-  ylim(c(0,720)) +
-  facet_wrap(~session)
+  ylim(c(0,720)) 
+#  facet_wrap(~session)
 p
 
 p +
