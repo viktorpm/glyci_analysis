@@ -2,22 +2,25 @@
 title: "Freely moving analysis"
 author: "Viktor Plattner"
 output:
-  html_notebook:
+  html_document:
     number_sections: yes
+    df_print: paged
     toc: yes
     toc_float: yes
   pdf_document:
     number_sections: yes
     toc: yes
     keep_tex: true
-  html_document:
+  html_notebook:
     number_sections: yes
-    df_print: paged
     toc: yes
     toc_float: yes
 spacing: single
 fontsize: 12pt
 always_allow_html: yes
+header-includes:
+   - \usepackage{animate}
+---
 ---
 
 
@@ -236,7 +239,7 @@ cols <- gg_color_hue(n)
 Linear interpolation of missing values. The interpolated coordinates are used in the analysis
 
 
-```{r}
+```{r fig.width=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   group_by(session, sec_counter) %>%
@@ -256,7 +259,7 @@ coords %>%
 
 ### Plotting trajectories
 
-```{r warning=FALSE}
+```{r warning=FALSE, fig.width=10}
 coords %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
@@ -285,7 +288,7 @@ coords %>%
 
 ### Plotting speed in a 1 sec (30 frames) window
 
-```{r}
+```{r message=FALSE, fig.width=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   group_by(session, sec_counter) %>%
@@ -305,30 +308,30 @@ coords %>%
 
 Distribution of the difference between x coordinates
 
-```{r}
+```{r fig.width=10, fig.height=4}
 coords %>%
   ggplot(mapping = aes(x = X_diff)) +
   geom_histogram() +
-  facet_wrap(~body_part) + 
-  scale_y_continuous(trans='log10') 
+  facet_wrap(~body_part) 
+  # scale_y_continuous(trans='log10') 
 ```
 
 
 Distribution of distance
 
-```{r}
+```{r fig.width=10, fig.height=4}
 coords %>%
   ggplot(mapping = aes(x = d_mm)) +
   geom_histogram() +
-  facet_wrap(~body_part) +
-  scale_y_continuous(trans='log10') 
+  facet_wrap(~body_part) 
+  # scale_y_continuous(trans='log10') 
   
 ```
 
 
-### Traveled distance
+### Instantaneous traveled distance
 
-```{r}
+```{r fig.width=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
@@ -343,7 +346,21 @@ coords %>%
 
 1 sec rolling window, mean calculated separately during stimulus (rolling window restarts with the beginning of stimuli)
 
-```{r}
+
+```{r message=F, fig.width=10}
+coords %>%
+  dplyr::filter(body_part == "center", session == "video2coords") %>%
+  dplyr::group_by(stim) %>%
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
+  ggplot(aes(x = rec_time, y = d_mm)) +
+  #ylim(c(0, 100)) +
+  geom_point(aes(alpha = stim)) +
+  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) 
+```
+
+
+
+```{r fig.width=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   dplyr::group_by(session, stim) %>%
@@ -481,7 +498,7 @@ coords %>%
 
 ### Signed angles 
 
-```{r message=F}
+```{r message=F, fig.width=10}
 coords %>%
   dplyr::filter(body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
@@ -543,7 +560,7 @@ coords %>%
 
 ### Plotting cumulative angles
 
-```{r message=FALSE}
+```{r message=FALSE,fig.width=10}
 coords %>%
   dplyr::filter(body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
@@ -590,95 +607,97 @@ coords %>%
 
 
 
-```{r}
-
-```
-
-```{r fig.show='animate'}
-p_angle <- coords %>%
-  dplyr::filter(body_part != "tail") %>%
-  dplyr::group_by(session, frame) %>%
-  summarise(
-    vectx = diff(X_interp),
-    vecty = diff(Y_interp)
-  ) %>%
-  mutate(
-    leadx = lead(vectx),
-    leady = lead(vecty)
-  ) %>%
-  #rowwise() %>%
-  mutate(
-    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi) 
-  ) %>%
-   mutate(
-    signed_angle_corrected = case_when(
-        signed_angle >= 180 ~ 360 - signed_angle,
-        signed_angle %>% abs() < 180 ~ signed_angle,
-        signed_angle <= -180 ~ -360 - signed_angle,
-        signed_angle > -180 | signed_angle < 0 ~ signed_angle
-      )) %>% 
-  add_column(
-    rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time),
-    stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim),
-    stim_categ = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_categ),
-    stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number),
-    Y_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(Y_diff),
-    X_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(X_diff),
-    d_mm = coords %>% dplyr::filter(body_part == "head") %>% pull(d_mm),
-  ) %>%
-  group_by(session) %>%
-  mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
-  dplyr::filter(session == "video2coords") %>%
-  ggplot(
-    mapping = aes(x = rec_time, y = csum %>% scale())
-  ) +
-  geom_line(aes(col = stim, group = 1)) +
-  geom_point() +
-  transition_reveal(rec_time) s
-  #labs(title = "Time: {frame_time %>% round(digits = 2)}s") 
-p_angle
-```
 
 
-```{r}
-p_traject <- coords %>%
-  dplyr::filter(session == "video2coords") %>% 
-  ggplot(
-    mapping = aes(x = X_interp, y = Y_interp, label = frame)
-  ) +
-  geom_point(
-    aes(shape = body_part, col = stim_number),
-    size = 2
-  ) +
-  geom_line(
-    aes(group = frame, col = stim_number %>% as.character())
-  ) +
-  scale_color_manual(
-    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
-    name = "Stimulus"
-  ) +
-  scale_shape(
-    name = "Body part",
-    labels = c("Center", "Head", "Tail")
-  ) +
-  xlim(c(0, 1280)) +
-  ylim(c(0, 720)) 
-  #gganimate::transition_time(rec_time)
+<!-- ```{r fig.show='animate', message=FALSE} -->
+<!-- p_angle <- coords %>% -->
+<!--   dplyr::filter(body_part != "tail") %>% -->
+<!--   dplyr::group_by(session, frame) %>% -->
+<!--   summarise( -->
+<!--     vectx = diff(X_interp), -->
+<!--     vecty = diff(Y_interp) -->
+<!--   ) %>% -->
+<!--   mutate( -->
+<!--     leadx = lead(vectx), -->
+<!--     leady = lead(vecty) -->
+<!--   ) %>% -->
+<!--   #rowwise() %>% -->
+<!--   mutate( -->
+<!--     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)  -->
+<!--   ) %>% -->
+<!--    mutate( -->
+<!--     signed_angle_corrected = case_when( -->
+<!--         signed_angle >= 180 ~ 360 - signed_angle, -->
+<!--         signed_angle %>% abs() < 180 ~ signed_angle, -->
+<!--         signed_angle <= -180 ~ -360 - signed_angle, -->
+<!--         signed_angle > -180 | signed_angle < 0 ~ signed_angle -->
+<!--       )) %>%  -->
+<!--   add_column( -->
+<!--     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time), -->
+<!--     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim), -->
+<!--     stim_categ = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_categ), -->
+<!--     stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number), -->
+<!--     Y_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(Y_diff), -->
+<!--     X_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(X_diff), -->
+<!--     d_mm = coords %>% dplyr::filter(body_part == "head") %>% pull(d_mm), -->
+<!--   ) %>% -->
+<!--   group_by(session) %>% -->
+<!--   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>% -->
+<!--   dplyr::filter(session == "video2coords") %>% -->
+<!--   ggplot( -->
+<!--     mapping = aes(x = rec_time, y = csum %>% scale()) -->
+<!--   ) + -->
+<!--   geom_line(aes(col = stim, group = 1)) + -->
+<!--   geom_point() + -->
+<!--   transition_reveal(rec_time)  -->
+<!--   #labs(title = "Time: {frame_time %>% round(digits = 2)}s")  -->
 
-p_traject <- p_traject +
-  gganimate::transition_time(rec_time) +
-  #labs(title = "Time: {rec_time %>% round(digits = 2)}s") +
-  shadow_mark(alpha = 0.1, size = 0.5)
-
-```
+<!-- p_angle -->
 
 
-```{r}
 
-ggpubr::ggarrange(
-  p_angle+gganimate::transition_time(rec_time), 
-  p_traject+gganimate::transition_time(rec_time), 
-  nrow = 2, heights = c(1,2))
-```
+<!-- ``` -->
+
+
+<!-- ```{r include=FALSE} -->
+<!-- p_traject <- coords %>% -->
+<!--   dplyr::filter(session == "video2coords") %>% -->
+<!--   ggplot( -->
+<!--     mapping = aes(x = X_interp, y = Y_interp, label = frame) -->
+<!--   ) + -->
+<!--   geom_point( -->
+<!--     aes(shape = body_part, col = stim_number), -->
+<!--     size = 2 -->
+<!--   ) + -->
+<!--   geom_line( -->
+<!--     aes(group = frame, col = stim_number %>% as.character()) -->
+<!--   ) + -->
+<!--   scale_color_manual( -->
+<!--     values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"), -->
+<!--     name = "Stimulus" -->
+<!--   ) + -->
+<!--   scale_shape( -->
+<!--     name = "Body part", -->
+<!--     labels = c("Center", "Head", "Tail") -->
+<!--   ) + -->
+<!--   xlim(c(0, 1280)) + -->
+<!--   ylim(c(0, 720)) -->
+<!--   #gganimate::transition_time(rec_time) -->
+
+<!-- p_traject <- p_traject + -->
+<!--   gganimate::transition_time(rec_time) + -->
+<!--   #labs(title = "Time: {rec_time %>% round(digits = 2)}s") + -->
+<!-- #   shadow_mark(alpha = 0.1, size = 0.5) -->
+
+<!-- ``` -->
+
+
+<!-- ```{r include=FALSE} -->
+
+<!-- ggpubr::ggarrange( -->
+<!--   p_angle+gganimate::transition_time(rec_time), -->
+<!--   p_traject+gganimate::transition_time(rec_time), -->
+<!--   nrow = 2, heights = c(1,2)) -->
+<!-- ``` -->
 
 
