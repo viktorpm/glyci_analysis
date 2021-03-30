@@ -239,7 +239,7 @@ cols <- gg_color_hue(n)
 Linear interpolation of missing values. The interpolated coordinates are used in the analysis
 
 
-```{r fig.width=10}
+```{r fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   group_by(session, sec_counter) %>%
@@ -247,10 +247,16 @@ coords %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
   ) +
-  geom_point(aes(color = miss %>% as.character(), shape = stim)) +
+  geom_point(
+    aes(
+      color = miss %>% as.character(), 
+      shape = stim, 
+      alpha = ifelse(miss == "1", 0.1 , 1)
+      )
+    ) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session) +
+  facet_wrap(~session, ncol = 2) +
   scale_color_discrete(name = "Interpolated values")
 
 ```
@@ -259,7 +265,7 @@ coords %>%
 
 ### Plotting trajectories
 
-```{r warning=FALSE, fig.width=10}
+```{r warning=FALSE, fig.width=10, fig.height=10}
 coords %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
@@ -283,12 +289,12 @@ coords %>%
   ) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session)
+  facet_wrap(~session, ncol = 2)
 ```
 
 ### Plotting speed in a 1 sec (30 frames) window
 
-```{r message=FALSE, fig.width=10}
+```{r message=FALSE, fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   group_by(session, sec_counter) %>%
@@ -299,7 +305,7 @@ coords %>%
   geom_point(aes(color = d_sec %>% scale(), alpha = stim)) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session)
+  facet_wrap(~session, ncol = 2)
 ```
 
 
@@ -331,15 +337,42 @@ coords %>%
 
 ### Instantaneous traveled distance
 
-```{r fig.width=10}
+Center
+
+```{r fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
-  facet_wrap(~session, scales = "free_x")
+  facet_wrap(~session, scales = "free_x", ncol = 2)
 ```
+
+Head
+
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::filter(body_part == "head") %>%
+  ggplot(mapping = aes(x = rec_time, y = d_mm)) +
+  geom_line(aes(color = stim, group = 1)) +
+  # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
+  # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
+  facet_wrap(~session, scales = "free_x", ncol = 2)
+```
+
+Tail
+
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::filter(body_part == "tail") %>%
+  ggplot(mapping = aes(x = rec_time, y = d_mm)) +
+  geom_line(aes(color = stim, group = 1)) +
+  # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
+  # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
+  facet_wrap(~session, scales = "free_x", ncol = 2)
+```
+
 
 
 ### Rolling mean of traveled distance
@@ -358,9 +391,9 @@ coords %>%
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) 
 ```
 
+Center
 
-
-```{r fig.width=10}
+```{r fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(body_part == "center") %>%
   dplyr::group_by(session, stim) %>%
@@ -369,8 +402,48 @@ coords %>%
   #ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free_x")
+  facet_wrap(~session, scales = "free_x", ncol = 2)
 ```
+
+
+Head
+
+
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::filter(body_part == "head") %>%
+  dplyr::group_by(session, stim) %>%
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
+  ggplot(aes(x = rec_time, y = d_mm)) +
+  #ylim(c(0, 100)) +
+  geom_point(aes(alpha = stim)) +
+  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
+  facet_wrap(~session, scales = "free_x", ncol = 2)
+```
+
+
+
+Tail
+
+
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::filter(body_part == "tail") %>%
+  dplyr::group_by(session, stim) %>%
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
+  ggplot(aes(x = rec_time, y = d_mm)) +
+  #ylim(c(0, 100)) +
+  geom_point(aes(alpha = stim)) +
+  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
+  facet_wrap(~session, scales = "free_x", ncol = 2)
+```
+
+
+
+
+
+
+
 
 ## Calculating angles
 
