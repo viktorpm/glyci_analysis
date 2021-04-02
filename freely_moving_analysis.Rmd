@@ -122,8 +122,10 @@ stims <- read.csv(file.path("data", "turning", "GIIFM19", "GIIFM19Frames_2020111
   as_tibble() %>%
   mutate(
     session = str_remove(session, "_"),
+    session = str_remove(session, ".dat"),
     stim_length = end - start
   ) %>%
+  select(-stim_duration) %>% 
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 stims
@@ -183,8 +185,8 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
   ) %>%
   dplyr::group_by(session, body_part) %>%
   dplyr::mutate(
-    # X = zoo::na.approx(X),
-    # Y = zoo::na.approx(Y)
+    # X_interp = zoo::na.approx(X),
+    # Y_interp = zoo::na.approx(Y),
     X_interp = imputeTS::na.interpolation(X) %>% round(),
     Y_interp = imputeTS::na.interpolation(Y) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
@@ -196,20 +198,6 @@ coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>%
     mps = (speed_instant * (1 / time_res)) / 1000,
     sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
   ) %>%
-  # mutate(
-  #   X_diff = c(diff(X_interp), NA),
-  #   Y_diff = c(diff(Y_interp), NA)
-  # ) %>%
-  # dplyr::mutate(
-  #   d = sqrt(X_diff^2 + Y_diff^2),
-  #   d_mm = d / scale
-  # ) %>%
-  # dplyr::mutate(
-  #   speed_instant = d_mm / time_res,
-  #   mmps = speed_instant * (1 / time_res),
-  #   mps = (speed_instant * (1 / time_res)) / 1000,
-  #   sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
-  # ) %>%
   group_by(session, sec_counter, body_part) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
   ungroup() %>%
