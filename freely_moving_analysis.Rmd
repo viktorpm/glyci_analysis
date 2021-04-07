@@ -448,8 +448,8 @@ coords %>%
 ```{r fig.width=10, fig.height=25}
 coords %>%
   ggplot(mapping = aes(x = X_diff)) +
-  geom_histogram(aes(fill = session)) +
-  facet_grid(~animal ~ body_part,) +
+  geom_histogram(aes(fill = session), binwidth = 5) +
+  facet_grid(animal ~ body_part, scales = "free") +
   scale_y_continuous(trans='log10') 
 ```
 
@@ -466,8 +466,8 @@ Distribution of distance
 coords %>%
   # dplyr::filter(animal == "GIIFM24b") %>%
   ggplot(mapping = aes(x = d_mm)) +
-  geom_histogram(aes(fill = session)) +
-  facet_grid(~animal ~ body_part,) +
+  geom_histogram(aes(fill = session), binwidth = 5) +
+  facet_grid(~animal ~ body_part, scales = "free") +
   scale_y_continuous(trans='log10') 
   
 ```
@@ -484,7 +484,7 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 Head
@@ -496,7 +496,7 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 Tail
@@ -508,7 +508,7 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) + 
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 
@@ -540,7 +540,7 @@ coords %>%
   #ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 
@@ -556,7 +556,7 @@ coords %>%
   #ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 
@@ -573,7 +573,7 @@ coords %>%
   #ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free_x", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
 
