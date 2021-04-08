@@ -237,7 +237,8 @@ stims
 coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
   as_tibble() %>% 
   mutate(
-    animal =  gsub(pattern = ".*rotation", replacement = "", animal) %>% str_remove_all(pattern = "\\\\"),
+    animal =  gsub(pattern = ".*rotation", replacement = "", animal) %>% 
+      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix"),
     session = gsub(pattern = "(coords).*", replacement = "\\1", session)
     # session = ifelse(
     #   animal != "GIIFM24b", 
@@ -468,7 +469,7 @@ coords %>%
   # dplyr::filter(animal == "GIIFM24b") %>%
   ggplot(mapping = aes(x = d_mm)) +
   geom_histogram(aes(fill = session), binwidth = 5) +
-  facet_grid(~animal ~ body_part, scales = "free") +
+  facet_grid(animal ~ body_part, scales = "free") +
   scale_y_continuous(trans='log10') 
   
 ```
@@ -480,7 +481,7 @@ Center
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "center") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "center") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -492,7 +493,7 @@ Head
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "head") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "head") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -504,7 +505,7 @@ Tail
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b",body_part == "tail") %>%
+  dplyr::filter(animal == "GIIFM21b",body_part == "tail") %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -521,7 +522,7 @@ coords %>%
 
 ```{r message=F, fig.width=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "center", session == "video2coords") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "center", session == "video2coords") %>%
   dplyr::group_by(stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -534,7 +535,7 @@ Center
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "center", 
+  dplyr::filter(animal == "GIIFM21b", body_part == "center", 
                 #X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20 
                 ) %>%
   dplyr::group_by(session, stim) %>%
@@ -552,7 +553,7 @@ Head
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "head") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "head") %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -569,7 +570,7 @@ Tail
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "tail") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "tail") %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
