@@ -660,7 +660,7 @@ vectors %>%
 
 ```{r}
 coords %>%
-  dplyr::filter(animal == "GIIFM19") %>%
+  dplyr::filter(animal == "GIIFM19b") %>%
   dplyr::group_by(body_part) %>%
   slice(1:3) %>%
   dplyr::filter(body_part != "tail") %>%
@@ -708,10 +708,10 @@ coords %>%
         signed_angle %>% abs() < 180 ~ signed_angle,
         signed_angle <= -180 ~ -360 - signed_angle,
         signed_angle > -180 | signed_angle < 0 ~ signed_angle
-      )) %>% 
+      )) %>% View()
   ggplot(aes(x = signed_angle_corrected)) +
-  geom_histogram() +
-  facet_wrap(~animal)
+  geom_histogram(aes(col = session)) +
+  facet_grid(animal ~session, scales = "free")
 ```
 
 ### Signed angles 
