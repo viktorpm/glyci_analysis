@@ -117,100 +117,6 @@ library(imputeTS)
 
 ## Loading stimulus times (frames)
 
-<!-- ```{r} -->
-<!-- stims <- read.csv(file.path("data", "turning", "GIIFM19", "GIIFM19Frames_20201116.csv")) %>% -->
-<!--   as_tibble() %>% -->
-<!--   mutate( -->
-<!--     session = str_remove(session, "_"), -->
-<!--     session = str_remove(session, ".dat"), -->
-<!--     stim_length = end - start -->
-<!--   ) %>% -->
-<!--   select(-stim_duration) %>%  -->
-<!--   rename("stim_number" = stim.number) %>% -->
-<!--   gather(key = "timing", value = "frame", start, end) -->
-<!-- stims -->
-<!-- ``` -->
-
-## Loading coordinates
-
-
-
-<!-- ```{r warning=FALSE, message=FALSE} -->
-<!-- coords <- read.csv(file.path("data", "turning", "GIIFM19.csv")) %>% -->
-<!--   as_tibble() %>% -->
-<!--   mutate(session = str_remove(session, pattern = ".dat")) %>% -->
-<!--   full_join(stims) %>% -->
-<!--   dplyr::group_by(session) %>% -->
-<!--   mutate(grp = cumsum(!is.na(stim_number))) %>% -->
-<!--   dplyr::group_by(grp) %>% -->
-<!--   mutate( -->
-<!--     stim = F, -->
-<!--     stim = replace(stim, first(timing) == "start" | timing == "end", T) -->
-<!--   ) %>% -->
-<!--   # ungroup(grp) %>% -->
-<!--   group_by(stim) %>% -->
-<!--   fill(stim_number) %>% -->
-<!--   fill(intensity) %>% -->
-<!--   select(-grp, -animal, -timing, -stim_length) %>% -->
-<!--   #ungroup(stim) %>% -->
-<!--   group_by(session) %>% -->
-<!--   dplyr::mutate( -->
-<!--     rec_time = (frame / fps) %>% round(digits = 2), -->
-<!--     # segments = cumsum(ifelse(rec_time %% 9 == 0 & stim != T, 1, 0)), -->
-<!--     stim_categ = case_when( -->
-<!--       stim == T ~ "stim", -->
-<!--       lead(stim, n = 252) == T ~ "before stim", -->
-<!--       lag(stim, n = 252) == T ~ "after stim", -->
-<!--       stim == F ~ "no stim" -->
-<!--     ) -->
-<!--   ) %>% # length of the stimulus -->
-<!--   unite(col = "head", head1, head2, sep = "_") %>% -->
-<!--   unite(col = "center", center1, center2, sep = "_") %>% -->
-<!--   unite(col = "tail", tail1, tail2, sep = "_") %>% -->
-<!--   gather( -->
-<!--     key = "body_part", -->
-<!--     value = "coordinate", -->
-<!--     head, center, tail -->
-<!--   ) %>% -->
-<!--   tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>% -->
-<!--   dplyr::mutate( -->
-<!--     X = ifelse( -->
-<!--       as.integer(X) == 0 & as.integer(Y) == 0, -->
-<!--       yes = NA, -->
-<!--       no = as.integer(X) -->
-<!--     ), -->
-<!--     Y = ifelse( -->
-<!--       as.integer(X) == 0 & as.integer(Y) == 0, -->
-<!--       yes = NA, -->
-<!--       no = as.integer(Y) -->
-<!--     ) -->
-<!--   ) %>% -->
-<!--   dplyr::group_by(session, body_part) %>% -->
-<!--   dplyr::mutate( -->
-<!--     # X_interp = zoo::na.approx(X), -->
-<!--     # Y_interp = zoo::na.approx(Y), -->
-<!--     X_interp = imputeTS::na.interpolation(X) %>% round(), -->
-<!--     Y_interp = imputeTS::na.interpolation(Y) %>% round(), -->
-<!--     X_diff = c(diff(X_interp), NA) %>% round(4), -->
-<!--     Y_diff = c(diff(Y_interp), NA) %>% round(4), -->
-<!--     d = sqrt(X_diff^2 + Y_diff^2), -->
-<!--     d_mm = d / scale, -->
-<!--     speed_instant = d_mm / time_res, -->
-<!--     mmps = speed_instant * (1 / time_res), -->
-<!--     mps = (speed_instant * (1 / time_res)) / 1000, -->
-<!--     sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0)) -->
-<!--   ) %>% -->
-<!--   group_by(session, sec_counter, body_part) %>% -->
-<!--   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>% -->
-<!--   ungroup() %>% -->
-<!--   mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim")) -->
-
-<!-- coords -->
-<!-- ``` -->
-
-
-
-
 
 ```{r}
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
@@ -233,7 +139,10 @@ stims
 ```
 
 
-```{r}
+## Loading coordinates
+
+
+```{r message=F}
 coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
   as_tibble() %>% 
   mutate(
@@ -380,7 +289,7 @@ coords %>%
 
 ```{r warning=FALSE, fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b") %>%
+  dplyr::filter(animal == "GIIFM21b") %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
   ) +
@@ -410,7 +319,7 @@ coords %>%
 
 ```{r message=FALSE, fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part == "center") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part == "tail") %>%
   group_by(session, sec_counter) %>%
   mutate(d_sec = sum(d_mm, na.rm = T)) %>%
   ggplot(
@@ -481,7 +390,10 @@ Center
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "center") %>%
+  dplyr::filter(
+    animal == "GIIFM21b", 
+    body_part == "center",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -493,7 +405,10 @@ Head
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "head") %>%
+  dplyr::filter(
+    animal == "GIIFM21b", 
+    body_part == "head",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -505,7 +420,10 @@ Tail
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b",body_part == "tail") %>%
+  dplyr::filter(
+    animal == "GIIFM21b",
+    body_part == "tail",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) + 
@@ -522,7 +440,11 @@ coords %>%
 
 ```{r message=F, fig.width=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "center", session == "video2coords") %>%
+  dplyr::filter(
+    animal == "GIIFM20b", 
+    body_part == "center", 
+    session == "video2coords",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   dplyr::group_by(stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -535,9 +457,11 @@ Center
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "center", 
-                #X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20 
-                ) %>%
+  dplyr::filter(
+    animal == "GIIFM20b", 
+    body_part == "center",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    ) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -553,7 +477,10 @@ Head
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "head") %>%
+  dplyr::filter(
+    animal == "GIIFM20b",
+    body_part == "head",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -570,7 +497,10 @@ Tail
 
 ```{r fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM21b", body_part == "tail") %>%
+  dplyr::filter(
+    animal == "GIIFM20b",
+    body_part == "tail",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -580,6 +510,23 @@ coords %>%
   facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
+
+
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::filter(
+    animal == "GIIFM19b",
+    body_part == "center",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    stim_categ != "no stim") %>% 
+  group_by(session, stim_categ) %>% 
+  mutate(categ_timer = (row_number() / fps) %>% round(digits = 2)) %>% 
+  ungroup() %>% View()
+  ggplot(aes(x= categ_timer, y = d_mm, group = stim_categ)) +
+  geom_line(aes(col = stim_categ)) +
+  facet_wrap(~session, ncol = 2, scales = "free")
+  
+```
 
 
 
@@ -718,7 +665,7 @@ coords %>%
 
 ```{r message=F, fig.width=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part != "tail") %>%
+  dplyr::filter(animal == "GIIFM21b", body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
   #arrange(body_part) %>% 
   summarise(
@@ -742,8 +689,8 @@ coords %>%
       )) %>% 
 
   add_column(
-    rec_time = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(rec_time),
-    stim = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(stim)
+    rec_time = coords %>% dplyr::filter(animal == "GIIFM21b", body_part == "head") %>% pull(rec_time),
+    stim = coords %>% dplyr::filter(animal == "GIIFM21b", body_part == "head") %>% pull(stim)
   ) %>%
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
   geom_line(aes(col = stim, group = 1)) +
@@ -780,7 +727,7 @@ coords %>%
 
 ```{r message=FALSE,fig.width=10}
 coords %>%
-  dplyr::filter(animal == "GIIFM24b", body_part != "tail") %>%
+  dplyr::filter(animal == "GIIFM20b", body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
   summarise(
     vectx = diff(X_interp),
@@ -802,13 +749,13 @@ coords %>%
         signed_angle > -180 | signed_angle < 0 ~ signed_angle
       )) %>% 
   add_column(
-    rec_time = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(rec_time),
-    stim = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(stim),
-    stim_categ = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(stim_categ),
-    stim_number = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(stim_number),
-    Y_diff = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(Y_diff),
-    X_diff = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(X_diff),
-    d_mm = coords %>% dplyr::filter(animal == "GIIFM24b", body_part == "head") %>% pull(d_mm),
+    rec_time = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(rec_time),
+    stim = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(stim),
+    stim_categ = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(stim_categ),
+    stim_number = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(stim_number),
+    Y_diff = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(Y_diff),
+    X_diff = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(X_diff),
+    d_mm = coords %>% dplyr::filter(animal == "GIIFM20b", body_part == "head") %>% pull(d_mm),
   ) %>%
   group_by(session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
@@ -822,101 +769,6 @@ coords %>%
   facet_wrap(~session, scales = "free_x")
 
 ```
-
-
-
-
-
-<!-- ```{r fig.show='animate', message=FALSE} -->
-<!-- p_angle <- coords %>% -->
-<!--   dplyr::filter(body_part != "tail") %>% -->
-<!--   dplyr::group_by(session, frame) %>% -->
-<!--   summarise( -->
-<!--     vectx = diff(X_interp), -->
-<!--     vecty = diff(Y_interp) -->
-<!--   ) %>% -->
-<!--   mutate( -->
-<!--     leadx = lead(vectx), -->
-<!--     leady = lead(vecty) -->
-<!--   ) %>% -->
-<!--   #rowwise() %>% -->
-<!--   mutate( -->
-<!--     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)  -->
-<!--   ) %>% -->
-<!--    mutate( -->
-<!--     signed_angle_corrected = case_when( -->
-<!--         signed_angle >= 180 ~ 360 - signed_angle, -->
-<!--         signed_angle %>% abs() < 180 ~ signed_angle, -->
-<!--         signed_angle <= -180 ~ -360 - signed_angle, -->
-<!--         signed_angle > -180 | signed_angle < 0 ~ signed_angle -->
-<!--       )) %>%  -->
-<!--   add_column( -->
-<!--     rec_time = coords %>% dplyr::filter(body_part == "head") %>% pull(rec_time), -->
-<!--     stim = coords %>% dplyr::filter(body_part == "head") %>% pull(stim), -->
-<!--     stim_categ = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_categ), -->
-<!--     stim_number = coords %>% dplyr::filter(body_part == "head") %>% pull(stim_number), -->
-<!--     Y_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(Y_diff), -->
-<!--     X_diff = coords %>% dplyr::filter(body_part == "head") %>% pull(X_diff), -->
-<!--     d_mm = coords %>% dplyr::filter(body_part == "head") %>% pull(d_mm), -->
-<!--   ) %>% -->
-<!--   group_by(session) %>% -->
-<!--   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>% -->
-<!--   dplyr::filter(session == "video2coords") %>% -->
-<!--   ggplot( -->
-<!--     mapping = aes(x = rec_time, y = csum %>% scale()) -->
-<!--   ) + -->
-<!--   geom_line(aes(col = stim, group = 1)) + -->
-<!--   geom_point() + -->
-<!--   transition_reveal(rec_time)  -->
-<!--   #labs(title = "Time: {frame_time %>% round(digits = 2)}s")  -->
-
-<!-- p_angle -->
-
-
-
-<!-- ``` -->
-
-
-<!-- ```{r include=FALSE} -->
-<!-- p_traject <- coords %>% -->
-<!--   dplyr::filter(session == "video2coords") %>% -->
-<!--   ggplot( -->
-<!--     mapping = aes(x = X_interp, y = Y_interp, label = frame) -->
-<!--   ) + -->
-<!--   geom_point( -->
-<!--     aes(shape = body_part, col = stim_number), -->
-<!--     size = 2 -->
-<!--   ) + -->
-<!--   geom_line( -->
-<!--     aes(group = frame, col = stim_number %>% as.character()) -->
-<!--   ) + -->
-<!--   scale_color_manual( -->
-<!--     values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"), -->
-<!--     name = "Stimulus" -->
-<!--   ) + -->
-<!--   scale_shape( -->
-<!--     name = "Body part", -->
-<!--     labels = c("Center", "Head", "Tail") -->
-<!--   ) + -->
-<!--   xlim(c(0, 1280)) + -->
-<!--   ylim(c(0, 720)) -->
-<!--   #gganimate::transition_time(rec_time) -->
-
-<!-- p_traject <- p_traject + -->
-<!--   gganimate::transition_time(rec_time) + -->
-<!--   #labs(title = "Time: {rec_time %>% round(digits = 2)}s") + -->
-<!-- #   shadow_mark(alpha = 0.1, size = 0.5) -->
-
-<!-- ``` -->
-
-
-<!-- ```{r include=FALSE} -->
-
-<!-- ggpubr::ggarrange( -->
-<!--   p_angle+gganimate::transition_time(rec_time), -->
-<!--   p_traject+gganimate::transition_time(rec_time), -->
-<!--   nrow = 2, heights = c(1,2)) -->
-<!-- ``` -->
 
 
 
