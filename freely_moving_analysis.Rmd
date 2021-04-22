@@ -525,28 +525,29 @@ coords %>%
 
 
 
-<!-- ```{r fig.width=10, fig.height=10} -->
-<!-- coords %>% -->
-<!--   dplyr::select(animal, session, frame,rec_time,stim_categ,body_part,d_mm,X_diff,Y_diff, stim_number) %>%  -->
-<!--   mutate(stim_number = replace(stim_number, stim_number == "no stim", NA)) %>%  -->
-<!--   dplyr::filter( -->
-<!--     animal == "GIIFM19b", -->
-<!--     body_part == params$body_part, -->
-<!--     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20, -->
-<!--     stim_categ != "no stim") %>%  -->
-<!--   group_by(session, stim_categ) %>%  -->
-<!--   mutate(categ_timer = (row_number() / fps) %>% round(digits = 2)) %>%  -->
-<!--   ungroup() %>%  -->
-<!--   group_by(session) %>%  -->
-<!--   mutate(stim_block_number = fill(stim_number)) %>%  -->
+```{r fig.width=10, fig.height=10}
+coords %>%
+  dplyr::select(animal, session, frame,rec_time,stim_categ,body_part,d_mm,X_diff,Y_diff, stim_number) %>%
+  mutate(stim_number = replace(stim_number, stim_number == "no stim", NA)) %>%
+  dplyr::filter(
+    animal == "GIIFM22b",
+    body_part == params$body_part,
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    stim_categ != "no stim") %>%
+  group_by(session, stim_categ) %>%
+  mutate(categ_timer = (row_number() / fps) %>% round(digits = 2)) %>%
+  ungroup() %>%
+  group_by(session) %>%
+  mutate(stim_block_number = stim_number) %>% 
+  fill(stim_block_number, .direction = "down" )
 
 
 
-<!--   ggplot(aes(x= categ_timer, y = d_mm, group = stim_categ)) + -->
-<!--   geom_line(aes(col = stim_categ)) + -->
-<!--   facet_wrap(~session, ncol = 2, scales = "free") -->
+  ggplot(aes(x= categ_timer, y = d_mm, group = stim_categ)) +
+  geom_line(aes(col = stim_categ)) +
+  facet_wrap(~session, ncol = 2, scales = "free")
 
-<!-- ``` -->
+```
 
 
 
@@ -789,6 +790,82 @@ coords %>%
   facet_wrap(~session, scales = "free_x")
 
 ```
+
+
+# Population analysis
+
+
+```{r message=FALSE}
+coords %>%
+  dplyr::filter(
+    str_detect(string = animal, pattern = "b"),
+    body_part == "center",
+    stim_categ != "no stim",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>% 
+  dplyr::group_by(animal, stim_categ) %>% 
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm =T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"), 
+      y = mean_d_mm)) +
+  geom_point(aes(fill = animal),shape = 21, size = 4) +
+  geom_line(aes(group = animal))
+  
+```
+
+
+
+
+```{r message=FALSE}
+coords %>%
+  dplyr::filter(
+    str_detect(string = animal, pattern = "b"),
+    body_part == "center",
+    stim_categ != "no stim",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>% 
+  dplyr::group_by(animal, stim_categ) %>% 
+  dplyr::summarise(mean_mmps = mean(mmps, na.rm =T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"), 
+      y = mean_mmps)) +
+  geom_point(aes(fill = animal),shape = 21, size = 4) +
+  geom_line(aes(group = animal))
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
