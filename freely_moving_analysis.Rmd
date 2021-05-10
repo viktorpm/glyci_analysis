@@ -179,7 +179,8 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   group_by(animal, session, stim) %>%
   fill(stim_number) %>%
   fill(intensity) %>%
-  select(-grp, -animal, -timing, -stim_length) %>%
+  fill(stim_freq) %>% 
+  select(-grp, -timing, -stim_length) %>% # , -animal
   ungroup() %>%
   group_by(animal, session) %>%
   dplyr::mutate(
@@ -260,7 +261,7 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-n <- 5
+n <- 6
 cols <- gg_color_hue(n)
 ```
 
@@ -313,7 +314,7 @@ coords %>%
     alpha = .1
   ) +
   scale_color_manual(
-    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], "black"),
+    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], "black"),
     name = "Stimulus"
   ) +
   scale_shape(
@@ -353,7 +354,7 @@ coords %>%
   ggplot(mapping = aes(x = X_diff)) +
   stat_ecdf(aes(col = session), geom = "point") +
   # geom_histogram(aes(fill = session)) +
-  facet_grid(~animal ~ body_part, )
+  facet_grid(~animal ~ body_part)
 # scale_y_continuous(trans='log10')
 ```
 
@@ -542,7 +543,7 @@ coords %>%
   ungroup() %>%
   group_by(session) %>%
   mutate(stim_block_number = stim_number) %>%
-  fill(stim_block_number, .direction = "down")
+  fill(stim_block_number, .direction = "down") %>% 
 
 
 
@@ -725,7 +726,7 @@ coords %>%
 
 ```{r}
 coords %>%
-  dplyr::filter(animal == selected_animal, session == "video0coords", body_part != "tail") %>%
+  dplyr::filter(animal == selected_animal, session == "video1coords", body_part != "tail") %>%
   dplyr::group_by(body_part) %>%
   dplyr::slice(1:25) %>%
   ungroup() %>%
@@ -822,7 +823,7 @@ coords %>%
     )
   ) %>%
   # dplyr::filter(body_part == "center") %>%
-  group_by(session) %>%
+  group_by(session, body_part) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
   # dplyr::filter(session == "video2coords") %>%
   # group_by(session) %>%
@@ -838,7 +839,7 @@ coords %>%
 # Population analysis
 
 
-```{r message=FALSE}
+```{r message=FALSE, fig.width=10}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -861,28 +862,8 @@ coords %>%
 
 
 
-```{r message=FALSE}
-coords %>%
-  dplyr::filter(
-    str_detect(string = animal, pattern = "b"),
-    body_part == "center",
-    stim_categ != "no stim",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
-  ) %>%
-  dplyr::group_by(animal, stim_categ) %>%
-  dplyr::summarise(mean_mmps = mean(mmps, na.rm = T)) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = mean_mmps
-    )
-  ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal))
-```
 
-
-```{r}
+```{r fig.height=10}
 
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
@@ -890,8 +871,57 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
-    # str_detect(string = session, pattern = "3|4|5"), # session filter
-    intensity == 2.0|5.0|6.0|10.0, # intensity filter
+    str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
+    body_part != "tail", 
+    stim_categ != "no stim") %>%
+  dplyr::group_by(animal, session, frame) %>%
+  mutate(
+    vectx = c(diff(X_interp), NA),
+    vecty = c(diff(Y_interp), NA)
+  ) %>%
+  group_by(animal, session) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  # rowwise() %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) %>%
+  mutate(
+    signed_angle_corrected = case_when(
+      signed_angle >= 180 ~ 360 - signed_angle,
+      signed_angle %>% abs() < 180 ~ signed_angle,
+      signed_angle <= -180 ~ -360 - signed_angle,
+      signed_angle > -180 | signed_angle < 0 ~ signed_angle
+    )
+  ) %>%
+  dplyr::filter(body_part == "head") %>% 
+  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+    ) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = mean_ang %>% scale()
+    )
+  ) +
+  geom_point(aes(fill = animal), shape = 21, size = 4, alpha = .5) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~session)
+  #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+```
+
+
+```{r}
+coords %>%
+  dplyr::filter(
+    str_detect(string = animal, pattern = "b"),
+    intensity %in% c(0.1, 0.2, 0.5, 1), # intensity filter
     body_part != "tail", 
     stim_categ != "no stim") %>%
   dplyr::group_by(animal, session, frame) %>%
@@ -934,3 +964,4 @@ coords %>%
   geom_line(aes(group = animal)) 
   #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
+
