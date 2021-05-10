@@ -883,6 +883,10 @@ coords %>%
 
 
 ```{r}
+
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
+
+
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -917,7 +921,8 @@ coords %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T)
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
     ) %>%
   ggplot(
     mapping = aes(
@@ -926,5 +931,6 @@ coords %>%
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal))
+  geom_line(aes(group = animal)) 
+  #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
