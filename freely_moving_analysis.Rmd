@@ -768,8 +768,12 @@ coords %>%
 ### Plotting cumulative angles
 
 ```{r message=FALSE,fig.width=15, fig.height=10}
+selected_animal <- "GIIFM18b"
+
 coords %>%
-  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
+  dplyr::filter(
+    animal == selected_animal, 
+    body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
   summarise(
     vectx = diff(X_interp),
@@ -822,9 +826,9 @@ coords %>%
 
 coords %>%
   dplyr::filter(
-    animal == "GIIFM17b", 
-    body_part != "tail",
-    stim_categ != "no stim") %>%
+    animal == "GIIFM18b", 
+    body_part != "tail"
+    ) %>%
   
   dplyr::group_by(session, frame) %>%
     mutate(
@@ -849,14 +853,14 @@ coords %>%
     )
   ) %>%
  dplyr::filter(body_part == "head") %>%
-  group_by(session, intensity, body_part) %>%
+  group_by(session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
  
   ggplot(
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
-  geom_line(aes(col = stim_categ), alpha = 0.5) +
-  facet_grid(session~intensity, scales = "free_x")
+  geom_line(aes(col = stim_categ, group = 1)) +
+  facet_wrap(~session, scales = "free_x")
 ```
 
 
@@ -873,8 +877,8 @@ coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     animal != "GIIFM14b",
-    body_part != "tail", 
-    stim_categ != "no stim") %>%     
+    body_part != "tail"
+    ) %>%     
   
   dplyr::group_by(animal, session, frame) %>%
   mutate(
@@ -900,14 +904,17 @@ coords %>%
   ) %>%
   dplyr::filter(body_part == "head") %>% 
   
-  group_by(animal, session, intensity) %>%
+  group_by(animal, session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
   
   ggplot(
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim_categ, group = 1)) +
-  facet_wrap(animal~session, scales = "free") 
+  # geom_text(
+  #   data = coords$intensity %>% unique(),
+  #   aes(label=intensity), check_overlap = T) +
+  facet_grid(session~animal, scales = "free") 
 ```
 
 Mean traveled distance across sessions, by animals
@@ -1043,6 +1050,7 @@ coords %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
     sd_ang = sd(signed_angle_corrected, na.rm = T),
     sem_ang = sem(signed_angle_corrected)
     ) %>%
