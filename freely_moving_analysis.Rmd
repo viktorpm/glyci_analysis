@@ -1003,7 +1003,7 @@ coords %>%
       y = mean_ang %>% scale()
     )
   ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4, alpha = .5) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
   facet_wrap(~session)
   #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
@@ -1068,5 +1068,111 @@ coords %>%
 
   #facet_grid(~animal, ~intensity)
   #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+```
+
+
+Traveled distance before stimulus vs during stimulus (starting or stopping signal)
+
+
+```{r fig.height=10}
+coords %>%
+  dplyr::filter(
+    str_detect(string = animal, pattern = "b"),
+    body_part == "center",
+    stim_categ != "no stim",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+  ) %>%
+  
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>% 
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  tidyr::spread(
+    stim_categ,mean_d_mm
+  ) %>%
+  dplyr::filter(intensity %in% c(1,5,10,15)) %>% 
+
+   
+  ggplot(
+    mapping = aes(x = `before stim`, y = stim)
+  ) +
+  xlim(0,10) +
+  ylim(0,10) +
+  coord_fixed() +
+  geom_vline(xintercept = 5, alpha = .3) +
+  geom_hline(yintercept = 5, alpha = .3) +
+  geom_rect(xmin = 0, xmax = 5, ymin = 5, ymax = 10, fill = "green", alpha = 0.03) +
+  geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
+  
+  #geom_abline(slope = 1, intercept = 0, alpha = .3) +
+  geom_point(aes(col = as.factor(intensity)), size = 3) +
+  facet_grid(stim_number~animal)
+
+  
+
+```
+
+
+Mean rotation angle before stimulus vs during stimulus (starting or stopping signal)
+
+```{r fig.height=10}
+coords %>%
+  dplyr::filter(
+    str_detect(string = animal, pattern = "b"),
+    animal != "GIIFM14b",
+    intensity %in% c(1, 5, 10, 15),
+    body_part != "tail", 
+    stim_categ != "no stim") %>%
+  
+  dplyr::group_by(animal, session, frame) %>%
+  mutate(
+    vectx = c(diff(X_interp), NA),
+    vecty = c(diff(Y_interp), NA)
+  ) %>%
+  
+  group_by(animal, session) %>%
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  ) %>%
+  mutate(
+    signed_angle_corrected = case_when(
+      signed_angle >= 180 ~ 360 - signed_angle,
+      signed_angle %>% abs() < 180 ~ signed_angle,
+      signed_angle <= -180 ~ -360 - signed_angle,
+      signed_angle > -180 | signed_angle < 0 ~ signed_angle
+    )
+  ) %>%
+  dplyr::filter(body_part == "head") %>% 
+  
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  dplyr::summarise(
+    #sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    #med_ang = median(signed_angle_corrected, na.rm = T),
+    #sd_ang = sd(signed_angle_corrected, na.rm = T),
+    #sem_ang = sem(signed_angle_corrected)
+    ) %>% 
+  tidyr::spread(
+    key = stim_categ, value = mean_ang) %>% 
+  
+  ggplot(
+    mapping = aes(x = `before stim`, y = stim)
+  ) +
+  
+  xlim(-5,5) +
+  ylim(-5,5) +
+  coord_fixed() +
+  # geom_vline(xintercept = 5, alpha = .3) +
+  # geom_hline(yintercept = 5, alpha = .3) +
+  # geom_rect(xmin = 0, xmax = 5, ymin = 5, ymax = 10, fill = "green", alpha = 0.03) +
+  # geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
+  
+  #geom_abline(slope = 1, intercept = 0, alpha = .3) +
+  geom_point(aes(col = as.factor(intensity)), size = 3) +
+  facet_grid(stim_number~animal)
+
+
 ```
 
