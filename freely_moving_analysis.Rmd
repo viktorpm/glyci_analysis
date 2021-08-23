@@ -949,7 +949,7 @@ coords %>%
 Mean rotation angle by session
 
 
-```{r fig.height=10}
+```{r message=FALSE, fig.height=8, fig.width=10}
 
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
@@ -1012,7 +1012,7 @@ coords %>%
 Mean rotation angle by intensity
 
 
-```{r fig.height=10}
+```{r message=FALSE, fig.height=8, fig.width=10}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1074,7 +1074,7 @@ coords %>%
 Traveled distance before stimulus vs during stimulus (starting or stopping signal)
 
 
-```{r fig.height=10}
+```{r fig.width=20, fig.height=18}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1113,7 +1113,7 @@ coords %>%
 
 Mean rotation angle before stimulus vs during stimulus (starting or stopping signal)
 
-```{r fig.height=10}
+```{r fig.width=20, fig.height=18}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
