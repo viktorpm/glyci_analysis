@@ -893,7 +893,7 @@ ggplot(
 
 
 
-<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br>
 
 
 # Activity of PRF glycinergic cells during PFC photoactivation
@@ -1643,7 +1643,7 @@ ggplot(
   ylab("Number of APs")
 ```
 
-
+<br><br><br><br><br><br>
 
 # Spontaneous desynchronization of the FC slow oscillation 
 
@@ -1710,6 +1710,8 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 
 
 Loading all data calculated by **SyncDesyncAnalysis** function
+**SyncDesyncAnalysis** is a function that automatically loads the **.mat** files containing the raw recordings, filters and down samples LFP, finds the AP peak times, calculates ISI  and saves everything in data frames. The dataframes are saved in the **sync_desync_tibbles.rds** file
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 all_eeg_df <- readRDS(file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
@@ -1775,6 +1777,8 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
+
+### rect_index: to show areas excluded from analysis. Based on the length of a period during which clusters can be expected: (1/first_peak) * 2 
 eeg_sum_plot <- lapply(all_eeg_df, function(x) {
   rect_index <-
     tibble(
@@ -1784,6 +1788,7 @@ eeg_sum_plot <- lapply(all_eeg_df, function(x) {
         dplyr::select(state_start, state_end) %>% pull(state_end) %>% unique()
     )
 
+  
 
   ggplot(
     data = dplyr::filter(x, times > plotting_region[1], times < plotting_region[2]),
@@ -1848,6 +1853,9 @@ p_eeg
 
 ### Number of clusters in sync vs desync periods
 
+Short periods are removed from analysis: (1/first_peak) * 2
+**first_peak** is the dominant frequency on the power spectrum, **1/first_peak** is the length of one cycle. Clusters can only be found in the period of two cycles if we assume that the clusters are linked to the cortical oscillation 
+
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 left_join(
@@ -1886,7 +1894,7 @@ left_join(
 ```
 
 
-
+<br><br><br><br><br><br>
 
 # Terminals
 
@@ -1966,10 +1974,19 @@ ggplot(
 ```
 
 
-<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br>
 
 # Methods
 
+## Sync-desync analysis
+
+Determine sync and desync periods
+how sliding window for the rolling SD is determined (1 / first_peak * samp_rate_ds)
+
+
+Determine if a cell fires in clusters or not 
+
+ISI is used to determine clusters. Number of bins of the ISI is determined by the Freedman-Diaconis rule for optimal bin-width. ISI window size: 1 / first_peak. Dip test was used to determine ISI uni/multimodality
 
 
 
