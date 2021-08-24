@@ -28,3 +28,11 @@ install.packages(c(liblist[which(!liblist %in% pkgs)]))
 
 lapply(liblist %>% as.list(), require, character.only = TRUE)
 
+
+
+# citelist <- lapply(liblist, citation)
+# 
+# for (i in seq_along(citelist)) {
+#   print(citelist[[i]]$textVersion) 
+# }
+

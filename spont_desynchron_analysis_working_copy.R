@@ -264,6 +264,10 @@ SyncDesyncAnalysis <- function(file) {
 
   slide_sd %>% hist(breaks = "FD")
   abline(v = slide_sd %>% quantile(na.rm = T), col = "red")
+  abline(v = (slide_sd %>% median(na.rm = T) + slide_sd %>% quantile(na.rm = T) %>% `[`(2)) / 2,
+         lty = 2,
+         col = "magenta",
+         lwd = 2)
   text(x = c(slide_sd %>% quantile(na.rm = T)), y = 50, labels = slide_sd %>% quantile(na.rm = T) %>% names(), col = "red")
 
   par(mfrow = c(1, 1))

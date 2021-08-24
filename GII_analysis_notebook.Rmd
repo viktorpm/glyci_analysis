@@ -1710,7 +1710,7 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 
 
 Loading all data calculated by **SyncDesyncAnalysis** function
-**SyncDesyncAnalysis** is a function that automatically loads the **.mat** files containing the raw recordings, filters and down samples LFP, finds the AP peak times, calculates ISI  and saves everything in data frames. The dataframes are saved in the **sync_desync_tibbles.rds** file
+**SyncDesyncAnalysis** is a function that automatically loads the **.mat** files containing the raw recordings, filters and down samples LFP, finds the AP peak times, calculates ISI and saves everything in data frames. The dataframes are saved in the **sync_desync_tibbles.rds** file
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -1980,8 +1980,14 @@ ggplot(
 
 ## Sync-desync analysis
 
+n=7 recordings from n=? animals
+Raw LFP signal was filtered, down-sampled and standardized. The power spectral density of each LFP signal was calculated and the dominant frequency was determined. To find the synchronous and desynchronous periods of the cortical LFP signal the standard deviation of the signal amplitude was calculated in overlapping sliding windows. The size of the sliding window was equal to the length of one cycle the overlap was half a cycle. The threshold for synchronous and desynchronous periods was placed half way between the median and the 25th percentile.  
+
+
+
+
 Determine sync and desync periods
-how sliding window for the rolling SD is determined (1 / first_peak * samp_rate_ds)
+how sliding window for the rolling SD is determined (1 / first_peak * samp_rate_ds): number of data points in a cycle. 
 
 
 Determine if a cell fires in clusters or not 
@@ -1989,14 +1995,87 @@ Determine if a cell fires in clusters or not
 ISI is used to determine clusters. Number of bins of the ISI is determined by the Freedman-Diaconis rule for optimal bin-width. ISI window size: 1 / first_peak. Dip test was used to determine ISI uni/multimodality
 
 
-
+All analysis was done in R
 **R**
 R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
 
-**ggplot2**
-H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
 
-**tidyverse**
-Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+Used packeges:
+
+**tidyverse** 
+"Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686"
+
+**R.matlab**
+"Henrik Bengtsson (2018). R.matlab: Read and Write MAT Files and Call MATLAB from Within R. R package version 3.6.2. https://CRAN.R-project.org/package=R.matlab"
+
+**reshape**
+"Hadley Wickham (2007). Reshaping Data with the reshape Package. Journal of Statistical Software, 21(12), 1-20. URL http://www.jstatsoft.org/v21/i12/."
+
+**bspec**
+"Christian Roever (2015). bspec: Bayesian spectral inference. R package version 1.5."
+
+
+"Roever, C., Meyer, R. and Christensen, N. (2010). Modelling coloured residual noise in gravitational-wave signal processing. Classical and Quantum Gravity, 28(1):015010. See also Arxiv preprint 0804.3853, URL http://arxiv.org/abs/0804.3853."
+
+
+**WaveletComp**
+"Angi Roesch and Harald Schmidbauer (2018). WaveletComp: Computational Wavelet Analysis. R package version 1.1. https://CRAN.R-project.org/package=WaveletComp"
+
+**diptest**
+"Martin Maechler (2021). diptest: Hartigan's Dip Test Statistic for Unimodality - Corrected. R package version 0.76-0. https://CRAN.R-project.org/package=diptest"
+
+**ggsignif**
+"Ahlmann-Eltze, C., & Patil, I. (2021). ggsignif: R Package for Displaying Significance Brackets for 'ggplot2'. PsyArxiv. doi:10.31234/osf.io/7awm6"
+
+**ggrepel**
+"Kamil Slowikowski (2021). ggrepel: Automatically Position Non-Overlapping Text Labels with 'ggplot2'. R package version 0.9.1. https://CRAN.R-project.org/package=ggrepel"
+
+**gghalves**
+"Frederik Tiedemann (2020). gghalves: Compose Half-Half Plots Using Your Favourite Geoms. R package version 0.1.1. https://CRAN.R-project.org/package=gghalves"
+
+
+"Lüdecke, Patil, Ben-Shachar, Wiernik, Waggoner & Makowski (2020). Visualisation Toolbox for 'easystats' and Extra Geoms, Themes and Color Palettes for 'ggplot2'. CRAN. Available from https://easystats.github.io/see/"
+
+**DT**
+"Yihui Xie, Joe Cheng and Xianying Tan (2021). DT: A Wrapper of the JavaScript Library 'DataTables'. R package version 0.18. https://CRAN.R-project.org/package=DT"
+
+**ggpubr**
+"Alboukadel Kassambara (2020). ggpubr: 'ggplot2' Based Publication Ready Plots. R package version 0.4.0. https://CRAN.R-project.org/package=ggpubr"
+
+**styler**
+"Kirill Müller and Lorenz Walthert (2021). styler: Non-Invasive Pretty Printing of R Code. R package version 1.5.1. https://CRAN.R-project.org/package=styler"
+
+**formatR**
+"Yihui Xie (2021). formatR: Format R Code Automatically. R package version 1.11. https://CRAN.R-project.org/package=formatR"
+
+**exactRankTests**
+"Torsten Hothorn and Kurt Hornik (2021). exactRankTests: Exact Distributions for Rank and Permutation Tests. R package version 0.8-32. https://CRAN.R-project.org/package=exactRankTests"
+
+**signal**
+"signal developers (2013). signal: Signal processing. URL: http://r-forge.r-project.org/projects/signal/."
+
+**STAR**
+"Christophe Pouzat (2012). STAR: Spike Train Analysis with R. R package version 0.3-7. https://CRAN.R-project.org/package=STAR"
+
+**seewave**
+"Sueur J, Aubin T, Simonis C (2008). seewave: a free modular tool for sound analysis and synthesis. Bioacoustics, 18: 213-226"
+
+**mixtools**
+"Tatiana Benaglia, Didier Chauveau, David R. Hunter, Derek Young (2009). mixtools: An R Package for Analyzing Finite Mixture Models. Journal of Statistical Software, 32(6), 1-29. URL http://www.jstatsoft.org/v32/i06/."
+
+**RcppRoll**
+"Kevin Ushey (2018). RcppRoll: Efficient Rolling / Windowed Operations. R package version 0.3.0. https://CRAN.R-project.org/package=RcppRoll"
+
+**gganimate**
+"Thomas Lin Pedersen and David Robinson (2020). gganimate: A Grammar of Animated Graphics. R package version 1.0.7. https://CRAN.R-project.org/package=gganimate"
+
+**transformr**
+"Thomas Lin Pedersen (2020). transformr: Polygon and Path Transformations. R package version 0.1.3. https://CRAN.R-project.org/package=transformr"
+
+**gifski**
+"Jeroen Ooms (2021). gifski: Highest Quality GIF Encoder. R package version 1.4.3-1. https://CRAN.R-project.org/package=gifski"
+
+**matlib**
+"Michael Friendly, John Fox and Phil Chalmers (2020). matlib: Matrix Functions for Teaching and Learning Linear Algebra and nMultivariate Statistics. R package version 0.9.4. https://CRAN.R-project.org/package=matlib"
 
 
