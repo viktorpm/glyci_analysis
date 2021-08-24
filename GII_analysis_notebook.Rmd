@@ -888,10 +888,17 @@ ggplot(
 ```
 
 
+
+
+
+
 <br><br><br><br><br><br><br><br><br><br><br><br>
 
 
 # Activity of PRF glycinergic cells during PFC photoactivation
+
+In these experiments we tested the effect of cortical photo-activation on the firing of PRF glycinergic neurons.  
+
 
 ## Loading and transforming (hidden code) data
 
@@ -1774,3 +1781,22 @@ ggplot(
     )
   )
 ```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Methods
+
+
+
+
+**R**
+R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+**ggplot2**
+H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
+
+**tidyverse**
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+
