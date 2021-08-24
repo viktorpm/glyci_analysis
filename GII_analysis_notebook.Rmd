@@ -649,13 +649,13 @@ ggplot(
   ) +
   theme(panel.background = element_rect(fill = 0)) +
   theme_minimal() +
-  theme(
-    axis.text = element_text(size = 20),
-    text = element_text(size = 20)
-  ) +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
   xlab("Recording period") +
   facet_wrap(vars(pinch)) +
-  stat_compare_means(method = "wilcox.test", paired = T) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T) +
   geom_label_repel(
     data = TO_PLOT %>%
       dplyr::filter(
@@ -674,7 +674,7 @@ ggplot(
 
 ### MFR before, during and after stimulus 
 
-```{r, fig.width=14, fig.height=12 ,echo=FALSE, warning=FALSE}
+```{r, fig.width=10 ,echo=FALSE, warning=FALSE}
 ggplot(
   data = TO_PLOT %>%
     dplyr::filter(
@@ -688,10 +688,10 @@ ggplot(
 ) +
   theme(panel.background = element_rect(fill = 0)) +
   theme_minimal() +
-  theme(
-    axis.text = element_text(size = 20),
-    text = element_text(size = 20)
-  ) +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
   ggtitle("Pinch", ) +
   xlab("Recording period") +
   ylim(0, 35) +
@@ -763,10 +763,10 @@ ggplot(
   annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
   annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
   theme_minimal() +
-  theme(
-    axis.text = element_text(size = 20),
-    text = element_text(size = 20)
-  ) +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
   ylim(-max(cellranks$activity_change), max(cellranks$activity_change))
 ```
 
@@ -819,10 +819,10 @@ ggplot(
   annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
   annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
   theme_minimal() +
-  theme(
-    axis.text = element_text(size = 20),
-    text = element_text(size = 20)
-  ) +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
   xlab("Ranks") +
   ylab("Change in firing rate [%]") +
   ylim(-max(cellranks_before_stim$activity_change), max(cellranks_before_stim$activity_change))
@@ -843,7 +843,7 @@ ggplot(
 
 Plotting the change in MFR from "*baseline*" to "*during stimulus*". Coloring based on the strength of the inhibition (*rank*)
 
-```{r, fig.width=10, fig.height=12, echo=FALSE,warning=FALSE}
+```{r, echo=FALSE,warning=FALSE}
 ggplot(
   data = TO_PLOT %>%
     dplyr::filter(
@@ -879,10 +879,11 @@ ggplot(
     segment.size = .2
   ) +
   theme_minimal() +
-  theme(
-    axis.text = element_text(size = 20),
-    text = element_text(size = 20)
-  ) +
+  theme(legend.position = "bottom") +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
   xlab("Recording period") +
   labs(fill = "Rank", col = "Rank")
 ```
@@ -1001,8 +1002,7 @@ hist_stats <- STIM_RESULTS %>%
     geom_vline(xintercept = 0) +
     xlab("Time (s)") +
     ylab("Count") +
-    ggtitle(paste0(.$freq, " Hz"))
-  ) %>%
+    ggtitle(paste0(.$freq, " Hz"))) %>%
   `[[`(2) %>%
   lapply(. %>% HistStats() %>% as.tibble()) %>%
   bind_rows() %>%
@@ -1188,8 +1188,9 @@ gp_hist <- ggplot(
 ) +
   xlim(PSTH_range[1], PSTH_range[2]) +
   geom_histogram(
-    #aes(fill = animal_id), 
-    binwidth = 0.001) +
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
   scale_fill_brewer(
     palette = "Set3",
     name = "Animal"
@@ -1291,8 +1292,9 @@ gp_hist <- ggplot(
 ) +
   xlim(PSTH_range[1], PSTH_range[2]) +
   geom_histogram(
-    #aes(fill = animal_id),
-    binwidth = 0.001) +
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
   scale_fill_brewer(
     palette = "Set3",
     name = "Animal"
@@ -1394,8 +1396,9 @@ gp_hist <- ggplot(
 ) +
   xlim(PSTH_range[1], PSTH_range[2]) +
   geom_histogram(
-    #aes(fill = animal_id), 
-    binwidth = 0.001) +
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
   scale_fill_brewer(
     palette = "Set3",
     name = "Animal"
@@ -1482,8 +1485,8 @@ gp_hist +
 
 ```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(
-  data = RESP_PROB,# %>%
-    #dplyr::filter(animal_id != "GII_20"),
+  data = RESP_PROB, # %>%
+  # dplyr::filter(animal_id != "GII_20"),
   mapping = aes(
     x = as.factor(stim_freq),
     y = resp_prob_range
@@ -1492,13 +1495,13 @@ ggplot(
   geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
   geom_point(
     aes(
-      #fill = animal_id
-      ),
+      # fill = animal_id
+    ),
     fill = "gray",
     color = "black",
     size = 3,
     shape = 21,
-    #position = position_jitter(0.1)
+    # position = position_jitter(0.1)
   ) +
   # geom_line(aes(group = animal_id)) +
   xlab("Stimulus frequency") +
@@ -1515,17 +1518,16 @@ ggplot(
     test = "mood.test",
     margin_top = .1,
     color = "gray"
-      
   ) +
   geom_text_repel(
     aes(label = animal_id),
     direction = "y",
-    hjust = -.5)
-  
+    hjust = -.5
+  )
 ```
 
 
-```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(
   data = RESP_PROB %>%
     gather(
@@ -1569,7 +1571,8 @@ ggplot(
     name = "Latency",
     breaks = c("mean_latency", "peak_latency"),
     labels = c("Mean", "Peak")
-  ) 
+  ) +
+  theme(legend.position = "bottom")
 ```
 
 
@@ -1602,7 +1605,8 @@ ggplot(
   ylab("Mean no. APs accross animals") +
   labs(color = "Frequency") +
   ylim(0, 18) +
-  scale_x_discrete(limits = as.character(c(1:10)))
+  scale_x_discrete(limits = as.character(c(1:10))) +
+  theme(legend.position = "bottom")
 ```
 
 ```{r echo=FALSE, fig.width=10, fig.height=4, message=FALSE, warning=FALSE}
@@ -1630,6 +1634,7 @@ ggplot(
     alpha = .7
   ) +
   expand_limits(x = 12) +
+  theme(legend.position = "none") +
 
   # xlim(1,10) +
   facet_wrap(~stim_freq_categ) +
@@ -1645,6 +1650,8 @@ ggplot(
 ## Loading data 
 
 Loading mat files to *file_list* object
+
+Example file: **08_right_PnO_t5_4083_baseline1_wake.mat"**
 
 ```{r,  echo=FALSE,warning=FALSE,message=FALSE}
 file_list <- list.files(
@@ -1701,9 +1708,185 @@ ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_p
 ```
 
 
-------- insert code here --------
- 
-(spont_desynchron_analysis.R), 7 recordings
+
+Loading all data calculated by **SyncDesyncAnalysis** function
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+all_eeg_df <- readRDS(file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
+EEG_ds_df <- purrr::reduce(all_eeg_df, bind_rows)
+```
+
+## Plotting
+
+### ISI to determine clusters
+
+```{r echo=FALSE, fig.width=10, fig.height= 10, message=FALSE, warning=FALSE}
+gg_isi_periods <- lapply(all_eeg_df, function(x) {
+  ggplot(
+    data = x %>%
+      dplyr::filter(
+        AP == 1,
+        !is.na(eeg_state),
+        state_length >= 1 / first_peak * 2,
+        isi > 0, isi < 1 / first_peak
+      ), ### NAs in eeg_state because moving_sd has NAs at the end
+    mapping = aes(x = isi)
+  ) +
+    geom_histogram(aes(
+      fill = eeg_state,
+      color = eeg_state
+    ),
+    alpha = .3,
+    bins = x$nbins %>% unique()
+    ) +
+    geom_vline(
+      xintercept = x$burst_threshold_isi %>% unique()
+    ) +
+    annotate(
+      geom = "text",
+      x = x$burst_threshold_isi %>% unique() - x$burst_threshold_isi %>% unique() / 7,
+      y = Inf,
+      label = paste0("Burst threshold = ", x$burst_threshold_isi %>% unique()),
+      angle = 90,
+      hjust = 1.2
+    ) +
+    labs(caption = x$ID %>% unique())
+})
+
+
+### https://github.com/kassambara/ggpubr/issues/158
+### bug!!! had to open a NULL pdf device
+pdf(NULL)
+p_isi <- ggpubr::ggarrange(plotlist = gg_isi_periods, common.legend = TRUE, legend = "bottom")
+x <- dev.off()
+
+p_isi
+```
+
+### LFP and APs
+
+```{r echo=FALSE, fig.width=10, fig.height=20, message=FALSE, warning=FALSE}
+plotting_region <- c(90, 150)
+
+# plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
+
+gg_color_hue <- function(n) {
+  hues <- seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+eeg_sum_plot <- lapply(all_eeg_df, function(x) {
+  rect_index <-
+    tibble(
+      state_start = subset(x, state_length <= 1 / first_peak * 2) %>%
+        dplyr::select(state_start, state_end) %>% pull(state_start) %>% unique(),
+      state_end = subset(x, state_length <= 1 / first_peak * 2) %>%
+        dplyr::select(state_start, state_end) %>% pull(state_end) %>% unique()
+    )
+
+
+  ggplot(
+    data = dplyr::filter(x, times > plotting_region[1], times < plotting_region[2]),
+    mapping = aes(x = times, y = eeg_values)
+  ) +
+    geom_line(aes(color = "gray")) +
+    geom_line(
+      mapping = aes(x = times, y = moving_sd, color = gg_color_hue(2)[1]), size = 1
+    ) +
+    geom_line(
+      mapping = aes(x = times, y = levels + 3, color = gg_color_hue(2)[2]), size = 1
+    ) +
+    geom_segment(
+      mapping = aes(color = "black"),
+      x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
+      y = x$sd_threshold %>% unique(), yend = x$sd_threshold %>% unique(),
+      linetype = "dashed"
+    ) +
+    geom_point(
+      data = . %>% dplyr::filter(!is.na(ap_peak_times)),
+      mapping = aes(x = ap_peak_times, y = 5),
+      shape = "|",
+      size = 4,
+      color = "dark gray"
+    ) +
+    geom_point(
+      data = . %>% dplyr::filter(burst_isi == 1),
+      mapping = aes(x = times, y = burst_isi + 4),
+      color = "black",
+      shape = "|",
+      size = 5
+    ) +
+    geom_rect(
+      data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
+      inherit.aes = F,
+      mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
+    ) +
+    ylab("EEG [au]") +
+    xlab("Time") +
+
+    ### creating legend
+    scale_color_identity(
+      name = "Lines",
+      guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
+      breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
+      labels = c("EEG", "Moving SD", "Levels", "SD threshold")
+    ) +
+    theme_minimal() +
+    labs(caption = x$ID %>% unique())
+})
+
+pdf(NULL)
+p_eeg <- ggpubr::ggarrange(
+  plotlist = eeg_sum_plot,
+  common.legend = TRUE,
+  legend = "bottom", ncol = 1
+)
+x <- dev.off()
+
+p_eeg
+```
+
+### Number of clusters in sync vs desync periods
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+left_join(
+  EEG_ds_df %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::group_by(ID, eeg_state) %>%
+    dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
+  EEG_ds_df %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::group_by(ID, eeg_state) %>%
+    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>%
+  dplyr::filter(!grepl(pattern = "01|04", ID)) %>%
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(aes(col = ID), size = 3) +
+  geom_line(aes(col = ID, group = ID)) +
+  geom_boxplot(
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray"
+  ) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = F)
+
+# geom_text_repel(
+#   data = . %>% dplyr::filter(eeg_state == "sync"),
+#   aes(label = ID),
+#   direction = "y",
+#   hjust = -1)
+```
+
+
+
 
 # Terminals
 
