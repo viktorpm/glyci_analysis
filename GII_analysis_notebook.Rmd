@@ -624,7 +624,7 @@ datatable(TO_PLOT,
 
 Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and sponteneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stiulus compared to baseline.
 
-```{r, fig.width=10, echo = FALSE, warning=FALSE}
+```{r, fig.width=10, echo = FALSE, warning=FALSE, out.width = "100%"}
 ggplot(
   data = TO_PLOT %>%
     dplyr::filter(
@@ -1978,29 +1978,39 @@ ggplot(
 
 # Methods
 
-## Sync-desync analysis
+
+## Surgery
+Altogether 20 adult male C57Bl/6J BAC GlyT2::eGFP and GlyT2::cre mice (20-30g) were used for the experiments. Surgery, acute recording experiments and implantations were done under ketamine/xylazine anaesthesia. The head of the animal was fixed in a stereotaxic apparatus (David Kopf Instruments, Tujunga, California 91042, Model 900 Small Animal Stereotaxic Instrument). Initially, mice received an intraperitoneal injection of ketamine (111 mg/kg) and xylazine (4.3 mg/kg). For the maintenance of the anaesthesia, intramuscular injection of ketamine/xylazine was given every 30-50 min during the experiments.
+ 
+## In vivo juxtacellular recording and labeling, local field potential (LFP) recording
+
+Bipolar LFP electrodes (FHC, resistance ~1 MΩ) were placed into the frontal cortex of anaesthetised mice (Bregma 1.7 mm; lateral -0.8 mm). Before recording the signal was fed through a signal pre-processing pipeline: amplification and band-pass filtering from 0.16 Hz to 5 kHz and from 100 Hz to 5 kHz to record the fast multiunit activity (Supertech BioAmp, Supertech, Pécs, Hungary). The signal was digitized at 20 kHz (micro 1401 mkii, CED, Cambridge, UK). 
+
+To test the direct mono synaptic connection between the IL and the recorded PRF neurons concentric bipolar stimulating electrodes were inserted into the IL (Bregma -1.5 mm; lateral 2 mm; ventral from cortical surface -3.2 mm, at 20 degrees, electrode separation 0.8mm). PRF single unit activity was recorded by glass microelectrodes (in vivo impedance of 20-40 MΩ) made from borosilicate glass capillaries (1.5 mm outer diameter, 0.75 or 0.86 inner diameter, Sutter Instrument Co., Novato, CA, USA or WPI Inc. Sarasota, Fl, USA) and filled with 0.5 M K+- acetate and 2% neurobiotin (Vector Laboratories, Burlingame, CA, USA). Electrodes were positioned into the PRF (Bregma -4.4 mm; lateral -0.8 to -1 mm; ventral from cortical surface -3.8 to -4.8 mm) using a piezoelectric microdrive (Burleigh 6000 ULN or ISS 8200, EXFO, Quebec City, Quebec, Canada). Neuronal signals were amplified by a DC amplifier (Axoclamp 2B, Axon Instruments/Molecular Devices, Sunnyvale, CA, USA), further amplified and filtered between 0.16 Hz and 5 kHz by a signal conditioner (LinearAmp, Supertech) and recorded by Spike2 5.0 (CED). Juxtacellular labeling of the recorded neurons was done as described previously (Pinault, 1996). Briefly, after recording the activity of the neuron positive current steps (0.5-8 nA) were applied at 2 Hz via the neurobiotin filled recording pipette to induce firing. The neuron was active only during these current steps and took up neurobiotin, which filled the soma and proximal dendrites. In some cases, distal dendritic regions and axons were also labeled.
+
+After the the experiment the animal was perfused and coronal sections (50 μm) were cut from the PRF. The neurons were visualized using Cy3 conjugated streptavidin (1:2,000, Jackson) and GlyT2::eGFP positivity was determined by confocal microscopy. The neurons were then developed using ABC and DAB-Ni, and the sections containing the labeled neurons were dehydrated and embedded in Durcupan. The dendritic trees of the labeled neurons were reconstructed using Neurolucida 5.2 software (MBF Bioscience, Magdeburg, Germany).
+
+## Analysis
+
+
+All analysis was done in R Statistical Computing Software (R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/). For the use packages see the "Used packeges" section.
+
+### Sync-desync analysis
+
+
 
 n=7 recordings from n=? animals
 Raw LFP signal was filtered, down-sampled and standardized. The power spectral density of each LFP signal was calculated and the dominant frequency was determined. To find the synchronous and desynchronous periods of the cortical LFP signal the standard deviation of the signal amplitude was calculated in overlapping sliding windows. The size of the sliding window was equal to the length of one cycle the overlap was half a cycle. The threshold for synchronous and desynchronous periods was placed half way between the median and the 25th percentile.  
 
+Action potential clusters were determined by separating the two peaks at the minimum of the bimodal inter-spike interval histograms (ISI). Number of bins of the ISI was determined by the Freedman-Diaconis rule for optimal bin-width, the window size was equal to the length of one cycle (period) of the cortical slow oscillation.
+
+
+Determine if a cell fires in clusters or not: dip test.
 
 
 
-Determine sync and desync periods
-how sliding window for the rolling SD is determined (1 / first_peak * samp_rate_ds): number of data points in a cycle. 
+### Used R packeges:
 
-
-Determine if a cell fires in clusters or not 
-
-ISI is used to determine clusters. Number of bins of the ISI is determined by the Freedman-Diaconis rule for optimal bin-width. ISI window size: 1 / first_peak. Dip test was used to determine ISI uni/multimodality
-
-
-All analysis was done in R
-**R**
-R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
-
-
-Used packeges:
 
 **tidyverse** 
 "Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686"

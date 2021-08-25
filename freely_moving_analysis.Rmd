@@ -107,6 +107,14 @@ install.packages(c(liblist[which(!liblist %in% pkgs)]))
 ### loads all libraries
 
 lapply(liblist %>% as.list(), require, character.only = TRUE)
+
+
+
+global_facet_theme = theme(
+  strip.text = element_text(size = 15),
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 15)
+  )
 ```
 
 
@@ -310,7 +318,8 @@ coords %>%
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
   facet_wrap(~session, ncol = 2) +
-  scale_color_discrete(name = "Interpolated values")
+  scale_color_discrete(name = "Interpolated values") +
+  global_facet_theme
 ```
 
 
@@ -342,7 +351,9 @@ coords %>%
   ) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session, ncol = 2)
+  facet_wrap(~session, ncol = 2) +
+  global_facet_theme
+
 ```
 
 ### Plotting speed in a 1 sec (30 frames) window
@@ -358,7 +369,8 @@ coords %>%
   geom_point(aes(color = d_sec %>% scale(), alpha = stim)) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session, ncol = 2)
+  facet_wrap(~session, ncol = 2) +
+  global_facet_theme
 ```
 
 
@@ -373,7 +385,8 @@ coords %>%
   ggplot(mapping = aes(x = X_diff)) +
   stat_ecdf(aes(col = session), geom = "point") +
   # geom_histogram(aes(fill = session)) +
-  facet_grid(~animal ~ body_part)
+  facet_grid(~animal ~ body_part) +
+  global_facet_theme
 # scale_y_continuous(trans='log10')
 ```
 
@@ -391,7 +404,8 @@ coords %>%
   # geom_boxplot() +
   geom_histogram(aes(fill = session), binwidth = 5) +
   facet_grid(animal ~ body_part, scales = "free") +
-  scale_y_continuous(trans = "log10")
+  scale_y_continuous(trans = "log10") +
+  global_facet_theme
 ```
 
 ```{r message=FALSE}
@@ -409,6 +423,7 @@ coords %>%
   ggplot(mapping = aes(x = d_mm)) +
   geom_histogram(aes(fill = session), binwidth = 5) +
   facet_grid(animal ~ body_part, scales = "free") +
+  global_facet_theme +
   scale_y_continuous(trans = "log10")
 ```
 
@@ -428,7 +443,8 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) +
+  global_facet_theme
 ```
 
 Head
@@ -444,7 +460,7 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) 
 ```
 
 Tail
@@ -460,7 +476,8 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) +
+  global_facet_theme
 ```
 
 
@@ -501,7 +518,8 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) +
+  global_facet_theme
 ```
 
 
@@ -521,7 +539,8 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) +
+  global_facet_theme
 ```
 
 
@@ -542,7 +561,9 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 2) +
+  global_facet_theme
+
 ```
 
 
@@ -568,7 +589,8 @@ coords %>%
 
 ggplot(aes(x = categ_timer, y = d_mm, group = stim_categ)) +
   geom_line(aes(col = stim_categ)) +
-  facet_wrap(~session, ncol = 2, scales = "free")
+  facet_wrap(~session, ncol = 2, scales = "free") +
+  global_facet_theme
 ```
 
 
@@ -702,7 +724,8 @@ coords %>%
   ) %>%
   ggplot(aes(x = signed_angle_corrected)) +
   geom_histogram() +
-  facet_wrap(~session, scales = "free")
+  facet_wrap(~session, scales = "free") +
+  global_facet_theme
 ```
 
 ### Signed angles 
@@ -738,7 +761,8 @@ coords %>%
   ) %>%
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session, scales = "free_x")
+  facet_wrap(~session, scales = "free_x") +
+  global_facet_theme
 # xlim(0,1)
 ```
 
@@ -813,7 +837,8 @@ coords %>%
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session, scales = "free_x")
+  facet_wrap(~session, scales = "free_x") +
+  global_facet_theme
 ```
 
 
@@ -860,7 +885,8 @@ coords %>%
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim_categ, group = 1)) +
-  facet_wrap(~session, scales = "free_x")
+  facet_wrap(~session, scales = "free_x") +
+  global_facet_theme
 ```
 
 
@@ -914,7 +940,14 @@ coords %>%
   # geom_text(
   #   data = coords$intensity %>% unique(),
   #   aes(label=intensity), check_overlap = T) +
-  facet_grid(session~animal, scales = "free") 
+  facet_grid(session~animal, scales = "free") +
+  global_facet_theme +
+   theme(
+    
+    axis.text.x = element_text(angle = 45),
+    
+    )
+
 ```
 
 Mean traveled distance across sessions, by animals
@@ -939,8 +972,8 @@ coords %>%
   ) +
   geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
   geom_line(aes(group = intensity)) +
-  facet_wrap(~animal)
-  
+  facet_wrap(~animal) +
+  global_facet_theme 
   
 ```
 
@@ -1005,7 +1038,10 @@ coords %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~session)
+  facet_wrap(~session) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled mean angle")
   #geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
 
@@ -1063,7 +1099,10 @@ coords %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~intensity)
+  facet_wrap(~intensity) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled mean angle")
  
 
   #facet_grid(~animal, ~intensity)
@@ -1104,7 +1143,11 @@ coords %>%
   
   #geom_abline(slope = 1, intercept = 0, alpha = .3) +
   geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(stim_number~animal)
+  facet_grid(stim_number~animal) +
+  global_facet_theme +
+  theme(
+    axis.text.x = element_text(angle = 45)
+    )
 
   
 
@@ -1171,7 +1214,11 @@ coords %>%
   
   #geom_abline(slope = 1, intercept = 0, alpha = .3) +
   geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(stim_number~animal)
+  facet_grid(stim_number~animal) +
+  global_facet_theme +
+  theme(
+    axis.text.x = element_text(angle = 45)
+    )
 
 
 ```
