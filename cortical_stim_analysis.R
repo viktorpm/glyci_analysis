@@ -256,7 +256,7 @@ tmp %>%
   unlist() %>%
   as.numeric()
 
-### Replace freq_filter_*, CAREFUL!!! running it multiple times cretes duplicates!!!!!
+### Replace freq_filter_*, CAREFUL!!! running it multiple times creates duplicates!!!!!
 lapply(animal_ID_list,
   CreatePSTHTibble,
   RECORDINGS = RECORDINGS,
