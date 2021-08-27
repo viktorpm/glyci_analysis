@@ -1504,7 +1504,15 @@ gp_hist +
 
 ### Response probability and latency
 
-GV_40, GV_42 and GV_47 are electrical stimulations. Might need to be excluded from analysis as well as GII_20 (looks like an outlier).
+GV_40, GV_42 and GV_47 are electrical stimulations. Might need to be excluded from analysis as well as GII_20 (looks like an outlier). \  
+Response probability was calculated as the number of APs in the boxplot range (25th percentile - 1.5\*IQR, 75th percentile + 1.5\*IQR) * 100
+
+<br><br><br>
+
+
+$$\mathbf{Response\ probability} = \frac{Number\ of\ APs}{Number\ of\ stimuli} * 100$$
+
+
 
 ```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(
