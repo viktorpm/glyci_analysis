@@ -1,3 +1,5 @@
+### AP_times and stim_times csvs contain the time stamps of action potentials and stimuli. To calculate stimulus frequencies and determine stimulus trains the difference between consecutive time stamps has to be calculated. Test pulses are defined as frequencies smaller than 1
+
 CreateRecTibble <- function(AP_times, stim_times) {
   recordings <- bind_rows(AP_times, stim_times)
 
@@ -29,7 +31,7 @@ CreateRecTibble <- function(AP_times, stim_times) {
   ### only test pulses' freqs are smaller than 1
   recordings$stim_freq[which(recordings$stim_freq < 1)] <- recordings$stim_freq[which(recordings$stim_freq < 1) - 1] 
   
-  ### elemnts smaller than 1 == test pulse
+  ### elements smaller than 1 == test pulse
   ### round the rest as numeric (Warning: NAs introduced by coercion)
   ### replaces NAs with "test pulse"
   recordings$stim_freq[which(recordings$stim_freq < 1)] <- "test pulse"

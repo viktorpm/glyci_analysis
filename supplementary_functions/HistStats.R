@@ -116,8 +116,8 @@ HistStats <- function(gplot_object) {
     IQR = IQR, ### IQR of the data
     y_max = y_axis_max, ### maximal y axis value (peak value)
     No_PANELS = No_PANELS, ### No. panels of the ggplot object: facet_wrap()
-    all_count_sum = all_count_sum, ### sum of all cunts in the plot data range
-    range_count_sum = range_count_sum ### sum of all cunts in the +- 1.5*IQR data range (no outliers)
+    all_count_sum = all_count_sum, ### sum of all counts in the plot data range
+    range_count_sum = range_count_sum ### sum of all counts in the +- 1.5*IQR data range (no outliers)
   )
 
   return(output)
