@@ -109,7 +109,7 @@ scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
 
-datapoint_to_plot <- 3
+datapoint_to_plot <- 5
 
 global_facet_theme <- theme(
   strip.text = element_text(size = 15),
@@ -146,6 +146,7 @@ These are defined in the "setup" chunk <br>
 <br>
 
 **Current animal**: `r selected_animal`
+For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used.
 
 <br>
 
@@ -499,14 +500,16 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+     frame %% datapoint_to_plot == 0
   ) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
-  facet_wrap(~session, scales = "free", ncol = 2) +
+  facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
+  ggtitle(paste0(selected_animal, " instantaneous traveled distance ", "(center)")) +
   global_facet_theme
 ```
 
@@ -517,14 +520,17 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "head",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
   ) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
-  facet_wrap(~session, scales = "free", ncol = 2)
+  facet_wrap(~session, scales = "free", ncol = 1) +
+  ggtitle(paste0(selected_animal, " instantaneous traveled distance ", "(head)")) +
+  global_facet_theme
 ```
 
 Tail
@@ -534,14 +540,16 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "tail",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
   ) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
-  facet_wrap(~session, scales = "free", ncol = 2) +
+  facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
+  ggtitle(paste0(selected_animal, " instantaneous traveled distance ", "(tail)")) +
   global_facet_theme
 ```
 
@@ -558,14 +566,16 @@ coords %>%
     animal == selected_animal,
     body_part == "center",
     session == "video3coords",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+     frame %% datapoint_to_plot == 0
   ) %>%
   dplyr::group_by(stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
-  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1)
+  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)"))
 ```
 
 Center
@@ -575,7 +585,8 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
   ) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
@@ -583,9 +594,10 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2) +
+  facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
-  global_facet_theme
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)")) +
+  global_facet_theme 
 ```
 
 
@@ -597,7 +609,8 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "head",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
   ) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
@@ -605,8 +618,9 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2) + 
+  facet_wrap(~session, scales = "free", ncol = 1) + 
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(head)")) +
   global_facet_theme
 ```
 
@@ -620,7 +634,8 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "tail",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
   ) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
@@ -628,8 +643,9 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2) + 
+  facet_wrap(~session, scales = "free", ncol = 1) + 
   geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(tail)")) +
   global_facet_theme
 ```
 
@@ -653,7 +669,7 @@ coords %>%
   fill(stim_block_number, .direction = "down") %>%
   ggplot(aes(x = categ_timer, y = d_mm, group = stim_categ)) +
   geom_line(aes(col = stim_categ)) +
-  facet_wrap(~session, ncol = 2, scales = "free") +
+  facet_wrap(~session, ncol = 1, scales = "free") +
   global_facet_theme
 ```
 
@@ -1151,7 +1167,7 @@ coords %>%
 ```
 
 
-Traveled distance before stimulus vs during stimulus (starting or stopping signal)
+Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus (green area) photoactivation initiates movement, if it is smaller (red area) it slows down the animal.
 
 
 ```{r fig.width=15, fig.height=13.5, out.width="100%"}
@@ -1189,7 +1205,7 @@ coords %>%
 ```
 
 
-Mean rotation angle before stimulus vs during stimulus (starting or stopping signal)
+Mean rotation angle before stimulus vs during stimulus (starting or stopping signal).
 
 ```{r fig.width=15, fig.height=13.5, out.width="100%"}
 coords %>%
