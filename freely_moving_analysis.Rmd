@@ -138,10 +138,14 @@ These are defined in the "setup" chunk <br>
 + **scale**: 1.38 (pixels/mm) <br>
 + **fps**: 30 (frame rate) <br>
 + **time_res**: 1/**fps** (time between frames) <br>
-+ **xlim_mm**, **ylim_mm**: pixels converted to mm
++ **xlim_mm**, **ylim_mm**: pixels converted to mm 
 + **global_facet_theme**: plot text sizes
 + **datapoint_to_plot**: which datapoint to plot (frame %% datapoint_to_plot == 0)
 + **text_layer**: stimulus intensity in each session (used to create the text layer on plots, defined after "coords" was created)
+
+<br>
+
+**Current animal**: `r selected_animal`
 
 <br>
 
@@ -790,7 +794,7 @@ coords %>%
 
 ### Signed angles 
 
-```{r message=F, fig.width=20, fig.height=10}
+```{r message=F, fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(animal == selected_animal, body_part != "tail") %>%
   dplyr::group_by(session, frame) %>%
@@ -821,7 +825,7 @@ coords %>%
   ) %>%
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session, scales = "free_x") +
+  facet_wrap(~session, scales = "free_x", ncol = 2) +
   geom_label(data = text_layer, aes(x = 30, y = 150, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
@@ -851,7 +855,7 @@ coords %>%
 
 ### Plotting cumulative angles
 
-```{r message=FALSE,fig.width=15, fig.height=10}
+```{r message=FALSE,fig.width=10, fig.height=10}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -896,7 +900,7 @@ coords %>%
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim, group = 1)) +
-  facet_wrap(~session, scales = "free_x") +
+  facet_wrap(~session, scales = "free_x", ncol = 2) +
   geom_label(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
@@ -904,7 +908,7 @@ coords %>%
 
 
 
-```{r message=FALSE,fig.width=15, fig.height=10}
+```{r message=FALSE,fig.width=10, fig.height=10}
 
 # !!!!! Observe the difference between "GIIFM22b" and "GIIFM14b". GIIFM14b is not working properly!!!!!!
 
@@ -941,7 +945,7 @@ coords %>%
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
   geom_line(aes(col = stim_categ, group = 1)) +
-  facet_wrap(~session, scales = "free_x") +
+  facet_wrap(~session, scales = "free_x", ncol = 2) +
   geom_label(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
@@ -951,10 +955,7 @@ coords %>%
 
 
 
-
-
-
-```{r message=FALSE,fig.width=20, fig.height=18}
+```{r message=FALSE,fig.width=15, fig.height=13.5, out.width="100%"}
 
 coords %>%
   dplyr::filter(
@@ -1153,7 +1154,7 @@ coords %>%
 Traveled distance before stimulus vs during stimulus (starting or stopping signal)
 
 
-```{r fig.width=20, fig.height=18}
+```{r fig.width=15, fig.height=13.5, out.width="100%"}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1190,7 +1191,7 @@ coords %>%
 
 Mean rotation angle before stimulus vs during stimulus (starting or stopping signal)
 
-```{r fig.width=20, fig.height=18}
+```{r fig.width=15, fig.height=13.5, out.width="100%"}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
