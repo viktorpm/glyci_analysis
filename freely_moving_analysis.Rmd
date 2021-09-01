@@ -125,12 +125,6 @@ ylim_mm <- c(0, 720 / scale)
 
 selected_animal <- "GIIFM22b" # "GIIFM14b"#
 
-text_layer <- coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    stim == T) %>% 
-  group_by(session) %>% 
-  summarise(int_label = intensity %>% unique())
 
 ```
 
@@ -147,7 +141,7 @@ These are defined in the "setup" chunk <br>
 + **xlim_mm**, **ylim_mm**: pixels converted to mm
 + **global_facet_theme**: plot text sizes
 + **datapoint_to_plot**: which datapoint to plot (frame %% datapoint_to_plot == 0)
-+ **text_layer**: stimulus intensity in each session (used to create the text layer on plots)
++ **text_layer**: stimulus intensity in each session (used to create the text layer on plots, defined after "coords" was created)
 
 <br>
 
@@ -266,6 +260,14 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   ungroup() %>%
   mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
 
+text_layer <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    stim == T
+  ) %>%
+  group_by(session) %>%
+  summarise(int_label = intensity %>% unique())
+
 coords
 ```
 
@@ -328,7 +330,7 @@ coords %>%
   ylim(c(0, 720)) +
   facet_wrap(~session, ncol = 2) +
   scale_color_discrete(name = "Interpolated values") +
-  geom_text(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW")))+
+  geom_label(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -336,7 +338,7 @@ coords %>%
 
 ### Plotting trajectories
 
-```{r warning=FALSE, fig.width=10, fig.height=10}
+```{r warning=FALSE, fig.width=10, fig.height=10, include=FALSE, echo=FALSE, eval=FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -365,7 +367,7 @@ coords %>%
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
   facet_wrap(~session, ncol = 2) +
-  geom_text(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW")))+
+  geom_label(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -379,7 +381,7 @@ coords %>%
   ggplot(
     mapping = aes(x = X_interp, y = Y_interp, label = frame)
   ) +
-  
+
   ### drawing positions during no stimulus
   ### "coords" was filtered differently
   geom_point(
@@ -393,8 +395,8 @@ coords %>%
     size = 1,
     alpha = 0.1
   ) +
-  
-  ### drawing positions during stimulus 
+
+  ### drawing positions during stimulus
   ### body parts are connected by lines
   geom_line(
     aes(group = frame, col = as.character(stim_number)),
@@ -405,8 +407,8 @@ coords %>%
   ) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session, ncol = 2,) +
-  geom_text(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW")))+
+  facet_wrap(~session, ncol = 2, ) +
+  geom_label(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -415,7 +417,7 @@ coords %>%
 
 ```{r message=FALSE, fig.width=10, fig.height=10}
 coords %>%
-  dplyr::filter(animal == selected_animal, body_part == params$body_part) %>%
+  dplyr::filter(animal == selected_animal, body_part == "center") %>%
   group_by(session, sec_counter) %>%
   mutate(d_sec = sum(d_mm, na.rm = T)) %>%
   ggplot(
@@ -424,7 +426,8 @@ coords %>%
   geom_point(aes(color = d_sec %>% scale(), alpha = stim)) +
   xlim(c(0, 1280)) +
   ylim(c(0, 720)) +
-  facet_wrap(~session, ncol = 2) +
+  facet_wrap(~session, ncol = 2) + 
+  geom_label(data = text_layer, aes(x = 1000, y = 10, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -491,7 +494,7 @@ Center
 coords %>%
   dplyr::filter(
     animal == selected_animal,
-    body_part == params$body_part,
+    body_part == "center",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
@@ -499,6 +502,7 @@ coords %>%
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
   facet_wrap(~session, scales = "free", ncol = 2) +
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -515,6 +519,7 @@ coords %>%
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   facet_wrap(~session, scales = "free", ncol = 2)
 ```
 
@@ -532,6 +537,7 @@ coords %>%
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
   # geom_line(aes(x = rec_time, y = X_diff + 130), alpha = .5) +
   facet_wrap(~session, scales = "free", ncol = 2) +
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -546,7 +552,7 @@ coords %>%
 coords %>%
   dplyr::filter(
     animal == selected_animal,
-    body_part == params$body_part,
+    body_part == "center",
     session == "video3coords",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
@@ -564,7 +570,7 @@ Center
 coords %>%
   dplyr::filter(
     animal == selected_animal,
-    body_part == params$body_part,
+    body_part == "center",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
   dplyr::group_by(session, stim) %>%
@@ -574,6 +580,7 @@ coords %>%
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
   facet_wrap(~session, scales = "free", ncol = 2) +
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -594,7 +601,8 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2) +
+  facet_wrap(~session, scales = "free", ncol = 2) + 
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -616,19 +624,20 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 2) +
+  facet_wrap(~session, scales = "free", ncol = 2) + 
+  geom_label(data = text_layer, aes(x = 60, y = 15, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
 
 
-```{r fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10, include=FALSE, echo=FALSE, eval=FALSE}
 coords %>%
   dplyr::select(animal, session, frame, rec_time, stim_categ, body_part, d_mm, X_diff, Y_diff, stim_number) %>%
   mutate(stim_number = replace(stim_number, stim_number == "no stim", NA)) %>%
   dplyr::filter(
     animal == "GIIFM22b",
-    body_part == params$body_part,
+    body_part == "center",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     stim_categ != "no stim"
   ) %>%
@@ -813,9 +822,8 @@ coords %>%
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
   geom_line(aes(col = stim, group = 1)) +
   facet_wrap(~session, scales = "free_x") +
-  geom_text(data = text_layer, aes(x = 30, y = 150, label = paste0("Intensity: ", int_label, " mW")))+
+  geom_label(data = text_layer, aes(x = 30, y = 150, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
-
 ```
 
 
@@ -889,7 +897,7 @@ coords %>%
   ) +
   geom_line(aes(col = stim, group = 1)) +
   facet_wrap(~session, scales = "free_x") +
-  geom_text(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW")))+
+  geom_label(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
@@ -934,7 +942,7 @@ coords %>%
   ) +
   geom_line(aes(col = stim_categ, group = 1)) +
   facet_wrap(~session, scales = "free_x") +
-  geom_text(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW")))+
+  geom_label(data = text_layer, aes(x = 60, y = 2, label = paste0("Intensity: ", int_label, " mW"))) +
   global_facet_theme
 ```
 
