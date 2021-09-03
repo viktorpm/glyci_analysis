@@ -2050,7 +2050,7 @@ All analysis was done in R Statistical Computing Software (R Core Team (2021). R
 
 ### Determining synchronous and desynchronous periods
 
-n=7 recordings from n=? animals\  
+n=7 recordings from n=? animals  
 Raw LFP signal was filtered, down-sampled and standardized. The power spectral density of each LFP signal was calculated and the dominant frequency was determined. To find the synchronous and desynchronous periods of the cortical LFP signal the standard deviation of the signal amplitude was calculated in overlapping sliding windows. The size of the sliding window was equal to the length of one cycle the overlap was half a cycle. The threshold for synchronous and desynchronous periods was placed half way between the median and the 25th percentile. The number of clusters was calculated in the synchronous and desynchronous periods and was statistically compared using  Wilcoxon test. 
 
 ### Finding AP clusters
