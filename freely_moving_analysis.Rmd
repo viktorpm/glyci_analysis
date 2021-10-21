@@ -123,7 +123,7 @@ ylim_mm <- c(0, 720 / scale)
 
 
 
-selected_animal <- "GIIFM19b" # "GIIFM14b"#
+selected_animal <- "GIIFM34b" # "GIIFM14b"#
 
 
 ```
@@ -157,7 +157,8 @@ For the trajectories and traveled distance plots every `r datapoint_to_plot`th f
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
   as_tibble() %>%
   mutate(
-    session = gsub(pattern = "(coords).*", replacement = "\\1", session),
+    session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% 
+      str_remove(pattern = "_"),
     # session = ifelse(
     #   animal != "GIIFM24b",
     #   yes = gsub(pattern = "(coords).*", replacement = "\\1", session),
@@ -180,8 +181,8 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   as_tibble() %>%
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
-      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix"),
-    session = gsub(pattern = "(coords).*", replacement = "\\1", session)
+      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control"),
+    session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% str_remove(pattern = "_")
     # session = ifelse(
     #   animal != "GIIFM24b",
     #   yes = gsub(pattern = "(coords).*", replacement = "\\1", session),
@@ -1004,7 +1005,7 @@ coords %>%
 
 
 
-```{r message=FALSE,fig.width=15, fig.height=13.5, out.width="100%"}
+```{r message=FALSE,fig.width=17, fig.height=15, out.width="100%"}
 
 coords %>%
   dplyr::filter(
@@ -1043,7 +1044,7 @@ coords %>%
   # geom_text(
   #   data = coords$intensity %>% unique(),
   #   aes(label=intensity), check_overlap = T) +
-  facet_grid(session ~ animal, scales = "free") +
+  facet_grid(animal ~ session, scales = "free") +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45),
@@ -1053,12 +1054,16 @@ coords %>%
 Mean traveled distance across sessions, by animals
 
 ```{r message=FALSE, fig.height=8, fig.width=10}
+
+`%!in%` <- Negate(`%in%`)
+
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
-    #intensity %in% c(1, 5, 10, 15),
+    intensity %in% c(1, 5, 10, 15),
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b"), 
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -1066,12 +1071,12 @@ coords %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = mean_d_mm
+      y = mean_d_mm 
     )
   ) +
-  geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
-  geom_line(aes(group = intensity)) +
-  facet_wrap(~animal) +
+  geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~intensity) +
   ggpubr::stat_compare_means(
     method = "wilcox.test",
     paired = T,
@@ -1108,10 +1113,10 @@ coords %>%
     stim_categ != "no stim"
   ) %>%
   # !!!!!!!!!!!!!!!!!!!!!!!!!! check mutate  c(diff(X_interp), NA) vs diff(X_interp)
-  dplyr::group_by(animal, session, frame) %>%
+  dplyr::group_by(animal, intensity, frame) %>%
   mutate(
-    vectx = diff(X_interp),
-    vecty = diff(Y_interp),
+    vectx = c(diff(X_interp),NA),
+    vecty = c(diff(Y_interp),NA),
   ) %>%
   group_by(animal, session) %>%
   mutate(
@@ -1131,7 +1136,7 @@ coords %>%
     )
   ) %>%
   dplyr::filter(body_part == "head") %>%
-  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
@@ -1146,7 +1151,7 @@ coords %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~session) +
+  facet_wrap(~intensity) +
   global_facet_theme +
   xlab("State") +
   ylab("Scaled mean angle")
@@ -1219,11 +1224,12 @@ coords %>%
 Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus (green area) photoactivation initiates movement, if it is smaller (red area) it slows down the animal.
 
 
-```{r message=FALSE, warning=FALSE, fig.width=15, fig.height=13.5, out.width="100%"}
+```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%"}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
+    animal != "GIIFM14b",
     stim_categ != "no stim",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
@@ -1246,7 +1252,7 @@ coords %>%
 
   # geom_abline(slope = 1, intercept = 0, alpha = .3) +
   geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(stim_number ~ animal) +
+  facet_grid(animal ~ stim_number) +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45)
@@ -1256,7 +1262,7 @@ coords %>%
 
 Mean rotation angle before stimulus vs during stimulus (starting or stopping signal).
 
-```{r message=FALSE, warning=FALSE, fig.width=15, fig.height=13.5, out.width="100%"}
+```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%"}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1311,7 +1317,7 @@ coords %>%
 
   # geom_abline(slope = 1, intercept = 0, alpha = .3) +
   geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(stim_number ~ animal) +
+  facet_grid(animal ~ stim_number) +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45)
