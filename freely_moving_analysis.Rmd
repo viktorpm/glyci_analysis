@@ -123,7 +123,7 @@ ylim_mm <- c(0, 720 / scale)
 
 
 
-selected_animal <- "GIIFM34b" # "GIIFM14b"#
+selected_animal <- "GIIFM36b" # "GIIFM14b"#
 
 
 ```
@@ -157,8 +157,9 @@ For the trajectories and traveled distance plots every `r datapoint_to_plot`th f
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
   as_tibble() %>%
   mutate(
-    session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% 
-      str_remove(pattern = "_"),
+   session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% 
+     str_remove_all(pattern = "[[:alpha:][:punct:]]"),
+    
     # session = ifelse(
     #   animal != "GIIFM24b",
     #   yes = gsub(pattern = "(coords).*", replacement = "\\1", session),
@@ -182,7 +183,7 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
       str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control"),
-    session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% str_remove(pattern = "_")
+    session = gsub(pattern = "(coords).*", replacement = "\\1", session) %>% str_remove_all(pattern = "[[:alpha:][:punct:]]"),
     # session = ifelse(
     #   animal != "GIIFM24b",
     #   yes = gsub(pattern = "(coords).*", replacement = "\\1", session),
@@ -266,6 +267,15 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   ungroup() %>%
   mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
 
+
+
+coords
+```
+
+
+Creating text layer to add intensity values to plots
+
+```{r}
 text_layer <- coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -273,12 +283,7 @@ text_layer <- coords %>%
   ) %>%
   group_by(session) %>%
   summarise(int_label = intensity %>% unique())
-
-coords
 ```
-
-
-
 
 
 
@@ -453,7 +458,7 @@ coords %>%
   ggplot(mapping = aes(x = X_diff)) +
   stat_ecdf(
     aes(
-      col = session
+      col = session 
       ), 
     geom = "point") +
   # geom_histogram(aes(fill = session)) +
@@ -581,7 +586,7 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    session == "video3coords",
+    session == "3",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
      frame %% datapoint_to_plot == 0
   ) %>%
@@ -768,9 +773,9 @@ vectors %>%
 
 ```{r}
 coords %>%
-  dplyr::filter(animal == "GIIFM19b") %>%
+  dplyr::filter(animal == selected_animal) %>%
   dplyr::group_by(body_part) %>%
-  slice(1:3) %>%
+  slice(1:10) %>%
   dplyr::filter(body_part != "tail") %>%
   ggplot(
     mapping = aes(x = X, y = Y)
@@ -778,19 +783,47 @@ coords %>%
   geom_point(aes(shape = body_part), size = 2) +
   geom_line(aes(group = frame, color = as.character(frame))) +
   geom_text_repel(aes(label = paste0(X, ",", Y), col = as.character(frame))) +
-  geom_segment(aes(
-    x = 210, xend = 255,
-    y = 345, yend = 345
-  ), linetype = "dashed", col = "red") +
-  geom_segment(aes(
-    x = 255, xend = 255,
-    y = 345, yend = 364
-  ), linetype = "dashed", col = "red")
+  geom_segment(
+    data = coords %>%
+      dplyr::filter(animal == selected_animal) %>%
+      dplyr::group_by(body_part) %>%
+      slice(1:3) %>%
+      dplyr::filter(body_part != "tail", frame == 0),
+    aes(
+      x = X[1], xend = X[2],
+      y = Y[1], yend = Y[1]
+    ), linetype = "dashed", col = "red"
+  ) +
+  geom_segment(
+    data = coords %>%
+      dplyr::filter(animal == selected_animal) %>%
+      dplyr::group_by(body_part) %>%
+      slice(1:10) %>%
+      dplyr::filter(body_part != "tail", frame == 0),
+    aes(
+      x = X[2], xend = X[2],
+      y = Y[1], yend = Y[2]
+    ), linetype = "dashed", col = "red"
+  )
 ```
+
+```{r}
+coords %>%
+  dplyr::filter(animal == "GIIFM19b") %>%
+  dplyr::group_by(body_part) %>%
+  slice(1:3) %>%
+  dplyr::filter(body_part != "tail", frame == 0) %>% pull(X)
+```
+
+
 
 ### Distribution of angles
 
 Because of the periodicity of tangent function unrealistic angles were introduced (jumps in data). Angles greater than 180 or smaller than -180 were subtracted from 360 and -360 respectively to get the correct angle.
+
+In the control animals (34, 35, 36, 37) there are unrealistically large angles between frames probably due to tracking problem (switch of head and tail/center coordinate). Those angles are replaced by 0!
+
+mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
 
 
 ```{r message=FALSE, fig.width=10, fig.height=10, warning=FALSE}
@@ -854,6 +887,7 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
   add_column(
     rec_time = coords %>% 
       dplyr::filter(
@@ -880,9 +914,9 @@ coords %>%
 
 ```{r}
 coords %>%
-  dplyr::filter(animal == selected_animal, session == "video1coords", body_part != "tail") %>%
+  dplyr::filter(animal == selected_animal, session == "0", body_part != "tail") %>%
   dplyr::group_by(body_part) %>%
-  dplyr::slice(1:25) %>%
+  dplyr::slice(1:50) %>%
   ungroup() %>%
   dplyr::group_by(frame) %>%
   summarise(
@@ -896,7 +930,17 @@ coords %>%
   # rowwise() %>%
   mutate(
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
-  )
+  ) %>% 
+  mutate(
+    signed_angle_corrected = case_when(
+      signed_angle >= 180 ~ 360 - signed_angle,
+      signed_angle %>% abs() < 180 ~ signed_angle,
+      signed_angle <= -180 ~ -360 - signed_angle,
+      signed_angle > -180 | signed_angle < 0 ~ signed_angle
+    )
+  ) %>% 
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
+  
 ```
 
 
@@ -932,6 +976,7 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
   add_column(
     rec_time = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(rec_time),
     stim = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(stim),
@@ -940,6 +985,7 @@ coords %>%
     Y_diff = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(Y_diff),
     X_diff = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(X_diff),
     d_mm = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(d_mm),
+    intensity = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(intensity)
   ) %>%
   group_by(session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
@@ -1044,7 +1090,7 @@ coords %>%
   # geom_text(
   #   data = coords$intensity %>% unique(),
   #   aes(label=intensity), check_overlap = T) +
-  facet_grid(animal ~ session, scales = "free") +
+  facet_grid(animal ~ session %>% as.integer(), scales = "free") +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45),
@@ -1063,7 +1109,7 @@ coords %>%
     body_part == "center",
     stim_categ != "no stim",
     intensity %in% c(1, 5, 10, 15),
-    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b"), 
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"), 
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -1107,8 +1153,8 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
-    animal != "GIIFM14b",
-    str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"),
+   # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
     body_part != "tail",
     stim_categ != "no stim"
   ) %>%
@@ -1146,7 +1192,7 @@ coords %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = mean_ang %>% scale()
+      y = sum_ang #%>% scale()
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -1154,7 +1200,7 @@ coords %>%
   facet_wrap(~intensity) +
   global_facet_theme +
   xlab("State") +
-  ylab("Scaled mean angle")
+  ylab("Scaled sum angle")
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
 
