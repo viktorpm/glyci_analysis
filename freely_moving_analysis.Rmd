@@ -727,7 +727,7 @@ vectors %>%
   group_by(frame) %>%
   summarise(dx = diff(X), dy = diff(Y)) %>%
   mutate(ldx = lead(dx), ldy = lead(dy)) %>%
-  rowwise() %>%
+  #rowwise() %>%
   mutate(angle = ang(a = c(dx, dy), b = c(ldx, ldy))) %>%
   ungroup() %>%
   mutate(
@@ -787,7 +787,7 @@ coords %>%
     data = coords %>%
       dplyr::filter(animal == selected_animal) %>%
       dplyr::group_by(body_part) %>%
-      slice(1:3) %>%
+      slice(1:10) %>%
       dplyr::filter(body_part != "tail", frame == 0),
     aes(
       x = X[1], xend = X[2],
@@ -851,6 +851,8 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
+  ### removing unrealistically large angles
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
   ggplot(aes(x = signed_angle_corrected)) +
   geom_histogram() +
   facet_wrap(~session, scales = "free") +
@@ -859,23 +861,44 @@ coords %>%
 
 ### Signed angles 
 
-```{r message=F, fig.width=10, fig.height=10, warning=FALSE}
-coords %>%
+```{r message=F, warning=F}
+
+angles <- coords %>%
   dplyr::filter(
     animal == selected_animal,
     # frame %% datapoint_to_plot == 0, ### here it's good to have all the data points to calculate the cumulative angles
-    body_part != "tail") %>%
+    body_part != "tail"
+  ) %>%
   dplyr::group_by(session, frame) %>%
-  # arrange(body_part) %>%
-  summarise(
+  mutate(
     vectx = diff(X_interp),
     vecty = diff(Y_interp)
   ) %>%
+  dplyr::group_by(session) %>% 
   mutate(
     leadx = lead(vectx),
     leady = lead(vecty)
   ) %>%
-  # rowwise() %>%
+  mutate(
+    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
+  )
+
+corrected_angles <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    # frame %% datapoint_to_plot == 0, ### here it's good to have all the data points to calculate the cumulative angles
+    body_part != "tail"
+  ) %>%
+  dplyr::group_by(session, frame) %>%
+  mutate(
+    vectx = diff(X_interp),
+    vecty = diff(Y_interp)
+  ) %>%
+  dplyr::group_by(session) %>% 
+  mutate(
+    leadx = lead(vectx),
+    leady = lead(vecty)
+  ) %>%
   mutate(
     signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
   ) %>%
@@ -887,23 +910,15 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
-  add_column(
-    rec_time = coords %>% 
-      dplyr::filter(
-        animal == selected_animal,
-        body_part == "head" 
-        # frame %% datapoint_to_plot == 0
-        ) %>% 
-      pull(rec_time),
-    stim = coords %>% 
-      dplyr::filter(
-        animal == selected_animal, 
-        body_part == "head" 
-        # frame %% datapoint_to_plot == 0
-        ) %>% 
-      pull(stim)
-  ) %>%
+  ### removing unrealistically large angles
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
+
+```
+
+
+
+```{r message=F, fig.width=10, fig.height=10, warning=FALSE}
+corrected_angles %>% 
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
   geom_line(aes(col = stim, group = 1)) +
   facet_wrap(~session, scales = "free_x", ncol = 1) +
@@ -939,6 +954,7 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>% 
+  ### removing unrealistically large angles
   mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
   
 ```
@@ -950,44 +966,9 @@ coords %>%
 Cumulative signed rotation angles during the sessions. 
 
 ```{r message=FALSE,fig.width=10, fig.height=10}
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    body_part != "tail"
-  ) %>%
-  dplyr::group_by(session, frame) %>%
-  summarise(
-    vectx = diff(X_interp),
-    vecty = diff(Y_interp)
-  ) %>%
-  mutate(
-    leadx = lead(vectx),
-    leady = lead(vecty)
-  ) %>%
-  # rowwise() %>%
-  mutate(
-    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
-  ) %>%
-  mutate(
-    signed_angle_corrected = case_when(
-      signed_angle >= 180 ~ 360 - signed_angle,
-      signed_angle %>% abs() < 180 ~ signed_angle,
-      signed_angle <= -180 ~ -360 - signed_angle,
-      signed_angle > -180 | signed_angle < 0 ~ signed_angle
-    )
-  ) %>%
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
-  add_column(
-    rec_time = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(rec_time),
-    stim = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(stim),
-    stim_categ = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(stim_categ),
-    stim_number = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(stim_number),
-    Y_diff = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(Y_diff),
-    X_diff = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(X_diff),
-    d_mm = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(d_mm),
-    intensity = coords %>% dplyr::filter(animal == selected_animal, body_part == "head") %>% pull(intensity)
-  ) %>%
+corrected_angles %>% 
   group_by(session) %>%
+  dplyr::filter(body_part == "center") %>% 
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
   # dplyr::filter(session == "video2coords") %>%
   # group_by(session) %>%
@@ -1008,33 +989,8 @@ coords %>%
 
 # !!!!! Observe the difference between "GIIFM22b" and "GIIFM14b". GIIFM14b is not working properly!!!!!!
 
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    body_part != "tail"
-  ) %>%
-  dplyr::group_by(session, frame) %>%
-  mutate(
-    vectx = diff(X_interp),
-    vecty = diff(Y_interp),
-  ) %>%
-  group_by(session) %>%
-  mutate(
-    leadx = lead(vectx),
-    leady = lead(vecty),
-  ) %>%
-  mutate(
-    signed_angle = (atan2(leadx, leady) - atan2(vectx, vecty)) * 180 / (pi)
-  ) %>%
-  mutate(
-    signed_angle_corrected = case_when(
-      signed_angle >= 180 ~ 360 - signed_angle,
-      signed_angle %>% abs() < 180 ~ signed_angle,
-      signed_angle <= -180 ~ -360 - signed_angle,
-      signed_angle > -180 | signed_angle < 0 ~ signed_angle
-    )
-  ) %>%
-  dplyr::filter(body_part == "head") %>%
+corrected_angles %>% 
+  dplyr::filter(body_part == "center") %>%
   group_by(session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
   ggplot(
@@ -1080,6 +1036,8 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
+  ### removing unrealistically large angles
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
   dplyr::filter(body_part == "head") %>%
   group_by(animal, session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
@@ -1181,6 +1139,8 @@ coords %>%
       signed_angle > -180 | signed_angle < 0 ~ signed_angle
     )
   ) %>%
+  ### removing unrealistically large angles
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>%
   dplyr::filter(body_part == "head") %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
