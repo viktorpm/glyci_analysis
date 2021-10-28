@@ -890,10 +890,10 @@ ggplot(
         stim_cond == "baseline"
       ),
     mapping = aes(label = cell_id, col = change_rank),
-    # nudge_x = -.1,
+    nudge_x = -.1,
     direction = "y",
-    hjust = 4,
-    segment.size = .2
+    hjust = 1,
+    segment.size = .1
   ) +
   theme_minimal() +
   theme(legend.position = "bottom") +
