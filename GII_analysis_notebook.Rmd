@@ -1105,8 +1105,8 @@ APCount <- function(animal) {
 APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>% 
   bind_rows() %>% 
   mutate(norm_No_APs_all = No_APs/max(No_APs)) %>% 
-  group_by(animal_id, stim_freq_categ) %>% 
-  mutate(norm_No_APs_animal_stim_freq = No_APs/max(No_APs))
+  group_by(animal_id) %>% 
+  mutate(norm_No_APs_animal = No_APs/max(No_APs))
 ```
 
 <br><br><br>
@@ -1628,7 +1628,7 @@ ggplot(
 
 <br><br><br>
 
-### Number of APs after each stimulus in stimulus trains (50 ms window). Normalized by the maximum number of AP followed by a stimulus across animals.
+### Number of APs after each stimulus in stimulus trains (50 ms window). Normalized by the maximum number of AP followed by a stimulus in each animal.
 
 <br><br><br>
 
@@ -1640,7 +1640,7 @@ ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(norm_No_APs_all)),
+    dplyr::summarise(No_APs = sum(norm_No_APs_animal)),
   mapping = aes(
     x = stim_number,
     y = No_APs,
@@ -1677,7 +1677,7 @@ ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(norm_No_APs_all)) %>%
+    dplyr::summarise(No_APs = sum(norm_No_APs_animal)) %>%
     ungroup() %>%
     dplyr::group_by(stim_freq_categ, stim_number) %>%
     dplyr::summarise(
@@ -1698,7 +1698,7 @@ ggplot(
   xlab("No. stimulus in train") +
   ylab("Mean no. APs accross animals") +
   labs(color = "Frequency") +
-  ylim(0, 2) +
+  ylim(0, 5) +
   scale_x_discrete(limits = as.character(c(1:10))) +
   theme(legend.position = "bottom")
 ```
