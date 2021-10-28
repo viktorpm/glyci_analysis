@@ -123,7 +123,7 @@ ylim_mm <- c(0, 720 / scale)
 
 
 
-selected_animal <- "GIIFM36b" # "GIIFM14b"#
+selected_animal <- "GIIFM19b" # "GIIFM14b"#
 
 `%!in%` <- Negate(`%in%`)
 ```
@@ -392,7 +392,7 @@ coords %>%
     frame %% 15 == 0
   ) %>%
   ggplot(
-    mapping = aes(x = X_interp, y = Y_interp, label = frame)
+    mapping = aes(x = X_interp / scale, y = Y_interp / scale, label = frame)
   ) +
 
   ### drawing positions during no stimulus
@@ -418,10 +418,13 @@ coords %>%
     aes(shape = body_part, col = as.character(stim_number)),
     size = 2
   ) +
-  xlim(c(0, 1280)) +
-  ylim(c(0, 720)) +
+  xlim(c(0, 1280 / scale)) +
+  ylim(c(0, 720 / scale)) +
   facet_wrap(~session, ncol = 2, ) +
   geom_label(data = text_layer, aes(x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5,label = paste0("Intensity: ", int_label, " mW"))) +
+  labs(col = "Stimulus number", shape = "Body part") +
+  xlab("X position [mm]") +
+  ylab("Y position [mm]") +
   global_facet_theme
 ```
 
@@ -1176,6 +1179,43 @@ corrected_angles_population %>%
 # facet_grid(~animal, ~intensity)
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
+
+```{r message=FALSE, fig.height=8, fig.width=10}
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b", "GIIFM17b"),
+    body_part == "head",
+    stim_categ != "no stim") %>%
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  dplyr::filter(
+    intensity %in% c(1, 5, 10)
+    ) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang %>% scale()
+    )
+  ) +
+  geom_boxplot(aes(fill = intensity %>% as.factor())) + 
+  #geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
+  #geom_line(aes(group = intensity %>% as.factor())) +
+  facet_wrap(~stim_number) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled sum angle")
+
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+```
+
 
 
 Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus (green area) photoactivation initiates movement, if it is smaller (red area) it slows down the animal.
