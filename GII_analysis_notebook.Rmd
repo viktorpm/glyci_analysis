@@ -1102,7 +1102,11 @@ APCount <- function(animal) {
   return(stim_trains)
 }
 
-APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>% bind_rows()
+APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>% 
+  bind_rows() %>% 
+  mutate(norm_No_APs_all = No_APs/max(No_APs)) %>% 
+  group_by(animal_id, stim_freq_categ) %>% 
+  mutate(norm_No_APs_animal_stim_freq = No_APs/max(No_APs))
 ```
 
 <br><br><br>
@@ -1624,16 +1628,56 @@ ggplot(
 
 <br><br><br>
 
-### Number of APs after each stimulus in stimulus trains (50 ms window)
+### Number of APs after each stimulus in stimulus trains (50 ms window). Normalized by the maximum number of AP followed by a stimulus across animals.
 
 <br><br><br>
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.align='center'}
+#Normalized!!!! Check APC
+ggplot(
+  data = APC %>%
+    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(No_APs = sum(norm_No_APs_all)),
+  mapping = aes(
+    x = stim_number,
+    y = No_APs,
+    color = as.factor(animal_id),
+    linetype = as.factor(animal_id)
+  )
+) +
+  geom_point(size = 3) +
+  geom_line() +
+  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number == 10),
+    aes(label = animal_id),
+    direction = "y",nudge_x = 1,
+    #hjust = 1,
+    #alpha = .7
+  ) +
+  #expand_limits(x = 12) +
+  theme(
+    legend.position = "none",
+    #aspect.ratio = 2/7
+    ) +
+
+  # xlim(1,10) +
+  facet_wrap(~stim_freq_categ, ncol = 1) +
+  labs(linetype = "Animals", color = "Animals") +
+  xlab("No. stimulus in train") +
+  ylab("Number of APs")
+```
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, out.width='70%', fig.align='center'}
 ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(No_APs)) %>%
+    dplyr::summarise(No_APs = sum(norm_No_APs_all)) %>%
     ungroup() %>%
     dplyr::group_by(stim_freq_categ, stim_number) %>%
     dplyr::summarise(
@@ -1650,46 +1694,13 @@ ggplot(
 ) +
   geom_point() +
   geom_line() +
+  geom_errorbar(aes(ymin = No_AP_mean - SEM, ymax = No_AP_mean + SEM)) +
   xlab("No. stimulus in train") +
   ylab("Mean no. APs accross animals") +
   labs(color = "Frequency") +
-  ylim(0, 18) +
+  ylim(0, 2) +
   scale_x_discrete(limits = as.character(c(1:10))) +
   theme(legend.position = "bottom")
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, out.width='100%', fig.align='center'}
-ggplot(
-  data = APC %>%
-    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
-    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(No_APs)),
-  mapping = aes(
-    x = stim_number,
-    y = No_APs,
-    color = as.factor(animal_id),
-    linetype = as.factor(animal_id)
-  )
-) +
-  geom_point() +
-  geom_line() +
-  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
-  geom_label_repel(
-    data = . %>%
-      dplyr::filter(stim_number == 10),
-    aes(label = animal_id),
-    direction = "y",
-    hjust = -2,
-    alpha = .7
-  ) +
-  expand_limits(x = 12) +
-  theme(legend.position = "none") +
-
-  # xlim(1,10) +
-  facet_wrap(~stim_freq_categ) +
-  labs(linetype = "Animals", color = "Animals") +
-  xlab("No. stimulus in train") +
-  ylab("Number of APs")
 ```
 
 <br><br><br><br><br><br>
