@@ -222,9 +222,11 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   fill(stim_number, .direction = "up") %>%
   fill(intensity, .direction = "up") %>%
   fill(stim_freq, .direction = "up") %>%
+  fill(stim_side, .direction = "up") %>% 
   fill(stim_number, .direction = "down") %>%
   fill(intensity, .direction = "down") %>%
   fill(stim_freq, .direction = "down") %>%
+  fill(stim_side, .direction = "down") %>% 
   # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -1152,7 +1154,10 @@ corrected_angles_population %>%
   dplyr::filter(
     animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"),
     body_part == "head",
-    stim_categ != "no stim") %>%
+    stim_categ != "no stim",
+    #stim_side == "right"
+    ) %>%
+  
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
@@ -1203,7 +1208,8 @@ corrected_angles_population %>%
       y = sum_ang %>% scale()
     )
   ) +
-  geom_boxplot(aes(fill = intensity %>% as.factor())) + 
+  geom_boxplot(aes(fill = intensity %>% as.factor())) +
+  geom_point(aes(color = intensity %>% as.factor())) +
   #geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
   #geom_line(aes(group = intensity %>% as.factor())) +
   facet_wrap(~stim_number) +
