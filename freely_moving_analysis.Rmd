@@ -108,6 +108,7 @@ library(imputeTS)
 scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
+ang_threshold = 50
 
 datapoint_to_plot <- 5
 
@@ -147,6 +148,7 @@ These are defined in the "setup" chunk <br>
 
 **Current animal**: `r selected_animal`  
 For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used.
+The global angle threshold used in this file is `r ang_threshold`. Grater rotation angles between consecutive frames are replaced by zero
 
 <br>
 
@@ -828,7 +830,7 @@ Because of the periodicity of tangent function unrealistic angles were introduce
 
 In the control animals (34, 35, 36, 37) there are unrealistically large angles between frames probably due to tracking problem (switch of head and tail/center coordinate). Those angles are replaced by 0!
 
-mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
+mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_treshold, 0, signed_angle_corrected))
 
 
 ```{r message=FALSE, fig.width=10, fig.height=10, warning=FALSE}
@@ -857,7 +859,7 @@ coords %>%
     )
   ) %>%
   ### removing unrealistically large angles
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) %>% 
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_threshold, 0, signed_angle_corrected)) %>% 
   ggplot(aes(x = signed_angle_corrected)) +
   geom_histogram() +
   facet_wrap(~session, scales = "free") +
@@ -916,7 +918,7 @@ corrected_angles <- coords %>%
     )
   ) %>%
   ### removing unrealistically large angles
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_threshold, 0, signed_angle_corrected))
 
 ```
 
@@ -960,7 +962,7 @@ coords %>%
     )
   ) %>% 
   ### removing unrealistically large angles
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected))
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_threshold, 0, signed_angle_corrected))
   
 ```
 
@@ -1040,7 +1042,7 @@ corrected_angles_population <- coords %>%
     )
   ) %>%
   ### removing unrealistically large angles
-  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > 100, 0, signed_angle_corrected)) 
+  mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_threshold, 0, signed_angle_corrected)) 
 
 ```
 
