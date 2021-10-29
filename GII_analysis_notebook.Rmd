@@ -1640,10 +1640,12 @@ ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(norm_No_APs_animal)),
+    dplyr::summarise(sum_No_APs = sum(No_APs)) %>% 
+    dplyr::group_by(animal_id) %>% 
+    mutate(sumnorm_AP = sum_No_APs/max(sum_No_APs)),
   mapping = aes(
     x = stim_number,
-    y = No_APs,
+    y = sumnorm_AP,
     color = as.factor(animal_id),
     linetype = as.factor(animal_id)
   )
@@ -1677,13 +1679,15 @@ ggplot(
   data = APC %>%
     dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
-    dplyr::summarise(No_APs = sum(norm_No_APs_animal)) %>%
+    dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
     ungroup() %>%
+    dplyr::group_by(animal_id) %>% 
+    mutate(sumnorm_AP = sum_No_APs/max(sum_No_APs)) %>% 
     dplyr::group_by(stim_freq_categ, stim_number) %>%
     dplyr::summarise(
-      No_AP_mean = mean(No_APs),
-      No_AP_sd = sd(No_APs),
-      SEM = sd(No_APs) / sqrt(length(No_APs))
+      No_AP_mean = mean(sumnorm_AP),
+      No_AP_sd = sd(sumnorm_AP),
+      SEM = sd(sumnorm_AP) / sqrt(length(sumnorm_AP))
     ),
   mapping = aes(
     x = stim_number,
@@ -1694,11 +1698,11 @@ ggplot(
 ) +
   geom_point() +
   geom_line() +
-  geom_errorbar(aes(ymin = No_AP_mean - SEM, ymax = No_AP_mean + SEM)) +
+  #geom_errorbar(aes(ymin = No_AP_mean - SEM, ymax = No_AP_mean + SEM)) +
   xlab("No. stimulus in train") +
   ylab("Mean no. APs accross animals") +
   labs(color = "Frequency") +
-  ylim(0, 5) +
+  ylim(0, 1) +
   scale_x_discrete(limits = as.character(c(1:10))) +
   theme(legend.position = "bottom")
 ```
