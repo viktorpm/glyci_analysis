@@ -1190,7 +1190,7 @@ corrected_angles_population %>%
 ```{r message=FALSE, fig.height=8, fig.width=10}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b", "GIIFM17b"),
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"),
     body_part == "head",
     stim_categ != "no stim") %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
@@ -1210,8 +1210,8 @@ corrected_angles_population %>%
       y = sum_ang %>% scale()
     )
   ) +
-  geom_boxplot(aes(fill = intensity %>% as.factor())) +
-  geom_point(aes(color = intensity %>% as.factor())) +
+  geom_boxplot(aes(color = intensity %>% as.factor())) +
+  geom_point(aes(color = intensity %>% as.factor()), position=position_jitterdodge(dodge.width=0.7)) +
   #geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
   #geom_line(aes(group = intensity %>% as.factor())) +
   facet_wrap(~stim_number) +
