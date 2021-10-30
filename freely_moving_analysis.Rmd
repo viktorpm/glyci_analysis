@@ -108,7 +108,7 @@ library(imputeTS)
 scale <- 1.38 ### pixel/mm
 fps <- 30 ### frame rate
 time_res <- 1 / fps ### time between frames
-ang_threshold = 50
+ang_threshold = 90
 
 datapoint_to_plot <- 5
 
