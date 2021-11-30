@@ -275,6 +275,18 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
 
 coords
 ```
+In the "coords_all" table all the data can be found.
+Based on preliminary exploration of the data only animals with similar stimulus parameters were selected for further analysis (coords table)
+
+```{r}
+# coords %>% 
+#   dplyr::group_by(animal,session) %>% 
+#   summarise(stim_length)
+# 
+# coords %>% 
+#   dplyr::filter(animal == "GIIFM14b") %>% View()
+
+```
 
 
 Creating text layer to add intensity values to plots
@@ -288,7 +300,6 @@ text_layer <- coords %>%
   group_by(session) %>%
   summarise(int_label = intensity %>% unique())
 ```
-
 
 
 
@@ -1154,13 +1165,14 @@ Mean rotation angle by intensity
 ```{r message=FALSE, fig.height=8, fig.width=10}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"),
+    animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b", "GIIFM17b"),
     body_part == "head",
     stim_categ != "no stim",
     #stim_side == "right"
     ) %>%
   
-  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::filter(intensity %in% c(1, 5, 10)) %>% 
+  dplyr::group_by(animal, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
@@ -1177,7 +1189,7 @@ corrected_angles_population %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~intensity) +
+  #facet_wrap(~intensity) +
   global_facet_theme +
   xlab("State") +
   ylab("Scaled sum angle")
