@@ -1994,7 +1994,7 @@ left_join(
     dplyr::group_by(ID, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
-  dplyr::filter(!grepl(pattern = "01|04", ID)) %>%
+  dplyr::filter(!grepl(pattern = "01|04", ID)) %>% # 01 and 04 are not clustered
   ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
   geom_point(aes(col = ID), size = 3) +
   geom_line(aes(col = ID, group = ID)) +
@@ -2084,6 +2084,7 @@ ggplot(
     label = paste(
       "n = ",
       TERMINALS %>%
+        dplyr::filter(postion != "non_labeled") %>% 
         dplyr::group_by(origin) %>%
         dplyr::summarise(n = length(b_area)) %>%
         dplyr::filter(origin == "m2") %>%
@@ -2103,9 +2104,35 @@ ggplot(
         select(n) %>%
         as.character()
     )
-  )
+  ) +
+   geom_signif(
+    comparisons = list(c("m2", "unknown")),
+    map_signif_level = TRUE,
+    test = "mood.test",
+    margin_top = .1,
+    color = "gray"
+  ) 
 ```
-
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+TERMINALS %>% 
+ggplot(mapping = aes(x = origin, y = d_dendrite)) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "area",
+    draw_quantiles = c(0.5),
+    aes(fill = postion)
+  ) +
+  geom_jitter(position = position_jitter(0.1)) 
+  # geom_signif(
+  #   comparisons = list(c("glyt2", "non_labeled")),
+  #   map_signif_level = TRUE,
+  #   test = "mood.test",
+  #   margin_top = .1,
+  #   color = "gray"
+  # ) 
+```
 
 <br><br><br><br><br><br>
 
