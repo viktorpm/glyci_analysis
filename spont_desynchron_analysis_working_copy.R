@@ -11,18 +11,19 @@ library(ggrepel)
 library(exactRankTests) ### wilcox.test for ties
 library(ggsignif)
 library(lumberjack)
-
+library(imputeTS)
 
 file_list <- list.files(
-  path = "data",
+  path = file.path("data", "csd") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
+
 
 SyncDesyncAnalysis <- function(file) {
   # browser()
   file_to_load <- file
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
-  raw.rec <- readMat(file.path("data", file_to_load))
+  raw.rec <- readMat(file.path("data", "csd", file_to_load))
 
   ### Action potentials ----------------------------------------------------------------
 
@@ -85,15 +86,42 @@ SyncDesyncAnalysis <- function(file) {
   #                          function(x) {which(abs(times_original-x) == min(abs(times_original-x)))}) %>%
   #                     unlist())] = 1
   # rec_original$AP %>% sum(na.rm = T)
+  
+  
+  scale <- as.double(raw.rec$EEG[, , 1]$scale)
+  offset <- as.double(raw.rec$EEG[, , 1]$offset)
+    
 
+  EEG_scaled <- (EEG * scale) + offset
 
-
-  EEG_scaled <- (EEG * as.double(raw.rec$EEG[, , 1]$scale)) + as.double(raw.rec$EEG[, , 1]$offset)
   samp_rate_original <- 1000 / (raw.rec$EEG[, , 1]$interval * 1000) %>% as.double()
   rec_length_original <- (raw.rec$EEG[, , 1]$length / samp_rate_original) %>% as.double()
 
+  
+  
+  
+  
+  ###################################################################################
+  ### helper function to detect and remove big transient noise (outlier) from EEG 
+  
+  OutlierDetect <- function(data) {
+    Q25 <- data %>% quantile() %>% `[` (2)
+    Q75 <- data %>% quantile() %>% `[` (4)
+    IQR <- (Q75 - Q25) %>% unname()
+
+    data_out <- ifelse(data < (Q25 - (1.5 * IQR)) | data > (Q75 + (1.5 * IQR)), yes = 0, no = data)
+    return(data_out)
+
+  }
+
+  EEG_scaled <- EEG_scaled %>%
+    OutlierDetect() %>%
+  imputeTS::na_interpolation(option = "stine")
+  ####################################################################################
 
 
+  
+  
   ### Filtering ---------------
   ### function parameters:
   ### n: order
@@ -134,7 +162,7 @@ SyncDesyncAnalysis <- function(file) {
   ds_fun_out <- downSamp(
     data = EEG_scaled_bp,
     ds_factor = 512,
-    samp_rate = 20000
+    samp_rate = samp_rate_original
   )
 
   EEG_ds_scaled <- ds_fun_out$data %>% scale()
@@ -307,7 +335,9 @@ SyncDesyncAnalysis <- function(file) {
     histbreaks = "FD", ### Freedman-Diaconis rule for optimal bin-width
     isi_range = c(0, 1 / first_peak)
   )
-
+  
+  # browser()
+  
   burst_threshold_detect %>% unlist()
   burst_threshold_isi <- burst_threshold_detect[[1]]
   length(burst_threshold_isi) <- 1
@@ -362,6 +392,8 @@ SyncDesyncAnalysis <- function(file) {
 
   return(EEG_ds_df)
 }
+
+csd_df <- lapply(file_list, SyncDesyncAnalysis)
 
 all_eeg_df <- lapply(file_list, SyncDesyncAnalysis)
 saveRDS(all_eeg_df, file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
