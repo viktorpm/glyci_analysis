@@ -33,7 +33,7 @@ BurstThresholdDetect <- function(hist_data, histbreaks, isi_range) {
   diptest_density_log <- diptest::dip.test(log(density$y)[log(density$y) %>% is.finite()], 
                                            simulate.p.value = F)
   
-  
+  # browser()
   if(diptest$p.value <= 0.05){
     clustered = T
   } else {
