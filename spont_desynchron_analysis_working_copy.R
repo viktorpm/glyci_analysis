@@ -14,17 +14,19 @@ library(lumberjack)
 library(imputeTS)
 
 file_list <- list.files(
-  path = file.path("data", "csd") ,
+  path = file.path("data", "csd", "baseline") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
 
 
-SyncDesyncAnalysis <- function(file) {
+SyncDesyncAnalysis <- function(file, filepath) {
   # browser()
   file_to_load <- file
   filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
-  raw.rec <- readMat(file.path("data", "csd", file_to_load))
-
+  # raw.rec <- readMat(file.path("data", "csd", file_to_load))
+  raw.rec <- readMat(paste0(filepath, "/" ,file_to_load))
+  
+  
   ### Action potentials ----------------------------------------------------------------
 
   ### contents of ap channel
@@ -36,7 +38,7 @@ SyncDesyncAnalysis <- function(file) {
   ### offset: scale offset
   ### units: unit of the channel (volt)
   ### length: number of APs
-  ### items: No. points easch AP is represented by
+  ### items: No. points each AP is represented by
   ### trigger:
   ### traces:
   ### times: times of the APs (first data point of the waveform)
@@ -104,19 +106,19 @@ SyncDesyncAnalysis <- function(file) {
   ###################################################################################
   ### helper function to detect and remove big transient noise (outlier) from EEG 
   
-  OutlierDetect <- function(data) {
-    Q25 <- data %>% quantile() %>% `[` (2)
-    Q75 <- data %>% quantile() %>% `[` (4)
-    IQR <- (Q75 - Q25) %>% unname()
-
-    data_out <- ifelse(data < (Q25 - (1.5 * IQR)) | data > (Q75 + (1.5 * IQR)), yes = 0, no = data)
-    return(data_out)
-
-  }
-
-  EEG_scaled <- EEG_scaled %>%
-    OutlierDetect() %>%
-  imputeTS::na_interpolation(option = "stine")
+  # OutlierDetect <- function(data) {
+  #   Q25 <- data %>% quantile() %>% `[` (2)
+  #   Q75 <- data %>% quantile() %>% `[` (4)
+  #   IQR <- (Q75 - Q25) %>% unname()
+  # 
+  #   data_out <- ifelse(data < (Q25 - (1.5 * IQR)) | data > (Q75 + (1.5 * IQR)), yes = 0, no = data)
+  #   return(data_out)
+  # 
+  # }
+  # 
+  # EEG_scaled <- EEG_scaled %>%
+  #   OutlierDetect() %>%
+  # imputeTS::na_interpolation(option = "stine")
   ####################################################################################
 
 
@@ -170,8 +172,6 @@ SyncDesyncAnalysis <- function(file) {
   rec_length_ds <- ds_fun_out$r_length
   interval_ds <- 1 / samp_rate_ds
 
-
-
   # source(file.path("supplementary_functions", "downSamp2.R"))
   # ds_fun_out <- downSamp2(
   #   data = EEG_scaled,
@@ -183,6 +183,7 @@ SyncDesyncAnalysis <- function(file) {
   # samp_rate_ds <- ds_fun_out$data_points / ds_fun_out$r_length_ds
   # interval_ds <- 1 / samp_rate_ds
 
+  # browser()
 
   ### times of data points
   times <- seq(from = 0, to = rec_length_ds - interval_ds, by = interval_ds)
@@ -325,6 +326,7 @@ SyncDesyncAnalysis <- function(file) {
     }
   }
 
+  
   #### burst threshold --------
   ### burst thershold based on ISI peaks in xlim = c(0,1 / first_peak) window, FILTERS DATA INSIDE
   ### built in dip test to test ISI uni/multimodality (all ISIs are used)
@@ -336,21 +338,31 @@ SyncDesyncAnalysis <- function(file) {
     isi_range = c(0, 1 / first_peak)
   )
   
-  # browser()
+  
   
   burst_threshold_detect %>% unlist()
   burst_threshold_isi <- burst_threshold_detect[[1]]
   length(burst_threshold_isi) <- 1
 
+ 
+  # if (ds_fun_out$data_points < replace_index %>% max() ){
+  #   diff_tmp <- replace_index %>% max() - ds_fun_out$data_points
+  #   replace_index <- replace_index[1:length(replace_index)-diff_tmp]
+  # 
+  # }
+  
+  browser()
+  
   EEG_ds_df <- tibble(
     ### only works with wavelet if it is a matrix!
     times = times,
-    eeg_values = as.matrix(EEG_ds_scaled) %>%
+    eeg_values = as.vector(EEG_ds_scaled) %>%
       ts(
         start = 0,
         end = rec_length_ds - interval_ds,
-        deltat = 1 / samp_rate_ds
-      ),
+        deltat = 1 / samp_rate_ds,
+        class = "ts"
+      ) ,
     first_peak,
     sd_threshold,
     burst_threshold_isi,
@@ -361,7 +373,8 @@ SyncDesyncAnalysis <- function(file) {
     eeg_state = ifelse(levels == 1, yes = "sync", no = "desync"),
     AP = NA,
     # ap_peak_times = ap_peak_times,
-    ID = file_to_load
+    ID = file_to_load,
+    animal = substr(file_to_load, start = 1, stop = 4) # the file name must include the animal ID, some files don't have it
   ) %>%
     dplyr::mutate(AP = replace(
       x = AP,
@@ -393,7 +406,14 @@ SyncDesyncAnalysis <- function(file) {
   return(EEG_ds_df)
 }
 
-csd_df <- lapply(file_list, SyncDesyncAnalysis)
+lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
+
+baseline_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
+saveRDS(baseline_df, file = file.path("data", "sync_desync", "baseline_df.rds"))
+
+
+csd_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "csd"))
+saveRDS(csd_df, file = file.path("data", "sync_desync", "csd_df.rds"))
 
 all_eeg_df <- lapply(file_list, SyncDesyncAnalysis)
 saveRDS(all_eeg_df, file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
