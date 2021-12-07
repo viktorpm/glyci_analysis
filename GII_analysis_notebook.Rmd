@@ -2019,12 +2019,147 @@ left_join(
 #   hjust = -1)
 ```
 
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+  EEG_ds_df %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::group_by(ID, eeg_state) %>%
+    dplyr::mutate(
+      No_AP = sum(AP, na.rm = T),
+      state_length_sum = sum(state_length %>% unique(), na.rm = T)
+      ) %>%
+  dplyr::group_by(ID, eeg_state) %>%
+  summarise(state_length_sum = unique(state_length_sum),No_AP = unique(No_AP)) %>% 
+
+
+  # dplyr::filter(!grepl(pattern = "01|04", ID)) %>% # 01 and 04 are not clustered
+  ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
+  geom_point(aes(col = ID), size = 3) +
+  geom_line(aes(col = ID, group = ID)) +
+  geom_boxplot(
+    aes(x = eeg_state, y = No_AP / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray"
+  ) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = F)
+
+# geom_text_repel(
+#   data = . %>% dplyr::filter(eeg_state == "sync"),
+#   aes(label = ID),
+#   direction = "y",
+#   hjust = -1)
+```
+
+
 
 <br><br><br><br><br><br>
 
 # Cortical inactivation
 
 insert code here!!! use the **SyncDesyncAnalysis** function. It was written to analyse the spontaneous desynchronization files but it will work on the incativation (cortical spreading depression - CSD) files as well.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+csd_df <- readRDS(file = file.path("data", "sync_desync", "csd_df.rds")) %>% 
+  lapply(function(x) { x %>% mutate(levels = 0, eeg_state = "desync")})
+
+  
+baseline_df <- readRDS(file = file.path("data", "sync_desync", "baseline_df.rds")) %>% 
+  lapply(function(x) { x %>% mutate(levels = 1, eeg_state = "sync")})
+
+tmp_list <- append(csd_df, baseline_df)
+
+CSD_ds_all <- purrr::reduce(tmp_list, bind_rows)
+```
+
+
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+left_join(
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>%
+  #dplyr::filter(!grepl(pattern = "31", animal)) %>% 
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(aes(col = animal), size = 3) +
+  geom_line(aes(col = animal, group = animal)) +
+  geom_boxplot(
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray"
+  ) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+
+# geom_text_repel(
+#   data = . %>% dplyr::filter(eeg_state == "sync"),
+#   aes(label = ID),
+#   direction = "y",
+#   hjust = -1)
+```
+
+
+
+
+
+
+
+
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+left_join(
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(No_AP = sum(AP, na.rm = T)),
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>%
+  dplyr::filter(!grepl(pattern = "31", animal)) %>% 
+  ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
+  geom_point(aes(col = animal), size = 3) +
+  geom_line(aes(col = animal, group = animal)) +
+  geom_boxplot(
+    aes(x = eeg_state, y = No_AP / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  geom_signif(
+    comparisons = list(c("desync", "sync")),
+    map_signif_level = TRUE,
+    test = "wilcox.test",
+    margin_top = .1,
+    color = "darkgray"
+  ) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+
+# geom_text_repel(
+#   data = . %>% dplyr::filter(eeg_state == "sync"),
+#   aes(label = ID),
+#   direction = "y",
+#   hjust = -1)
+```
+
+
+
+
 
 <br><br><br><br><br><br>
 
