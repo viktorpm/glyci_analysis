@@ -28,12 +28,13 @@ downSamp <- function(data, ds_factor, samp_rate) {
       break
     }
   }
+  
   print(paste0("Number of iterations: ", iter))
   print(paste0("Number of datapoints in your output vector: ", length(data)))
   
   #print(paste0("Sampling rate of your new data: ", length(data)/r_length))
   output <- list()
-  output$data <- data
+  output$data <- data 
   output$iter <- iter
   output$data_points <- length(data)
   output$r_length <- r_length
