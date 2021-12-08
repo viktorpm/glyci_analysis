@@ -14,7 +14,7 @@ library(lumberjack)
 library(imputeTS)
 
 file_list <- list.files(
-  path = file.path("data", "csd", "baseline") ,
+  path = file.path("data", "csd", "csd") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
 
@@ -326,7 +326,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
     }
   }
 
-  
+  # browser()
   #### burst threshold --------
   ### burst thershold based on ISI peaks in xlim = c(0,1 / first_peak) window, FILTERS DATA INSIDE
   ### built in dip test to test ISI uni/multimodality (all ISIs are used)
@@ -339,10 +339,15 @@ SyncDesyncAnalysis <- function(file, filepath) {
   )
   
   
-  
+  # browser()
   burst_threshold_detect %>% unlist()
-  burst_threshold_isi <- burst_threshold_detect[[1]]
+  burst_threshold_isi <- burst_threshold_detect$bt
+  burst_threshold_isi2 <- burst_threshold_detect$bt2
+  burst_threshold_isi3 <- burst_threshold_detect$bt3
+  
   length(burst_threshold_isi) <- 1
+  length(burst_threshold_isi2) <- 1
+  length(burst_threshold_isi3) <- 1
 
  
   # if (ds_fun_out$data_points < replace_index %>% max() ){
@@ -351,7 +356,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
   # 
   # }
   
-  browser()
+  # browser()
   
   EEG_ds_df <- tibble(
     ### only works with wavelet if it is a matrix!
@@ -366,6 +371,9 @@ SyncDesyncAnalysis <- function(file, filepath) {
     first_peak,
     sd_threshold,
     burst_threshold_isi,
+    burst_threshold_isi2,
+    burst_threshold_isi3,
+    clustered = burst_threshold_detect$clustered, 
     nbins = burst_threshold_detect$bins_n,
     moving_sd = slide_sd,
     moving_average = slide_mean,
@@ -389,7 +397,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
       dplyr::mutate(
         ap_peak_times = ap_peaks,
         isi = c(diff(ap_peaks), NA),
-        burst_isi = ifelse(test = lag(isi > burst_threshold_isi), yes = 1, no = 0)
+        burst_isi = ifelse(test = (lag(isi > burst_threshold_isi2) & clustered == T), yes = 1, no = 0)
       )
   ) %>%
     dplyr::mutate(lag_levels = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>%
@@ -406,7 +414,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
   return(EEG_ds_df)
 }
 
-lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
+lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data"))
 
 baseline_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
 saveRDS(baseline_df, file = file.path("data", "sync_desync", "baseline_df.rds"))
@@ -415,7 +423,7 @@ saveRDS(baseline_df, file = file.path("data", "sync_desync", "baseline_df.rds"))
 csd_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "csd"))
 saveRDS(csd_df, file = file.path("data", "sync_desync", "csd_df.rds"))
 
-all_eeg_df <- lapply(file_list, SyncDesyncAnalysis)
+all_eeg_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data"))
 saveRDS(all_eeg_df, file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
 
 
