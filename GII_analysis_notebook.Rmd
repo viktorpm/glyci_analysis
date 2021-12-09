@@ -1907,7 +1907,7 @@ p_isi
 ### LFP and APs
 
 ```{r echo=FALSE, fig.width=10, fig.height=20, message=FALSE, warning=FALSE}
-plotting_region <- c(90, 150)
+plotting_region <- c(70, 110)
 
 # plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
 
@@ -1924,13 +1924,13 @@ eeg_sum_plot <- lapply(all_eeg_df, function(x) {
       state_start = dplyr::filter(x, 
                                   times > plotting_region[1],
                                   times < plotting_region[2],
-                                  state_length <= 1 / first_peak * 2
+                                  state_length <= 1 / first_peak
                                   ) %>%
         dplyr::select(state_start, state_end) %>% pull(state_start) %>% unique(),
       state_end = dplyr::filter(x,
                                 times > plotting_region[1],
                                 times < plotting_region[2],
-                                state_length <= 1 / first_peak * 2
+                                state_length <= 1 / first_peak
                                 ) %>%
         dplyr::select(state_start, state_end) %>% pull(state_end) %>% unique()
     )
@@ -2020,11 +2020,11 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 left_join(
   EEG_ds_df %>%
-    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
     dplyr::group_by(ID, eeg_state) %>%
     dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
   EEG_ds_df %>%
-    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
     dplyr::group_by(ID, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
@@ -2041,11 +2041,11 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired =T),
+    test.args = list(paired =F),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = F)
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
@@ -2056,7 +2056,7 @@ left_join(
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
   EEG_ds_df %>%
-    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak * 2) %>%
+    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
     dplyr::group_by(ID, eeg_state) %>%
     dplyr::mutate(
       No_AP = sum(AP, na.rm = T),
