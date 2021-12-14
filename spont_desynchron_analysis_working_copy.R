@@ -804,6 +804,51 @@ desync_AC <- RTM_creator(
 AC <- rbind(sync_AC, desync_AC) %>% ### DOES NOT WORK WITH bind_rows
   transmute(time = value, eeg_state = eeg_state)
 
+sync_AC <- RTM_creator(
+  EEG_ds_df %>%
+    dplyr::filter(AP == 1) %>%
+    group_by(ID,eeg_state) %>% 
+    summarise(ap_peak_times)
+) %>%
+  melt() %>%
+  dplyr::mutate(eeg_state = "sync")
+
+
+
+
+
+lapply(all_eeg_df, function(x) {
+  x %>% 
+    dplyr::filter(AP == 1, eeg_state == "sync") %>% 
+    pull(ap_peak_times) %>% 
+    RTM_creator()
+  
+})
+
+
+all_eeg_df[[7]] %>% 
+  dplyr::filter(AP == 1, eeg_state == "desync") %>% 
+  pull(ap_peak_times) %>% RTM_creator() %>% 
+  melt() %>%  
+  dplyr::mutate(eeg_state = "desync") %>% 
+  transmute(time = value, eeg_state = eeg_state) %>% 
+  dplyr::filter(time > -1, time < 1) %>%
+  ggplot(mapping = aes(x=time)) +
+  geom_histogram(bins = 150)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### plotting AC
 
