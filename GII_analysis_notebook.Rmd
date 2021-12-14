@@ -1859,7 +1859,7 @@ gg_isi_periods <- lapply(all_eeg_df, function(x) {
       dplyr::filter(
         AP == 1,
         !is.na(eeg_state),
-        state_length >= 1 / first_peak * 2,
+        state_length >= 1 / first_peak,
         isi > 0, isi < 1 / first_peak
       ), ### NAs in eeg_state because moving_sd has NAs at the end
     mapping = aes(x = isi)
@@ -2032,6 +2032,75 @@ p_eeg
 ```
 
 
+```{r message=F, warning=F, fig.width=10, fig.height=25}
+### AUTOCORRELOGRAM ------------------------------------------------------------
+
+### rel_time matrix creator
+RTM_creator <- function(x) {
+  mat_spike <- matrix(x,
+    nrow = length(x),
+    ncol = length(x), byrow = T
+  )
+  mat_reltimes <- mat_spike - t(mat_spike)
+  # mat_reltimes <- data.frame(mat_reltimes)
+  mat_reltimes[mat_reltimes == 0] <- NA
+  return(mat_reltimes)
+}
+
+
+
+sync_reltimes <- lapply(all_eeg_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "sync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "sync", ID = x$ID %>% unique()) %>%
+    transmute(ID = ID, time = value, eeg_state = eeg_state)
+
+})
+
+
+desync_reltimes <- lapply(all_eeg_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "desync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "desync", ID = x$ID %>% unique()) %>%
+    transmute(ID = ID, time = value, eeg_state = eeg_state)
+
+})
+
+
+bind_rows(sync_reltimes, desync_reltimes) %>% 
+  dplyr::filter(time > -1, time < 1) %>% 
+  ggplot(mapping = aes(x=time)) +
+  geom_histogram(bins = 200) +
+  facet_grid(ID~eeg_state, scales = "free_y")
+  
+  
+
+
+# all_eeg_df[[7]] %>% 
+#   dplyr::filter(AP == 1, eeg_state == "sync") %>% 
+#   pull(ap_peak_times) %>% 
+#   RTM_creator() %>% 
+#   reshape2::melt() %>%  
+#   dplyr::mutate(eeg_state = "sync") %>% 
+#   transmute(time = value, eeg_state = eeg_state) %>% 
+#   dplyr::filter(time > -1, time < 1) %>%
+#   ggplot(mapping = aes(x=time)) +
+#   geom_histogram(bins = 150)
+
+```
+
+
+
+
+
+
+
 
 
 ### Number of clusters in sync vs desync periods
@@ -2064,11 +2133,11 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = F),
+    test.args = list(paired = T, alternative = "greater"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = F)
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
@@ -2165,11 +2234,11 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = T),
+    test.args = list(paired = T, alternative = "greater"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
 # facet_wrap(~ clustered)
 
 # geom_text_repel(
@@ -2196,7 +2265,7 @@ left_join(
     dplyr::group_by(animal, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
-  # dplyr::filter(!grepl(pattern = "31", animal)) %>%
+  dplyr::filter(!grepl(pattern = "31", animal)) %>%
   ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
   geom_point(aes(col = animal), size = 3) +
   geom_line(aes(col = animal, group = animal)) +
@@ -2209,11 +2278,11 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = T),
+    test.args = list(paired = T, alternative = "greater"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
@@ -2315,7 +2384,7 @@ TERMINALS %>%
 ```
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 TERMINALS %>%
-  ggplot(mapping = aes(x = origin, y = d_dendrite)) +
+  ggplot(mapping = aes(x = postion, y = d_dendrite)) +
   geom_half_violin(
     position = position_nudge(x = -.15),
     trim = F,
@@ -2324,14 +2393,14 @@ TERMINALS %>%
     draw_quantiles = c(0.5),
     aes(fill = postion)
   ) +
-  geom_jitter(position = position_jitter(0.1))
-# geom_signif(
-#   comparisons = list(c("glyt2", "non_labeled")),
-#   map_signif_level = TRUE,
-#   test = "mood.test",
-#   margin_top = .1,
-#   color = "gray"
-# )
+  geom_jitter(position = position_jitter(0.1)) +
+geom_signif(
+  comparisons = list(c("glyt2", "non_labeled")),
+  map_signif_level = TRUE,
+  test = "mood.test",
+  margin_top = .1,
+  color = "gray"
+)
 ```
 
 <br><br><br><br><br><br>
