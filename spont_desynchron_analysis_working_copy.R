@@ -14,7 +14,7 @@ library(lumberjack)
 library(imputeTS)
 
 file_list <- list.files(
-  path = file.path("data", "csd", "csd") ,
+  path = file.path("data") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
 
@@ -382,7 +382,8 @@ SyncDesyncAnalysis <- function(file, filepath) {
     AP = NA,
     # ap_peak_times = ap_peak_times,
     ID = file_to_load,
-    animal = substr(file_to_load, start = 1, stop = 4) # the file name must include the animal ID, some files don't have it
+    animal = substr(file_to_load, start = 1, stop = 5) %>% 
+      gsub(pattern = "_", replacement = "")# the file name must include the animal ID, some files don't have it
   ) %>%
     dplyr::mutate(AP = replace(
       x = AP,

@@ -1910,7 +1910,7 @@ gg_isi_periods <- lapply(all_eeg_df, function(x) {
       vjust = 2.2,
       col = "red"
     ) +
-    labs(caption = x$ID %>% unique())
+    labs(caption = x$animal %>% unique())
 })
 
 
@@ -2005,7 +2005,7 @@ eeg_sum_plot <- lapply(all_eeg_df, function(x) {
       labels = c("EEG", "Moving SD", "Levels", "SD threshold")
     ) +
     theme_minimal() +
-    labs(caption = x$ID %>% unique())
+    labs(caption = x$animal %>% unique())
 
   if (rect_index %>% nrow() != 0) {
     p + geom_rect(
@@ -2055,8 +2055,8 @@ sync_reltimes <- lapply(all_eeg_df, function(x) {
     pull(ap_peak_times) %>%
     RTM_creator() %>%
     reshape2::melt() %>%
-    dplyr::mutate(eeg_state = "sync", ID = x$ID %>% unique()) %>%
-    transmute(ID = ID, time = value, eeg_state = eeg_state)
+    dplyr::mutate(eeg_state = "sync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
 
 })
 
@@ -2067,8 +2067,8 @@ desync_reltimes <- lapply(all_eeg_df, function(x) {
     pull(ap_peak_times) %>%
     RTM_creator() %>%
     reshape2::melt() %>%
-    dplyr::mutate(eeg_state = "desync", ID = x$ID %>% unique()) %>%
-    transmute(ID = ID, time = value, eeg_state = eeg_state)
+    dplyr::mutate(eeg_state = "desync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
 
 })
 
@@ -2077,7 +2077,7 @@ bind_rows(sync_reltimes, desync_reltimes) %>%
   dplyr::filter(time > -1, time < 1) %>% 
   ggplot(mapping = aes(x=time)) +
   geom_histogram(bins = 200) +
-  facet_grid(ID~eeg_state, scales = "free_y")
+  facet_grid(animal~eeg_state, scales = "free_y")
   
   
 
