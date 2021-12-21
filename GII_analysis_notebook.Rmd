@@ -2225,11 +2225,15 @@ EEG_ds_df %>%
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = T),
+    test.args = list(paired = T, alternative = "greater"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "less"))
+  ggpubr::stat_compare_means(
+    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    method = "wilcox.test", paired = T, 
+    method.args = list(alternative = "greater")
+    )
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
@@ -2276,7 +2280,7 @@ left_join(
     dplyr::group_by(animal, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
-  # dplyr::filter(!grepl(pattern = "31", animal)) %>%
+   dplyr::filter(!grepl(pattern = "40", animal)) %>%
   ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
   geom_point(aes(col = animal), size = 3) +
   geom_line(aes(col = animal, group = animal)) +
@@ -2289,11 +2293,16 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = T, alternative = "greater"),
+    test.args = list(paired = T, alternative = "less"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
+  ggpubr::stat_compare_means(
+    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less")
+    )
 # facet_wrap(~ clustered)
 
 # geom_text_repel(
@@ -2337,7 +2346,12 @@ left_join(
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
+  ggpubr::stat_compare_means(
+    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less")
+    )
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
