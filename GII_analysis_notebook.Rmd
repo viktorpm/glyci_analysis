@@ -2110,17 +2110,58 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
 
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-left_join(
+# left_join(
+#   EEG_ds_df %>%
+#     dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#     dplyr::group_by(ID, eeg_state) %>%
+#     dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
+#   EEG_ds_df %>%
+#     dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#     dplyr::group_by(ID, eeg_state) %>%
+#     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+# ) %>%
+  
+  
+  
+  
   EEG_ds_df %>%
-    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
-    dplyr::group_by(ID, eeg_state) %>%
-    dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
-  EEG_ds_df %>%
-    dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
-    dplyr::group_by(ID, eeg_state) %>%
-    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
-) %>%
-  dplyr::filter(!grepl(pattern = "01|06", ID)) %>% # 01 and 04 are not clustered
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(ID, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)) %>%
+  dplyr::group_by(ID, eeg_state) %>%
+  summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>% 
+
+  
+#   x = EEG_ds_df %>%
+#   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#   dplyr::group_by(ID, eeg_state, state_number) %>%
+#   dplyr::summarise(
+#     sum1 = sum(state_length %>% unique(), na.rm = T),
+#     No_clusters = sum(burst_isi, na.rm = T)) %>%
+#   dplyr::group_by(ID, eeg_state) %>%
+#   summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+#   dplyr::filter(eeg_state == "desync") %>%
+#   pull(No_clusters)
+# 
+# y = EEG_ds_df %>%
+#   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#   dplyr::group_by(ID, eeg_state, state_number) %>%
+#   dplyr::summarise(
+#     sum1 = sum(state_length %>% unique(), na.rm = T),
+#     No_clusters = sum(burst_isi, na.rm = T)) %>%
+#   dplyr::group_by(ID, eeg_state) %>%
+#   summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+#   dplyr::filter(eeg_state == "sync") %>%
+#   pull(No_clusters)
+# 
+# wilcox.test(x=x, y=y, alternative = "less", paired = T)
+
+
+
+
+  #dplyr::filter(!grepl(pattern = "GV115|GII21", ID)) %>% # 01 and 04 are not clustered
   ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
   geom_point(aes(col = ID), size = 3) +
   geom_line(aes(col = ID, group = ID)) +
@@ -2133,11 +2174,17 @@ left_join(
     comparisons = list(c("desync", "sync")),
     map_signif_level = TRUE,
     test = "wilcox.test",
-    test.args = list(paired = T, alternative = "greater"),
+    test.args = list(paired = T, alternative = "less"),
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "greater"))
+  ggpubr::stat_compare_means(
+    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less"),
+    hide.ns = F
+    )
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),
@@ -2149,13 +2196,21 @@ left_join(
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  # dplyr::mutate(
+  #   No_AP = sum(AP, na.rm = T)) %>% 
+    ###!!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+    ###!!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+    ###!!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+    ###!!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+  
+  # EEG_ds_df %>% dplyr::filter(animal == "GII21") %>% group_by(eeg_state, state_number) %>% select(state_length) %>% unique() %>% summarise(sum1=sum(state_length)) %>% group_by(eeg_state) %>% mutate(sum2 = sum(sum1)) %>% View()
+
+  dplyr::group_by(ID, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_AP = sum(AP, na.rm = T)) %>%
   dplyr::group_by(ID, eeg_state) %>%
-  dplyr::mutate(
-    No_AP = sum(AP, na.rm = T),
-    state_length_sum = sum(state_length %>% unique(), na.rm = T)
-  ) %>%
-  dplyr::group_by(ID, eeg_state) %>%
-  summarise(state_length_sum = unique(state_length_sum), No_AP = unique(No_AP)) %>%
+  summarise(state_length_sum = sum(sum1), No_AP = sum(No_AP)) %>%
   dplyr::filter(!grepl(pattern = "120", ID)) %>%
   # 01 and 04 are not clustered
   ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
@@ -2174,7 +2229,7 @@ EEG_ds_df %>%
     margin_top = .1,
     color = "darkgray"
   ) +
-  ggpubr::stat_compare_means(method = "wilcox.test", paired = T)
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T, method.args = list(alternative = "less"))
 
 # geom_text_repel(
 #   data = . %>% dplyr::filter(eeg_state == "sync"),

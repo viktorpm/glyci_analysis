@@ -14,7 +14,7 @@ library(lumberjack)
 library(imputeTS)
 
 file_list <- list.files(
-  path = file.path("data") ,
+  path = file.path("data", "csd", "csd") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
 
@@ -368,6 +368,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
         deltat = 1 / samp_rate_ds,
         class = "ts"
       ) ,
+    all_AP_num = length(ap_peaks),
     first_peak,
     sd_threshold,
     burst_threshold_isi,
@@ -401,12 +402,12 @@ SyncDesyncAnalysis <- function(file, filepath) {
         burst_isi = ifelse(test = (lag(isi > burst_threshold_isi2) & clustered == T), yes = 1, no = 0)
       )
   ) %>%
-    dplyr::mutate(lag_levels = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>%
-    dplyr::group_by(lag_levels) %>%
+    dplyr::mutate(state_number = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>%
+    dplyr::group_by(state_number) %>%
     dplyr::mutate(state_length = times[length(times)] - times[1]) %>%
     dplyr::mutate(state_start = times[1], state_end = times[length(times)]) %>%
     ungroup() %>%
-    select(-lag_levels) %>%
+    #select(-lag_levels) %>%
     dplyr::mutate(levels2 = ifelse(levels == 0 & state_length <= first_peak * 2, yes = abs(levels - 1), no = levels)) %>%
     dplyr::mutate(levels2 = ifelse(levels == 1 & state_length <= first_peak * 2, yes = abs(levels - 1), no = levels))
 
@@ -415,7 +416,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
   return(EEG_ds_df)
 }
 
-lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data"))
+# lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data"))
 
 baseline_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
 saveRDS(baseline_df, file = file.path("data", "sync_desync", "baseline_df.rds"))
