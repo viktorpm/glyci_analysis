@@ -2110,30 +2110,57 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
 
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-# left_join(
-#   EEG_ds_df %>%
-#     dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
-#     dplyr::group_by(ID, eeg_state) %>%
-#     dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
-#   EEG_ds_df %>%
-#     dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
-#     dplyr::group_by(ID, eeg_state) %>%
-#     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
-# ) %>%
-  
-  
-  
-  
   EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
-  dplyr::group_by(ID, eeg_state, state_number) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
   dplyr::summarise(
     sum1 = sum(state_length %>% unique(), na.rm = T),
     No_clusters = sum(burst_isi, na.rm = T)) %>%
-  dplyr::group_by(ID, eeg_state) %>%
+  dplyr::group_by(animal, eeg_state) %>%
   summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>% 
-
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less"),
+    hide.ns = F
+    ) +
   
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray", 
+    size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray", 
+    linetype = "dashed") +
+   geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV115|GII21", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+
+
 #   x = EEG_ds_df %>%
 #   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
 #   dplyr::group_by(ID, eeg_state, state_number) %>%
@@ -2158,39 +2185,6 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
 # 
 # wilcox.test(x=x, y=y, alternative = "less", paired = T)
 
-
-
-
-  #dplyr::filter(!grepl(pattern = "GV115|GII21", ID)) %>% # 01 and 04 are not clustered
-  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
-  geom_point(aes(col = ID), size = 3) +
-  geom_line(aes(col = ID, group = ID)) +
-  geom_boxplot(
-    aes(x = eeg_state, y = No_clusters / state_length_sum),
-    inherit.aes = F,
-    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
-  ) +
-  geom_signif(
-    comparisons = list(c("desync", "sync")),
-    map_signif_level = TRUE,
-    test = "wilcox.test",
-    test.args = list(paired = T, alternative = "less"),
-    margin_top = .1,
-    color = "darkgray"
-  ) +
-  ggpubr::stat_compare_means(
-    comparisons = list(c("desync", "sync"), c("sync", "desync")),
-    method = "wilcox.test", 
-    paired = T, 
-    method.args = list(alternative = "less"),
-    hide.ns = F
-    )
-
-# geom_text_repel(
-#   data = . %>% dplyr::filter(eeg_state == "sync"),
-#   aes(label = ID),
-#   direction = "y",
-#   hjust = -1)
 ```
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
@@ -2205,41 +2199,53 @@ EEG_ds_df %>%
   
   # EEG_ds_df %>% dplyr::filter(animal == "GII21") %>% group_by(eeg_state, state_number) %>% select(state_length) %>% unique() %>% summarise(sum1=sum(state_length)) %>% group_by(eeg_state) %>% mutate(sum2 = sum(sum1)) %>% View()
 
-  dplyr::group_by(ID, eeg_state, state_number) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
   dplyr::summarise(
     sum1 = sum(state_length %>% unique(), na.rm = T),
     No_AP = sum(AP, na.rm = T)) %>%
-  dplyr::group_by(ID, eeg_state) %>%
+  dplyr::group_by(animal, eeg_state) %>%
   summarise(state_length_sum = sum(sum1), No_AP = sum(No_AP)) %>%
-  dplyr::filter(!grepl(pattern = "120", ID)) %>%
-  # 01 and 04 are not clustered
   ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
-  geom_point(aes(col = ID), size = 3) +
-  geom_line(aes(col = ID, group = ID)) +
+  geom_point(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(col = animal), size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(col = animal, group = animal)) +
   geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
     aes(x = eeg_state, y = No_AP / state_length_sum),
     inherit.aes = F,
     alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
   ) +
-  geom_signif(
-    comparisons = list(c("desync", "sync")),
-    map_signif_level = TRUE,
-    test = "wilcox.test",
-    test.args = list(paired = T, alternative = "greater"),
-    margin_top = .1,
-    color = "darkgray"
-  ) +
   ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
     comparisons = list(c("desync", "sync"), c("sync", "desync")),
     method = "wilcox.test", paired = T, 
     method.args = list(alternative = "greater")
-    )
+    ) + 
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    col = "gray", 
+    size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed") +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV120", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+  
+  
 
-# geom_text_repel(
-#   data = . %>% dplyr::filter(eeg_state == "sync"),
-#   aes(label = ID),
-#   direction = "y",
-#   hjust = -1)
+
 ```
 
 
@@ -2280,36 +2286,57 @@ left_join(
     dplyr::group_by(animal, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
-   dplyr::filter(!grepl(pattern = "40", animal)) %>%
   ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
-  geom_point(aes(col = animal), size = 3) +
-  geom_line(aes(col = animal, group = animal)) +
+  geom_point(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    aes(col = animal), 
+    size = 3) +
+  geom_line(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    aes(col = animal, group = animal)
+    ) +
   geom_boxplot(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
     aes(x = eeg_state, y = No_clusters / state_length_sum),
     inherit.aes = F,
     alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
   ) +
-  geom_signif(
-    comparisons = list(c("desync", "sync")),
-    map_signif_level = TRUE,
-    test = "wilcox.test",
-    test.args = list(paired = T, alternative = "less"),
-    margin_top = .1,
-    color = "darkgray"
-  ) +
   ggpubr::stat_compare_means(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
     comparisons = list(c("desync", "sync"), c("sync", "desync")),
     method = "wilcox.test", 
     paired = T, 
     method.args = list(alternative = "less")
-    )
-# facet_wrap(~ clustered)
-
-# geom_text_repel(
-#   data = . %>% dplyr::filter(eeg_state == "sync"),
-#   aes(label = ID),
-#   direction = "y",
-#   hjust = -1)
+    ) +
+  ### adding GV40 as a separate layer (excluded from statistics)
+  geom_point(
+    data = . %>%
+      dplyr::filter(animal == "GV40"),
+    col = "gray", 
+    size = 3,
+    alpha = 0.5
+    ) +
+  geom_line(
+    data = . %>%
+      dplyr::filter(animal == "GV40"),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed"
+    ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(animal == "GV40", eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+  
 ```
 
 
@@ -2329,35 +2356,46 @@ left_join(
     dplyr::group_by(animal, eeg_state) %>%
     dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
 ) %>%
-  dplyr::filter(!grepl(pattern = "31", animal)) %>%
   ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
-  geom_point(aes(col = animal), size = 3) +
-  geom_line(aes(col = animal, group = animal)) +
+  geom_point(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    aes(col = animal), size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    aes(col = animal, group = animal)) +
   geom_boxplot(
+    data = . %>% dplyr::filter(animal != "GV31"),
     aes(x = eeg_state, y = No_AP / state_length_sum),
     inherit.aes = F,
     alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
   ) +
-  geom_signif(
-    comparisons = list(c("desync", "sync")),
-    map_signif_level = TRUE,
-    test = "wilcox.test",
-    test.args = list(paired = T, alternative = "greater"),
-    margin_top = .1,
-    color = "darkgray"
-  ) +
   ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(animal != "GV31"),
     comparisons = list(c("desync", "sync"), c("sync", "desync")),
     method = "wilcox.test", 
     paired = T, 
     method.args = list(alternative = "less")
-    )
+    ) +
+  ### adding GV31 as a separate layer (excluded from statistics)
+  geom_point(
+    data = . %>% dplyr::filter(animal == "GV31"),
+    col = "gray", 
+    size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(animal == "GV31"),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed") +
+   geom_label_repel(
+    data = . %>%
+      dplyr::filter(animal == "GV31", eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
 
-# geom_text_repel(
-#   data = . %>% dplyr::filter(eeg_state == "sync"),
-#   aes(label = ID),
-#   direction = "y",
-#   hjust = -1)
 ```
 
 
