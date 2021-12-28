@@ -1837,6 +1837,8 @@ EEG_ds_df <- purrr::reduce(all_eeg_df, bind_rows)
 
 ### ISI to determine clusters
 
+To find AP clusters ISI histograms were generated. The size of the ISI window was equal to one period of the oscillation. Since AP clusters are phase locked to the cortical slow oscillation their occurrence was expected during this period. The maximum value of the histogram was found in the first and second half of the ISI window (max1 and max2 respectively). The cluster threshold (magenta line) was determined as the minimal value between max1 and the value located half way between max1 and max2 (black line). 
+
 ```{r echo=FALSE, fig.width=10, fig.height= 10, message=FALSE, warning=FALSE}
 
 gg_isi_periods <- lapply(all_eeg_df, function(x) {
@@ -2133,7 +2135,7 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
   ) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
-    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
     method = "wilcox.test", 
     paired = T, 
     method.args = list(alternative = "less"),
@@ -2220,7 +2222,7 @@ EEG_ds_df %>%
   ) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
-    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    comparisons = list(c("desync", "sync")),#, c("sync", "desync")),
     method = "wilcox.test", paired = T, 
     method.args = list(alternative = "greater")
     ) + 
@@ -2275,7 +2277,9 @@ CSD_ds_all <- purrr::reduce(tmp_list, bind_rows)
 ```
 
 
+##Plotting
 
+### Number of clusters before and during cortical inactivation
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 left_join(
@@ -2307,7 +2311,7 @@ left_join(
   ggpubr::stat_compare_means(
     data = . %>%
       dplyr::filter(animal != "GV40"),
-    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
     method = "wilcox.test", 
     paired = T, 
     method.args = list(alternative = "less")
@@ -2371,7 +2375,7 @@ left_join(
   ) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(animal != "GV31"),
-    comparisons = list(c("desync", "sync"), c("sync", "desync")),
+    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
     method = "wilcox.test", 
     paired = T, 
     method.args = list(alternative = "less")
@@ -2541,8 +2545,10 @@ n=7 recordings from n=? animals
 Raw LFP signal was filtered, down-sampled and standardized. The power spectral density of each LFP signal was calculated and the dominant frequency was determined. To find the synchronous and desynchronous periods of the cortical LFP signal the standard deviation of the signal amplitude was calculated in overlapping sliding windows. The size of the sliding window was equal to the length of one cycle the overlap was half a cycle. The threshold for synchronous and desynchronous periods was placed half way between the median and the 25th percentile. The number of clusters was calculated in the synchronous and desynchronous periods and was statistically compared using  Wilcoxon test. 
 
 ### Finding AP clusters
-Action potential clusters were determined by separating the two peaks at the minimum of the bimodal inter-spike interval histograms (ISI). Number of bins of the ISI was determined by the Freedman-Diaconis rule for optimal bin-width, the window size was equal to the length of one cycle of the cortical slow oscillation.
 
+To find AP clusters ISI histograms were generated. Number of bins was determined by the Freedman-Diaconis rule for optimal bin-width and the size of the ISI window was equal to one period of the cortical slow oscillation. Since AP clusters are phase locked to the cortical slow oscillation their occurrence was expected during this period. The maximum value of the histogram was found in the first and second half of the ISI window (max1 and max2 respectively). The cluster threshold was determined as the minimal value between max1 and the value located half way between max1 and max2.
+
+ 
 
 Determine if a cell fires in clusters or not: 
 

@@ -14,7 +14,7 @@ library(lumberjack)
 library(imputeTS)
 
 file_list <- list.files(
-  path = file.path("data", "csd", "csd") ,
+  path = file.path("data") ,
   pattern = "*.mat", full.names = F, recursive = F
 )
 
@@ -328,7 +328,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
 
   # browser()
   #### burst threshold --------
-  ### burst thershold based on ISI peaks in xlim = c(0,1 / first_peak) window, FILTERS DATA INSIDE
+  ### burst threshold based on ISI peaks in xlim = c(0,1 / first_peak) window, FILTERS DATA INSIDE
   ### built in dip test to test ISI uni/multimodality (all ISIs are used)
   source(file.path("supplementary_functions", "BurstThresholdDetect.R"))
 
@@ -399,7 +399,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
       dplyr::mutate(
         ap_peak_times = ap_peaks,
         isi = c(diff(ap_peaks), NA),
-        burst_isi = ifelse(test = (lag(isi > burst_threshold_isi2) & clustered == T), yes = 1, no = 0)
+        burst_isi = ifelse(test = (lag(isi > burst_threshold_isi3) & clustered == T), yes = 1, no = 0)
       )
   ) %>%
     dplyr::mutate(state_number = abs(levels - dplyr::lag(levels, default = 0)) %>% cumsum()) %>%
