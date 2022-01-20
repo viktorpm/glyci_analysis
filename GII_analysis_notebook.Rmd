@@ -1697,11 +1697,15 @@ ggplot(
 # Normalized!!!! Check APC
 ggplot(
   data = APC %>%
-    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
+    dplyr::filter(
+      stim_freq_categ %in% c("1", "10", "20"),
+      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
     dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
+    ungroup() %>% 
     dplyr::group_by(animal_id) %>%
-    mutate(sumnorm_AP = sum_No_APs / max(sum_No_APs)),
+    mutate(sumnorm_AP = sum_No_APs / max(sum_No_APs), maxAP =  max(sum_No_APs)),
   mapping = aes(
     x = stim_number,
     y = sumnorm_AP,
@@ -1717,10 +1721,10 @@ ggplot(
       dplyr::filter(stim_number == 10),
     aes(label = animal_id),
     direction = "y", nudge_x = 1,
-    # hjust = 1,
+    hjust = 1,
     # alpha = .7
   ) +
-  # expand_limits(x = 12) +
+  expand_limits(x = 11) +
   theme(
     legend.position = "none",
     # aspect.ratio = 2/7
