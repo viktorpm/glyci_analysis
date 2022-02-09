@@ -4,6 +4,8 @@
 .Ruserdata
 data/*
 !data/turning
+!data/cortical_stim
+!data/sync_desync
 output_data/
 *.html
 GII_analysis_notebook.nb.html

@@ -1,0 +1,13 @@
+file_name,No_ch,No_AP_unit,No_AP_unit2,No_Stim,samp_rate_lfp,samp_rate_unit,rec_length,No_Trains,train_length_equal,train_length
+GII_13_08_left_PnO_t3_3974_stim1_I10,3,1699,No second unit was detected,310,2e4,2e4,301.2928,No trains were detected,No trains were detected,No trains were detected
+GII2_05_left_PnO_t1_3974_1Hz_10Hz_20Hz,3,1462,No second unit was detected,310,2e4,2e4,299.4345,No trains were detected,No trains were detected,No trains were detected
+GII20_04_left_PnO_t3_4163_stim,3,4768,No second unit was detected,465,2e4,2e4,431.9878,No trains were detected,No trains were detected,No trains were detected
+GII21_06_left_PnO_t2_4197_stim1,3,1084,No second unit was detected,465,2e4,2e4,423.5004,No trains were detected,No trains were detected,No trains were detected
+GV130_03_left_PnO_t1_4046_ctx_stim_1Hz_10Hz,3,425,No second unit was detected,150,2e4,2e4,492.245,No trains were detected,No trains were detected,No trains were detected
+GV130_04_left_PnO_t1_4046_ctx_stim_20Hz,3,121,No second unit was detected,134,2e4,2e4,240.1767,No trains were detected,No trains were detected,No trains were detected
+GV136_11_right_PnO_t2_3945_stim_int10,3,3033,No second unit was detected,116,2e4,2e4,478.2775,No trains were detected,No trains were detected,No trains were detected
+GV136_14_right_PnO_t2_3945_stim_int6,3,1419,No second unit was detected,120,2e4,2e4,220.4884,No trains were detected,No trains were detected,No trains were detected
+GV40_03_4153_ctx_stim,2,14025,No second unit was detected,290,No LFP channel was found,2e4,Cannot be calculated,No trains were detected,No trains were detected,No trains were detected
+GV42_05_4227_ctx_stim,3,540,No second unit was detected,230,2e4,2e4,358.6453,No trains were detected,No trains were detected,No trains were detected
+GV47_04_4407_ctx_stim_2,3,107,No second unit was detected,210,2e4,2e4,407.53875,No trains were detected,No trains were detected,No trains were detected
+GII_26_15_left_PnO_t5_4246_stim,3,4152,No second unit was detected,465,2e4,2e4,431.4813,No trains were detected,No trains were detected,No trains were detected
