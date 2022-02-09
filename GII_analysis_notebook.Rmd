@@ -2416,7 +2416,57 @@ left_join(
 ```
 
 
+### Autocorrelogram
 
+```{r fig.height=25, fig.width=10, message=FALSE, warning=FALSE}
+### AUTOCORRELOGRAM ------------------------------------------------------------
+
+baseline_reltimes <- lapply(baseline_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "sync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "sync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+
+})
+
+
+csd_reltimes <- lapply(csd_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "desync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "desync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+
+})
+
+### y axis should be divided by the length of the sync/desync period
+bind_rows(baseline_reltimes, csd_reltimes) %>% 
+  dplyr::filter(time > -1, time < 1) %>% 
+  ggplot(mapping = aes(x=time)) +
+  geom_histogram(bins = 200) +
+  facet_grid(animal~eeg_state, scales = "free_y") +
+  global_facet_theme
+  
+  
+
+
+# all_eeg_df[[7]] %>% 
+#   dplyr::filter(AP == 1, eeg_state == "sync") %>% 
+#   pull(ap_peak_times) %>% 
+#   RTM_creator() %>% 
+#   reshape2::melt() %>%  
+#   dplyr::mutate(eeg_state = "sync") %>% 
+#   transmute(time = value, eeg_state = eeg_state) %>% 
+#   dplyr::filter(time > -1, time < 1) %>%
+#   ggplot(mapping = aes(x=time)) +
+#   geom_histogram(bins = 150)
+
+```
 
 
 <br><br><br><br><br><br>
