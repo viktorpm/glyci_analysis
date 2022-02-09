@@ -1737,6 +1737,26 @@ ggplot(
   ylab("Number of APs")
 ```
 
+
+Range of the number of APs in the stimulus train 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+APC %>%
+    dplyr::filter(
+      stim_freq_categ %in% c("1", "10", "20"),
+      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      stim_number < 11) %>%
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
+    ungroup() %>% 
+    dplyr::group_by(animal_id) %>%
+    summarise(min_AP = min(sum_No_APs), max_AP =  max(sum_No_APs))
+```
+
+
+
+
+
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, out.width='70%', fig.align='center'}
 ggplot(
   data = APC %>%
