@@ -2465,11 +2465,17 @@ csd_reltimes <- lapply(csd_df, function(x) {
 })
 
 ### y axis should be divided by the length of the sync/desync period
-bind_rows(baseline_reltimes, csd_reltimes) %>% 
-  dplyr::filter(time > -1, time < 1) %>% 
-  ggplot(mapping = aes(x=time)) +
+bind_rows(baseline_reltimes, csd_reltimes) %>%
+  dplyr::filter(time > -1, time < 1) %>%
+  ggplot(mapping = aes(x = time)) +
   geom_histogram(bins = 200) +
-  facet_grid(animal~eeg_state, scales = "free_y") +
+  facet_grid(animal ~ eeg_state, scales = "free_y", labeller = labeller(
+    eeg_state =
+      c(
+        "desync" = "CSD",
+        "sync" = "baseline"
+      )
+  )) +
   global_facet_theme
   
   

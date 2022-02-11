@@ -69,7 +69,7 @@ pre { /* Code block - determines code spacing between lines */
 ```{r setup, include=FALSE}
 ### cheks all the used libraries in the project. Removes duplicates
 library(tidyverse)
-
+library(rmarkdown)
 
 ### list of libraries mentioned in the R scripts of the project
 liblist <- map(
