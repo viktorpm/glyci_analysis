@@ -744,6 +744,73 @@ ggplot(
   ) +
   facet_wrap(~pinch)
 ```
+
+
+```{r, fig.width=10 ,echo=FALSE, warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    dplyr::filter(
+      control == F,
+      stim_cond == "b" | stim_cond == "d" | stim_cond == "a"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+    y = MFR
+  )
+) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  ggtitle("Pinch", ) +
+  xlab("Recording period") +
+  ylim(0, 35) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    aes(shape = pinch),
+    #shape = 21,
+    col = "#EB8104",
+    # color = "white",
+    size = 4,position = "dodge"
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id),
+    color = "#EB8104"
+  ) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "a"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = 0.15,
+    direction = "y",
+    hjust = -0.5,
+    segment.size = .2
+  ) +
+  # geom_signif(
+  #   comparisons = list(c("b", "d"), c("d","a")),
+  #   map_signif_level = TRUE,
+  #   test = "wilcox.test",
+  #   test.args = c(paired = T),
+  #   color = "gray",
+  # ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("b", "d"))
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("d", "a"))
+  ) 
+```
+
 <br><br>
 
 ### Strength of inhibition
