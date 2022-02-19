@@ -769,9 +769,9 @@ ggplot(
   ylim(0, 35) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   geom_point(
-    aes(shape = pinch),
+    aes(shape = pinch, col = position),
     #shape = 21,
-    col = "#EB8104",
+    # col = "#EB8104",
     # color = "white",
     size = 4,position = "dodge"
   ) +
