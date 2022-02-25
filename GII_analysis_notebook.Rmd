@@ -777,8 +777,7 @@ ggplot(
   ) +
   # stroke = 2) +
   geom_line(
-    aes(group = cell_id),
-    color = "#EB8104"
+    aes(group = cell_id,col = position)
   ) +
   geom_label_repel(
     data = TO_PLOT %>%
