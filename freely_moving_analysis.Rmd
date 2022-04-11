@@ -124,7 +124,7 @@ ylim_mm <- c(0, 720 / scale)
 
 
 
-selected_animal <- "GIIFM23b" # "GIIFM14b"#
+selected_animal <- "GIIFM20b" # "GIIFM14b"#
 
 `%!in%` <- Negate(`%in%`)
 ```
