@@ -157,7 +157,7 @@ The global angle threshold used in this file is `r ang_threshold`. Grater rotati
 ## Loading stimulus times (frames)
 
 
-```{r}
+```{r echo = FALSE}
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
   as_tibble() %>%
   mutate(
@@ -181,7 +181,7 @@ stims
 ## Loading coordinates
 
 
-```{r message=F}
+```{r message=F, echo = FALSE}
 coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
   as_tibble() %>%
   mutate(
@@ -317,10 +317,12 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
 
 coords
 ```
-In the "coords_all" table all the data can be found.
-Based on preliminary exploration of the data only animals with similar stimulus parameters were selected for further analysis (coords table)
 
-```{r}
+```{r echo = FALSE}
+# In the "coords_all" table all the data can be found.
+# Based on preliminary exploration of the data only animals with similar stimulus parameters were selected for further analysis (coords table)
+
+
 # coords %>%
 #   dplyr::group_by(animal,session) %>%
 #   summarise(stim_length)
@@ -367,7 +369,7 @@ cols <- gg_color_hue(n)
 The tracking software occasionally lost the tracked points. To fill those gaps linear interpolation was applied. The figure below shows the interpolated values in red.
 Note that only every 5th frame was used for the tracking and for the later analysis except for calculating the rotation angle.
 
-```{r fig.width=10, fig.height=10, warning=FALSE}
+```{r fig.width=10, fig.height=10, warning=FALSE, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -433,7 +435,7 @@ coords %>%
   global_facet_theme
 ```
 
-```{r warning=FALSE, fig.width=10, fig.height=10}
+```{r warning=FALSE, fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -482,7 +484,7 @@ coords %>%
 
 Speed of the animal in 1 sec windows. Darker colors represent slower speed. 
 
-```{r message=FALSE, fig.width=10, fig.height=10}
+```{r message=FALSE, fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(animal == selected_animal, body_part == "center") %>%
   group_by(session, sec_counter) %>%
@@ -504,7 +506,7 @@ coords %>%
 
 Cumulative distribution functions and histograms of the difference between consecutive X and Y coordinates and calculated traveled distances across frames. Most of the values are realistic but there are some big jumps probably due to errors in the tracking. The unrealistically big jumps were excluded from the analysis.
 
-```{r, message=F, warning=F,  fig.width=10,fig.height=25, message=FALSE}
+```{r, message=F, warning=F,  fig.width=10,fig.height=25, message=FALSE, echo = FALSE}
 coords %>%
   # dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = X_diff)) +
@@ -528,7 +530,7 @@ coords %>%
 ```
 
 
-```{r message=F, warning=F, fig.width=10, fig.height=25}
+```{r message=F, warning=F, fig.width=10, fig.height=25, echo = FALSE}
 coords %>%
   # dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = X_diff)) +
@@ -553,7 +555,7 @@ coords %>%
 
 Distribution of distance
 
-```{r message=F, warning=F, fig.width=10, fig.height=25}
+```{r message=F, warning=F, fig.width=10, fig.height=25, echo = FALSE}
 coords %>%
   # dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
   ggplot(mapping = aes(x = d_mm)) +
@@ -570,7 +572,7 @@ Plotting the traveled distance based on one of the three tracked body parts duri
 
 Center
 
-```{r fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -590,7 +592,7 @@ coords %>%
 
 Head
 
-```{r fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -610,7 +612,7 @@ coords %>%
 
 Tail
 
-```{r fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -647,7 +649,7 @@ group_colors2 <- c("no stim" = "gray30", "right before" = line_cols[1], "stim" =
 
 
 
-```{r message=F, fig.width=12, warning=F}
+```{r message=F, fig.width=12, warning=F, echo = FALSE}
 
 coords %>%
   dplyr::filter(
@@ -669,7 +671,7 @@ coords %>%
 
 Center
 
-```{r fig.width=12, fig.height=12, warning=FALSE}
+```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -694,7 +696,7 @@ coords %>%
 Head
 
 
-```{r fig.width=12, fig.height=12, warning=F}
+```{r fig.width=12, fig.height=12, warning=F, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -720,7 +722,7 @@ coords %>%
 Tail
 
 
-```{r fig.width=12, fig.height=12, warning=FALSE}
+```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -777,7 +779,7 @@ The same data is shown on the plots with different groupings: <br>
 + stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
 
 
-```{r message=F, fig.width=12, warning=F}
+```{r message=F, fig.width=12, warning=F, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -811,7 +813,7 @@ coords %>%
   global_facet_theme
 ```
 
-```{r message=F, fig.width=14, fig.height=5, warning=F}
+```{r message=F, fig.width=14, fig.height=5, warning=F, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -860,7 +862,7 @@ The same data is shown on the plots with different groupings: <br>
 + stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
 
 
-```{r message=F, fig.width=12, warning=F}
+```{r message=F, fig.width=12, warning=F, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -896,7 +898,7 @@ coords %>%
 
 
 
-```{r message=F, fig.width=14, fig.height=5, warning=F}
+```{r message=F, fig.width=14, fig.height=5, warning=F, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -1021,7 +1023,7 @@ vectors %>%
 
 #### First 10 head - center vectors
 
-```{r}
+```{r echo = FALSE ,message=FALSE, warning=FALSE}
 coords %>%
   dplyr::filter(animal == selected_animal) %>%
   dplyr::group_by(body_part) %>%
@@ -1057,7 +1059,7 @@ coords %>%
   )
 ```
 
-```{r}
+```{r eval=FALSE}
 coords %>%
   dplyr::filter(animal == "GIIFM19b") %>%
   dplyr::group_by(body_part) %>%
@@ -1077,7 +1079,7 @@ In the control animals (34, 35, 36, 37) there are unrealistically large angles b
 mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_treshold, 0, signed_angle_corrected))
 
 
-```{r message=FALSE, fig.width=10, fig.height=10, warning=FALSE}
+```{r message=FALSE, fig.width=10, fig.height=10, warning=FALSE, echo = FALSE}
 coords %>%
   dplyr::filter(animal == selected_animal, body_part != "tail") %>%
   dplyr::filter(body_part != "tail") %>%
@@ -1112,7 +1114,7 @@ coords %>%
 
 #### Signed angles 
 
-```{r message=F, warning=F}
+```{r message=F, warning=F, echo = FALSE}
 
 angles <- coords %>%
   dplyr::filter(
@@ -1178,7 +1180,7 @@ corrected_angles %>%
 ```
 
 
-```{r}
+```{r include=FALSE}
 coords %>%
   dplyr::filter(animal == selected_animal, session == "0", body_part != "tail") %>%
   dplyr::group_by(body_part) %>%
@@ -1257,7 +1259,7 @@ corrected_angles %>%
 # Population analysis
 
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, echo = FALSE}
 corrected_angles_population <- coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1313,7 +1315,7 @@ corrected_angles_population %>%
 
 Mean traveled distance across sessions, by animals
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
 coords %>%
   dplyr::filter(
@@ -1355,7 +1357,7 @@ coords %>%
 Mean traveled distance across sessions, by animals (control)
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
 coords %>%
   dplyr::filter(
@@ -1399,7 +1401,7 @@ coords %>%
 Mean rotation angle by session
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
@@ -1437,7 +1439,7 @@ corrected_angles_population %>%
 Mean rotation angle by session (control)
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
@@ -1473,7 +1475,7 @@ corrected_angles_population %>%
 Mean rotation angle by intensity
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 corrected_angles_population %>%
   dplyr::filter(
     animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b", "GIIFM17b"),
@@ -1513,7 +1515,7 @@ corrected_angles_population %>%
 Mean rotation angle by intensity (control)
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 corrected_angles_population %>%
   dplyr::filter(
     animal %in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b"),
@@ -1550,7 +1552,7 @@ corrected_angles_population %>%
 ```
 
 
-```{r message=FALSE, fig.height=8, fig.width=10}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 corrected_angles_population %>%
   dplyr::filter(
     animal %!in% c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b", "GIIFM14b"),
@@ -1593,7 +1595,7 @@ corrected_angles_population %>%
 Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus (green area) photoactivation initiates movement, if it is smaller (red area) it slows down the animal.
 
 
-```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%"}
+```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
 coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -1631,7 +1633,7 @@ coords %>%
 
 Mean rotation angle before stimulus vs during stimulus (starting or stopping signal).
 
-```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%"}
+```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
 
 corrected_angles_population %>%
   dplyr::filter(
