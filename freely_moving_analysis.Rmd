@@ -124,7 +124,7 @@ ylim_mm <- c(0, 720 / scale)
 
 
 
-selected_animal <- "GIIFM18b" # "GIIFM14b"#
+selected_animal <- "GIIFM23b" # "GIIFM14b"#
 
 `%!in%` <- Negate(`%in%`)
 ```
@@ -194,43 +194,83 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
     #   no = session
     # )
   ) %>%
-  full_join(stims) %>%
+  full_join(stims) %>% 
   dplyr::group_by(animal, session) %>%
-  mutate(grp = cumsum(!is.na(stim_number))) %>%
-  dplyr::group_by(grp) %>%
+  mutate(grp = cumsum(!is.na(stim_number))) %>% 
+  dplyr::group_by(grp) %>% 
   mutate(
     stim = F,
     stim = replace(stim, first(timing) == "start" | timing == "end", T)
   ) %>%
-  ungroup() %>%
-  group_by(animal, session, stim) %>%
-  fill(stim_number) %>%
-  fill(intensity) %>%
-  fill(stim_freq) %>%
+  
+  # ungroup() %>%
+  # group_by(animal, session, stim) %>%
+  # fill(stim_number) %>%
+  # fill(intensity) %>%
+  # fill(stim_freq) %>% 
+  # fill(stim_side) %>% 
   select(-grp, -timing, -stim_length) %>%
-  # , -animal
+  
   ungroup() %>%
   group_by(animal, session) %>%
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
     stim_categ = case_when(
       stim == T ~ "stim",
-      lead(stim, n = 252) == T ~ "before stim",
-      lag(stim, n = 252) == T ~ "after stim",
+      lead(stim, n = 250) == T ~ "before stim",
+      lag(stim, n = 250) == T ~ "after stim",
       stim == F ~ "no stim"
     ),
-    stim_block = ifelse(stim_categ == "no stim", F, T)
-  ) %>%
-  # repeating stim_number, intensity and stim_freq values in the whole stim_block
+    
+    ### rigth before and after stim (1s)
+    stim_categ2 = case_when(
+      stim == T ~ "stim",
+      lead(stim, n = 30) == T ~ "right before",
+      lag(stim, n = 30) == T ~ "right after ",
+      stim == F ~ "no stim"
+    ),
+    
+    ### shift values to the beginning of the stimulus block to be able to fill missing values in the next step
+    stim_block = ifelse(stim_categ == "no stim", F, T),
+    stim_number = lead(stim_number, n = 250),
+    intensity = lead(intensity, n = 250),
+    stim_freq = lead(stim_freq, n = 250),  
+    stim_side = lead(stim_side, n = 250),  
+    
+    ### rigth before and after stim (1s)
+    stim_block2 = ifelse(stim_categ2 == "no stim", F, T),
+    stim_number2 = lead(stim_number, n = 30),
+    intensity2 = lead(intensity, n = 30),
+    stim_freq2 = lead(stim_freq, n = 30),  
+    stim_side2 = lead(stim_side, n = 30),  
+    
+  ) %>% 
+  
+  ungroup() %>%
   group_by(animal, session, stim_block) %>%
-  fill(stim_number, .direction = "up") %>%
-  fill(intensity, .direction = "up") %>%
-  fill(stim_freq, .direction = "up") %>%
-  fill(stim_side, .direction = "up") %>%
-  fill(stim_number, .direction = "down") %>%
-  fill(intensity, .direction = "down") %>%
-  fill(stim_freq, .direction = "down") %>%
-  fill(stim_side, .direction = "down") %>%
+  fill(stim_number) %>%
+  fill(intensity) %>%
+  fill(stim_freq) %>%
+  fill(stim_side) %>% 
+  
+  ### rigth before and after stim (1s)
+  fill(stim_number2) %>%
+  fill(intensity2) %>%
+  fill(stim_freq2) %>%
+  fill(stim_side2) %>% 
+  
+  
+  # # repeating stim_number, intensity and stim_freq values in the whole stim_block
+  # group_by(animal, session, stim_block) %>% 
+  # fill(stim_number, .direction = "up") %>%  #### ELBASSZA A STIM NUMBERT!!!! ha a lead es a lag hosszabb mint a valodi stim length!! 250 vagy 252 nem mindegy
+  # fill(intensity, .direction = "up") %>%
+  # fill(stim_freq, .direction = "up") %>%
+  # fill(stim_side, .direction = "up") %>%
+  # fill(stim_number, .direction = "down") %>%
+  # fill(intensity, .direction = "down") %>%
+  # fill(stim_freq, .direction = "down") %>%
+  # fill(stim_side, .direction = "down") %>%
+    
   # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -600,7 +640,7 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    session == "4",
+    session == "2",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
@@ -712,6 +752,108 @@ coords %>%
 
 
 
+### Mean traveled distance by individual stimuli within session
+
+
+```{r message=F, fig.width=10, warning=F}
+coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    stim_categ2 != "no stim",
+    intensity %in% c(1, 5, 10),
+    # session == "4",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
+  ) %>% 
+  dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
+  
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = mean_d_mm
+    )
+  ) +
+  geom_point(aes(fill = as.factor(intensity)), shape = 21, size = 4) +
+  facet_wrap(~stim_number) +
+  geom_line(aes(group = intensity)) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  labs(
+    fill = "Intensity",
+    x = "Stimulus period",
+    y = "Mean traveled distance") +
+  global_facet_theme
+```
+
+```{r message=F, fig.width=10, warning=F}
+coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    stim_categ != "no stim",
+    intensity %in% c(1, 5, 10),
+    # session == "4",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
+  ) %>% 
+  dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
+  
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = mean_d_mm
+    )
+  ) +
+  geom_point(aes(fill = stim_number), shape = 21, size = 4) +
+  facet_wrap(~intensity) +
+  geom_line(aes(group = stim_number)) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  labs(
+    fill = "Stimulus number",
+    x = "Stimulus period",
+    y = "Mean traveled distance") +
+  global_facet_theme
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## Calculating angles
@@ -780,10 +922,10 @@ vectors %>%
   ylim(500, 525)
 ```
 
-## Real data (coords tibble)
+### Real data (coords tibble)
 
 
-### First three hed- center vectors
+#### First 10 head - center vectors
 
 ```{r}
 coords %>%
@@ -832,7 +974,7 @@ coords %>%
 
 
 
-### Distribution of angles
+#### Distribution of angles
 
 Because of the periodicity of tangent function unrealistic angles were introduced (jumps in data). Angles greater than 180 or smaller than -180 were subtracted from 360 and -360 respectively to get the correct angle.
 
@@ -874,7 +1016,7 @@ coords %>%
   global_facet_theme
 ```
 
-### Signed angles 
+#### Signed angles 
 
 ```{r message=F, warning=F}
 
@@ -974,7 +1116,7 @@ coords %>%
 ```
 
 
-### Plotting cumulative angles
+#### Plotting cumulative angles
 
 
 Cumulative signed rotation angles during the sessions. 
