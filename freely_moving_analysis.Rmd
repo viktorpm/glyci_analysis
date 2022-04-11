@@ -635,7 +635,20 @@ coords %>%
 Plotting the mean traveled distance calculated in a rolling window (1 sec). The mean was calculated separately during stimulus (rolling window restarts with the beginning of stimuli). Colors represent different periods of the recording (no-stimulus, before stimulus, during stimulus, after stimulus). 
 
 
-```{r message=F, fig.width=10, warning=F}
+Defining line colors
+
+```{r}
+line_cols <- gg_color_hue(3)
+
+group_colors <- c("no stim" = "gray30", "before stim" = line_cols[1], "stim" = line_cols[3], "after stim" = line_cols[2])
+group_colors2 <- c("no stim" = "gray30", "right before" = line_cols[1], "stim" = line_cols[3], "right after" = line_cols[2])
+
+```
+
+
+
+```{r message=F, fig.width=12, warning=F}
+
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -650,12 +663,13 @@ coords %>%
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
   geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)"))
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)")) +
+  scale_color_manual(values = group_colors)
 ```
 
 Center
 
-```{r fig.width=10, fig.height=10, warning=FALSE}
+```{r fig.width=12, fig.height=12, warning=FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -672,6 +686,7 @@ coords %>%
   facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label, " mW"))) +
   ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)")) +
+  scale_color_manual(values = group_colors) +
   global_facet_theme
 ```
 
@@ -679,7 +694,7 @@ coords %>%
 Head
 
 
-```{r fig.width=10, fig.height=10, warning=F}
+```{r fig.width=12, fig.height=12, warning=F}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -696,6 +711,7 @@ coords %>%
   facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label, " mW"))) +
   ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(head)")) +
+  scale_color_manual(values = group_colors) +
   global_facet_theme
 ```
 
@@ -704,7 +720,7 @@ coords %>%
 Tail
 
 
-```{r fig.width=10, fig.height=10, warning=FALSE}
+```{r fig.width=12, fig.height=12, warning=FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -721,6 +737,7 @@ coords %>%
   facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label, " mW"))) +
   ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(tail)")) +
+  scale_color_manual(values = group_colors) +
   global_facet_theme
 ```
 
@@ -750,17 +767,22 @@ coords %>%
 
 
 
+### Mean traveled distance by individual stimuli within session (full length before and after the stimulus)
+
+Plotting traveled distance during individual stimuli (5 or 6 repeats) within session. Traveled distance is averaged through the full duration of the stimulus (~8s) and similar "before stimulus" and "after stimulus" duration. <br>
+
+The same data is shown on the plots with different groupings: <br>
+
++ intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
++ stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
 
 
-### Mean traveled distance by individual stimuli within session
-
-
-```{r message=F, fig.width=10, warning=F}
+```{r message=F, fig.width=12, warning=F}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    stim_categ2 != "no stim",
+    stim_categ != "no stim",
     intensity %in% c(1, 5, 10),
     # session == "4",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
@@ -789,7 +811,7 @@ coords %>%
   global_facet_theme
 ```
 
-```{r message=F, fig.width=10, warning=F}
+```{r message=F, fig.width=14, fig.height=5, warning=F}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -826,16 +848,88 @@ coords %>%
 
 
 
+### Mean traveled distance by individual stimuli within session (1s before and after the stimulus)
+
+
+Plotting traveled distance during individual stimuli (5 or 6 repeats) within session. Traveled distance is averaged through the full duration of the stimulus (~8s) but only 1s "before stimulus" and 1s "after stimulus" duration. <br>
+
+
+The same data is shown on the plots with different groupings: <br>
+
++ intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
++ stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
+
+
+```{r message=F, fig.width=12, warning=F}
+coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    stim_categ2 != "no stim",
+    intensity2 %in% c(1, 5, 10),
+    # session == "4",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
+  ) %>% 
+  dplyr::group_by(animal, intensity2, stim_number2, stim_categ2) %>%
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
+  
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ2, "right before", "stim", "right after"),
+      y = mean_d_mm
+    )
+  ) +
+  geom_point(aes(fill = as.factor(intensity2)), shape = 21, size = 4) +
+  facet_wrap(~stim_number2) +
+  geom_line(aes(group = intensity2)) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  labs(
+    fill = "Intensity",
+    x = "Stimulus period",
+    y = "Mean traveled distance") +
+  global_facet_theme
+```
 
 
 
+```{r message=F, fig.width=14, fig.height=5, warning=F}
+coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    stim_categ2 != "no stim",
+    intensity2 %in% c(1, 5, 10),
+    # session == "4",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
+  ) %>% 
+  dplyr::group_by(animal, intensity2, stim_number2, stim_categ2) %>%
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
 
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
+  
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ2, "right before", "stim", "right after"),
+      y = mean_d_mm
+    )
+  ) +
+  geom_point(aes(fill = stim_number2 %>% as.factor()), shape = 21, size = 4) +
+  facet_wrap(~intensity2) +
+  geom_line(aes(group = stim_number2)) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  labs(
+    fill = "Stimulus number",
+    x = "Stimulus period",
+    y = "Mean traveled distance") +
+  global_facet_theme
 
-
-
-
-
-
+```
 
 
 
