@@ -20,11 +20,30 @@ fontsize: 12pt
 always_allow_html: yes
 header-includes:
    - \usepackage{animate}
-   
----
----
+
+params:
+  selected_animal: "GIIFM37b"
 
 
+
+knit: (
+  function (inputFile, encoding) {
+    
+    
+    rmarkdown::render(  
+      input = inputFile,
+      encoding = encoding,
+      output_file = file.path(
+        "notebook_html", 
+        paste0("freely_moving_analysis_", 
+        rmarkdown::yaml_front_matter(inputFile)$params$selected_animal ,
+         ".html")
+        ),
+      envir = globalenv()
+      )
+    }
+  )
+---
 
 
 <style type="text/css">
@@ -63,7 +82,6 @@ pre { /* Code block - determines code spacing between lines */
     font-size: 14px;
 }
 </style>
-
 
 
 ```{r setup, include=FALSE}
@@ -121,13 +139,13 @@ global_facet_theme <- theme(
 xlim_mm <- c(0, 1280 / scale)
 ylim_mm <- c(0, 720 / scale)
 
-
-
-
-selected_animal <- "GIIFM20b" # "GIIFM14b"#
+selected_animal <- params$selected_animal
 
 `%!in%` <- Negate(`%in%`)
+
 ```
+
+
 
 
 # Loading and orginising data
