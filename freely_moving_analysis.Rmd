@@ -165,7 +165,7 @@ These are defined in the "setup" chunk <br>
 <br>
 
 **Current animal**: `r selected_animal`  
-For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used.
+For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used. <br>
 The global angle threshold used in this file is `r ang_threshold`. Grater rotation angles between consecutive frames are replaced by zero
 
 **Control animals**: GIIFM34b, GIIFM35b, GIIFM36b, GIIFM37b
@@ -312,6 +312,8 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
     )
   ) %>%
   dplyr::group_by(animal, session, body_part) %>%
+  
+  ### this block calculates distances and speed across frames
   dplyr::mutate(
     # X_interp = zoo::na.approx(X),
     # Y_interp = zoo::na.approx(Y),
@@ -319,6 +321,16 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
     Y_interp = imputeTS::na_interpolation(Y) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    
+    
+    
+    ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers
+    ### these are replaced by 0 (the animal did not change position between those frames)
+    X_diff = ifelse(abs(X_diff) > 20, yes = 0, no = X_diff), 
+    Y_diff = ifelse(abs(Y_diff) > 20, yes = 0, no = Y_diff), 
+    
+    
+    
     d = sqrt(X_diff^2 + Y_diff^2),
     d_mm = d / scale,
     speed_instant = d_mm / time_res,
@@ -329,10 +341,12 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   group_by(animal, session, body_part, sec_counter) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
   ungroup() %>%
-  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
+  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim")) 
+  
+  
+  
 
-
-
+ 
 coords
 ```
 
@@ -588,6 +602,122 @@ coords %>%
 
 Plotting the traveled distance based on one of the three tracked body parts during stimulus and non-stimulus periods at the rate of 6 data point/sec. 
 
+```{r fig.width=15, fig.height=8, echo = FALSE}
+plt1 <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    # frame %% datapoint_to_plot == 0
+  ) %>%
+  dplyr::slice(1:21) %>%
+  dplyr::arrange(frame) %>% ### to be used with geom_path
+  ggplot(
+    mapping = aes(x = X_interp, y = Y_interp)
+  ) +
+  geom_text(
+    aes(
+      color = frame %>% as.factor(),
+      label = frame
+    ),
+    size = 6
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[1], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[1]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[2], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[2]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_path(col = "gray", linetype = "dashed") +
+  geom_label_repel(
+    data = . %>% dplyr::slice(1:5),
+    aes(
+      x = X_interp + X_diff / 2,
+      y = Y_interp + Y_diff / 2,
+      label = d %>% round(4)
+    ),
+    direction = "x",
+    nudge_x = -.7
+  ) +
+  theme(legend.position = "none")
+
+
+plt2 <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    # X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  # recalculates distances after frames were removed
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>%
+  dplyr::slice(1:5) %>%
+  dplyr::arrange(frame) %>% ### to be used with geom_path
+  ggplot(
+    mapping = aes(x = X_interp, y = Y_interp)
+  ) +
+  geom_text(
+    aes(
+      color = frame %>% as.factor(),
+      label = frame
+    ),
+    size = 6
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[1], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[1]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[2], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[2]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_path(col = "gray", linetype = "dashed") +
+  geom_label_repel(
+    data = . %>% dplyr::slice(1:4),
+    aes(
+      x = X_interp + X_diff / 2,
+      y = Y_interp + Y_diff / 2,
+      label = d %>% round(4)
+    ),
+    direction = "x",
+    nudge_x = -.7
+  ) +
+  theme(legend.position = "none")
+
+library(cowplot)
+
+cowplot::plot_grid(plt1, plt2, ncol = 2)
+
+```
+
+
+
+
+
+
 Center
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
@@ -595,9 +725,24 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "center",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    #X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  # recalculates distances after frames were removed
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>% 
+  dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>% 
+  
+  
+  
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
@@ -674,9 +819,23 @@ coords %>%
     animal == selected_animal,
     body_part == "center",
     session == "2",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    # X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  # recalculates distances after frames were removed
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>% 
+  #dplyr::filter(X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20) %>% 
+  
+  
   dplyr::group_by(stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) %>%
   ggplot(aes(x = rec_time, y = d_mm)) +
@@ -810,10 +969,6 @@ coords %>%
   ) %>% 
   dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
   dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
-
-  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
-  
-  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
@@ -845,9 +1000,6 @@ coords %>%
   dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
   dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
 
-  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = 30, fill = NA)) 
-  
-  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
