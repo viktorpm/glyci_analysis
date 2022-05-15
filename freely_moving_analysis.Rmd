@@ -36,7 +36,9 @@ knit: (
       output_file = file.path(
         "notebook_html", 
         paste0("freely_moving_analysis_", 
-        rmarkdown::yaml_front_matter(inputFile)$params$selected_animal ,
+        rmarkdown::yaml_front_matter(inputFile)$params$selected_animal,
+        "_",
+        Sys.Date(),
          ".html")
         ),
       envir = globalenv()
