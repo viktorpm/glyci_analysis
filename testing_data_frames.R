@@ -115,3 +115,25 @@ coords %>%
   # group_by(animal) %>% 
   # summarise(unique(intensity) %>% na.omit() %>% length())
   
+
+
+
+### testing mouse size
+
+
+coords %>% 
+  #group_by(animal, session) %>% 
+  dplyr::mutate(
+    hc_x = abs(head1-center1),
+    hc_y = abs(head2-center2),
+    ct_x = abs(center1-tail1),
+    ct_y = abs(center2-tail2)
+  ) %>% 
+  ggplot(mapping = aes(x = ct_y)) +
+  geom_histogram() +
+  scale_y_log10() +
+  facet_wrap(~animal)
+  
+  
+  
+  
