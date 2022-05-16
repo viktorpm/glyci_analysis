@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM21b"
+  selected_animal: "GIIFM24b"
 
 
 
@@ -422,7 +422,7 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   # 
   #   
   # ) %>% 
-  # dplyr::filter(animal == "GIIFM21b", session == 2 ) %>%
+  # dplyr::filter(animal == "GIIFM21b", session == 3, stim_number == 3) %>%
   # View()
   
   
@@ -447,7 +447,7 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   # fill(X) %>% 
   # fill(Y) %>% 
   # ungroup() %>% 
-  # dplyr::filter(animal == "GIIFM21b", session == 2) %>% View()
+  # dplyr::filter(animal == "GIIFM21b", session == 3, stim_number == 3) %>% View()
   
   dplyr::group_by(animal, session, body_part) %>%
   
@@ -671,7 +671,7 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     stim == T,
-    frame %% 10 == 0
+    frame %% 15 == 0
   ) %>%
   ggplot(
     mapping = aes(x = X_interp / scale, y = Y_interp / scale, label = frame)
@@ -709,6 +709,37 @@ coords %>%
   ylab("Y position [mm]") +
   global_facet_theme
 ```
+
+
+
+```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
+
+plt_xpos <- coords %>%
+  dplyr::filter(animal == selected_animal) %>% 
+  ggplot(mapping = aes(x = rec_time, y = X %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("X position") +
+  facet_wrap( ~ session, ncol = 1) +
+  ggtitle("X position")
+
+
+
+plt_ypos <- coords %>%
+  dplyr::filter(animal == selected_animal) %>%
+  ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("Y position") +
+  facet_wrap( ~ session, ncol = 1) +
+  ggtitle("Y position")
+
+cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
+
+```
+
+
+
 
 
 ## Plotting speed in a 1 sec (`r fps` frames) window
