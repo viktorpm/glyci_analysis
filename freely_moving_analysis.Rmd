@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM14b"
+  selected_animal: "GIIFM20b"
 
 
 
@@ -457,7 +457,7 @@ lengths <- coords %>%
   group_by(animal, session, stim_number) %>% 
   count(stim_categ) 
 
-# lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "stim") %>% View()
+# lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
 ```
 
 
@@ -801,7 +801,27 @@ coords %>%
 
 Plotting the traveled distance based on one of the three tracked body parts during stimulus and non-stimulus periods at the rate of 6 data point/sec. 
 
-```{r fig.width=15, fig.height=8, echo = FALSE}
+```{r fig.width=10, fig.asp=1, echo = FALSE}
+
+plt_xlim <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    # frame %% datapoint_to_plot == 0
+  ) %>%
+  dplyr::slice(1:11) %>% 
+  pull(X_interp) %>% range() + c(-1,1)
+
+plt_ylim <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    # frame %% datapoint_to_plot == 0
+  ) %>%
+  dplyr::slice(1:11) %>% 
+  pull(Y_interp) %>% range() + c(-1,1)
+
+
 plt1_path <- coords %>%
   dplyr::filter(
     animal == selected_animal,
@@ -845,7 +865,10 @@ plt1_path <- coords %>%
     direction = "x",
     nudge_x = -.7
   ) +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  xlim(plt_xlim) +
+  ylim(plt_ylim) +
+  coord_fixed(ratio = 1)
 
 
 plt2_path <- coords %>%
@@ -903,7 +926,10 @@ plt2_path <- coords %>%
     direction = "x",
     nudge_x = -.7
   ) +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  xlim(plt_xlim) +
+  ylim(plt_ylim) +
+  coord_fixed(ratio = 1)
 
 library(cowplot)
 
