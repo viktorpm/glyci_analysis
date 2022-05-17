@@ -132,7 +132,7 @@ around_stim_length <- fps * 8
 
 time_res <- 1 / fps ### time between frames
 ang_threshold <- 90
-mouse_speed_mps <- 3.3 
+mouse_speed_mps <- 3.3
 
 
 
@@ -163,16 +163,14 @@ control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
 ### removing junk animals from the data
 
 RawDataFilter <- function(df) {
-  #browser()
+  # browser()
   df %>%
     dplyr::filter(
       stringr::str_detect(animal, pattern = "b")
-    
-    ) %>% 
-    as_tibble() %>% return()
+    ) %>%
+    as_tibble() %>%
+    return()
 }
-
-
 ```
 
 
@@ -207,27 +205,24 @@ The global angle threshold used in this file is `r ang_threshold`. Grater rotati
 
 ```{r echo = FALSE}
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
-  as_tibble() %>% 
-  
+  as_tibble() %>%
   ### filter junk data
   dplyr::filter(
     stringr::str_detect(animal, pattern = "b")
   ) %>%
-  
   ### creating unique session IDs
   mutate(
     intensity = paste0(intensity, " mW"),
-    s2 = lag(session,default = "1"),
-    s3 = ifelse(s2 == session, 0,1),
+    s2 = lag(session, default = "1"),
+    s3 = ifelse(s2 == session, 0, 1),
     stim_length = end - start
   ) %>%
   group_by(animal) %>%
   mutate(
     session = cumsum(s3),
     session = paste0("session_", session)
-    ) %>%
+  ) %>%
   select(-stim_duration, -s2, -s3) %>%
-  
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 ```
@@ -239,58 +234,47 @@ stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) 
 ```{r message=F, echo = FALSE, warning = FALSE}
 coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
   as_tibble() %>%
-  
   ### filter junk data
   dplyr::filter(
     stringr::str_detect(animal, pattern = "b")
   ) %>%
-  
   ### creating unique session IDs
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
       str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control"),
-  
-    s2 = lag(session,default = "1"),
-    s3 = ifelse(s2 == session, 0,1),
+    s2 = lag(session, default = "1"),
+    s3 = ifelse(s2 == session, 0, 1),
   ) %>%
-  
   group_by(animal) %>%
   mutate(
     session = cumsum(s3),
-    session = paste0("session_", session)) %>%
-  select(-s2, -s3) %>% 
-  ungroup() %>% 
-  
-  full_join(stims) %>% 
+    session = paste0("session_", session)
+  ) %>%
+  select(-s2, -s3) %>%
+  ungroup() %>%
+  full_join(stims) %>%
   dplyr::group_by(animal, session) %>%
   dplyr::mutate(
-    stim_number = ifelse(timing == "end", NA, stim_number )
-  ) %>% 
-  mutate(grp = cumsum(!is.na(stim_number))) %>% 
-  dplyr::group_by(animal, session, grp) %>% 
-  fill(timing) %>% 
+    stim_number = ifelse(timing == "end", NA, stim_number)
+  ) %>%
+  mutate(grp = cumsum(!is.na(stim_number))) %>%
+  dplyr::group_by(animal, session, grp) %>%
+  fill(timing) %>%
   mutate(
     stim_freq = replace(stim_freq, timing == "start", stim_freq[1]),
     stim_freq = replace(stim_freq, timing == "end", NA),
-    
     stim_length = replace(stim_length, timing == "start", stim_length[1]),
     stim_length = replace(stim_length, timing == "end", NA),
-    
     intensity = replace(intensity, timing == "start", intensity[1]),
     intensity = replace(intensity, timing == "end", NA),
-    
     stim_number = replace(stim_number, timing == "start", stim_number[1]),
     stim_number = replace(stim_number, timing == "end", NA),
-    
     stim_side = replace(stim_side, timing == "start", stim_side[1]),
     stim_side = replace(stim_side, timing == "end", NA),
-    
     stim = F,
     stim = replace(stim, timing == "start", T)
-   
-  ) %>% 
+  ) %>%
   ungroup() %>%
-  
   group_by(animal, session) %>%
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
@@ -300,7 +284,7 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
       lag(stim, n = around_stim_length) == T ~ "after stim",
       stim == F ~ "no stim"
     ),
-    
+
     ### rigth before and after stim (1s)
     stim_categ2 = case_when(
       stim == T ~ "stim",
@@ -308,36 +292,32 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
       lag(stim, n = fps) == T ~ "right after ",
       stim == F ~ "no stim"
     ),
-    
+
     ### shift values to the beginning of the stimulus block to be able to fill missing values in the next step
     stim_block = ifelse(stim_categ == "no stim", F, T),
     stim_number = lead(stim_number, n = around_stim_length),
     intensity = lead(intensity, n = around_stim_length),
-    stim_freq = lead(stim_freq, n = around_stim_length),  
-    stim_side = lead(stim_side, n = around_stim_length),  
-    
+    stim_freq = lead(stim_freq, n = around_stim_length),
+    stim_side = lead(stim_side, n = around_stim_length),
+
     ### rigth before and after stim (1s)
     stim_block2 = ifelse(stim_categ2 == "no stim", F, T),
     stim_number2 = lead(stim_number, n = fps),
     intensity2 = lead(intensity, n = fps),
-    stim_freq2 = lead(stim_freq, n = fps),  
-    stim_side2 = lead(stim_side, n = fps),  
-    
-  ) %>% 
-  
+    stim_freq2 = lead(stim_freq, n = fps),
+    stim_side2 = lead(stim_side, n = fps),
+  ) %>%
   ungroup() %>%
   group_by(animal, session, stim_block) %>%
   fill(stim_number) %>%
   fill(intensity) %>%
   fill(stim_freq) %>%
-  fill(stim_side) %>% 
-  
+  fill(stim_side) %>%
   ### rigth before and after stim (1s)
   fill(stim_number2) %>%
   fill(intensity2) %>%
   fill(stim_freq2) %>%
-  fill(stim_side2) %>% 
-  
+  fill(stim_side2) %>%
   # dplyr::group_by(animal, session) %>%
   # mutate(
   #   center1 = replace(
@@ -377,7 +357,7 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   # fill(tail1) %>%
   # fill(tail2) %>%
   # ungroup() %>%
-  # 
+  #
   # dplyr::mutate(
   #   hc_x = abs(head1-center1),
   #   hc_y = abs(head2-center2),
@@ -388,13 +368,13 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   # geom_histogram() +
   # scale_y_log10() +
   # facet_wrap(~animal)
-  # 
-  #   
-  # ) %>% 
+  #
+  #
+  # ) %>%
   # dplyr::filter(animal == "GIIFM21b", session == 3, stim_number == 3) %>%
   # View()
-  
-  
+
+
   # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -403,35 +383,30 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
     key = "body_part",
     value = "coordinate",
     head, center, tail
-  ) %>% 
+  ) %>%
   tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>%
   dplyr::mutate(
- 
     X = replace(X, miss == 0, NA),
     Y = replace(Y, miss == 0, NA)
-  ) %>% 
-  
-  
-  # dplyr::group_by(animal, session) %>% 
-  # fill(X) %>% 
-  # fill(Y) %>% 
-  # ungroup() %>% 
+  ) %>%
+  # dplyr::group_by(animal, session) %>%
+  # fill(X) %>%
+  # fill(Y) %>%
+  # ungroup() %>%
   # dplyr::filter(animal == "GIIFM21b", session == 3, stim_number == 3) %>% View()
-  
+
   dplyr::group_by(animal, session, body_part) %>%
-  
   ### this block calculates distances and speed across frames
   dplyr::mutate(
     X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
     Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
- 
+
     ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers
     ### these are replaced by 0 (the animal did not change position between those frames)
-    X_diff = ifelse(abs(X_diff) > 25, yes = 0, no = X_diff), 
-    Y_diff = ifelse(abs(Y_diff) > 25, yes = 0, no = Y_diff), 
-    
+    X_diff = ifelse(abs(X_diff) > 25, yes = 0, no = X_diff),
+    Y_diff = ifelse(abs(Y_diff) > 25, yes = 0, no = Y_diff),
     d = sqrt(X_diff^2 + Y_diff^2),
     d_mm = d / scale,
     speed_instant = d_mm / time_res,
@@ -442,20 +417,20 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   group_by(animal, session, body_part, sec_counter) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
   ungroup() %>%
-  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim")) 
-  
-  
+  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
+
+
 coords
 ```
 
 ```{r}
-lengths <- coords %>% 
+lengths <- coords %>%
   dplyr::filter(
     body_part == "head",
     stim_categ != "no stim",
-    ) %>% 
-  group_by(animal, session, stim_number) %>% 
-  count(stim_categ) 
+  ) %>%
+  group_by(animal, session, stim_number) %>%
+  count(stim_categ)
 
 # lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
 ```
@@ -466,42 +441,41 @@ lengths <- coords %>%
 Saving separate csv files
 
 ```{r}
-# tibble_list <- coords %>% 
+# tibble_list <- coords %>%
 #   dplyr::filter(
 #     str_detect(animal, pattern = "b")
-#     ) %>% 
-#   rename(video = session) %>% 
+#     ) %>%
+#   rename(video = session) %>%
 #   dplyr::group_split(animal, video)
-# 
-# 
+#
+#
 # csv_name_list <- lapply(tibble_list, function(x){
 #   paste0(x %>% pull(animal) %>% unique(), "_video_", x %>% pull(video) %>% unique(), ".csv")
 # }) %>% unlist()
-# 
+#
 # mapply(write_csv, x = tibble_list, file = file.path("output_data", "separate_csv", csv_name_list))
-# 
-# 
-# 
+#
+#
+#
 # coords %>% names()
-# coords %>% 
-#   select(session,animal,frame,stim_number,stim_categ, X, Y, body_part) %>% 
-#   # unite(col = "sess_anim", session, animal, sep = "_") %>% 
+# coords %>%
+#   select(session,animal,frame,stim_number,stim_categ, X, Y, body_part) %>%
+#   # unite(col = "sess_anim", session, animal, sep = "_") %>%
 #   unite(col = "coordinates", X, Y, sep = "_" ) %>%
-#   tidyr::spread(key = body_part, value = coordinates) 
-  
+#   tidyr::spread(key = body_part, value = coordinates)
 
-  # reshape(timevar = "body_part", direction = "wide") %>% View()
-  
-  
-  # reshape(idvar = "animal", timevar = "body_part", direction = "wide") %>% View()
-  # 
-  # 
-  # 
-  # group_by(animal, session) %>% 
-  # tidyr::spread(
-  #   key = body_part,
-  #   value = X) %>% View()
 
+# reshape(timevar = "body_part", direction = "wide") %>% View()
+
+
+# reshape(idvar = "animal", timevar = "body_part", direction = "wide") %>% View()
+#
+#
+#
+# group_by(animal, session) %>%
+# tidyr::spread(
+#   key = body_part,
+#   value = X) %>% View()
 ```
 
 
@@ -564,6 +538,37 @@ cols <- gg_color_hue(n)
 
 # Analysis (selected animal: `r selected_animal`)
 
+
+## Checking tracking quality
+
+Plotting X and Y positions vs time separately to see jumps in the tracking data and big separation between head-ceter-tail coordinates (unrealistically big mouse). The tracking software occasionally lost the animal and started to follow different points. If there are many of those the session cannot be analysed.
+
+
+```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
+
+plt_xpos <- coords %>%
+  dplyr::filter(animal == selected_animal) %>%
+  ggplot(mapping = aes(x = rec_time, y = X %>% as.integer() )) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("X position") +
+  facet_wrap(~session, ncol = 1) +
+  ggtitle("X position")
+
+
+
+plt_ypos <- coords %>%
+  dplyr::filter(animal == selected_animal) %>%
+  ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("Y position") +
+  facet_wrap(~session, ncol = 1) +
+  ggtitle("Y position")
+
+cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
+```
+
 ## Dealing with missing coordinates
 
 The tracking software occasionally lost the tracked points. To fill those gaps linear interpolation was applied. The figure below shows the interpolated values in red.
@@ -602,38 +607,6 @@ coords %>%
 
 To show the animals trajectory during stimuli the head-center-tail body points were plotted. Colors correspond to the order of stimuli in each session. The black points represent the trajectory when there was no stimulus. For visualization purposes the number of plotted data points are different during the stimulus vs non-stimulus period (2 data points/sec vs 6 data points/sec respectively). For the statistical analysis similar data point rate was used for the two states.
 
-```{r warning=FALSE, fig.width=10, fig.height=10, include=FALSE, echo=FALSE, eval=FALSE}
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    frame %% 15 == 0
-  ) %>%
-  ggplot(
-    mapping = aes(x = X_interp, y = Y_interp, label = frame)
-  ) +
-  geom_point(
-    aes(shape = body_part, col = stim_number),
-    size = 2,
-    alpha = .1
-  ) +
-  geom_line(
-    aes(group = frame, col = stim_number %>% as.character()),
-    alpha = .1
-  ) +
-  scale_color_manual(
-    values = c(cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], "black"),
-    name = "Stimulus"
-  ) +
-  scale_shape(
-    name = "Body part",
-    labels = c("Center", "Head", "Tail")
-  ) +
-  xlim(c(0, 1280)) +
-  ylim(c(0, 720)) +
-  facet_wrap(~session, ncol = 2) +
-  geom_label(data = text_layer, aes(x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5, label = paste0("Intensity: ", int_label))) +
-  global_facet_theme
-```
 
 ```{r warning=FALSE, fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
@@ -680,37 +653,6 @@ coords %>%
 ```
 
 
-
-```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
-
-plt_xpos <- coords %>%
-  dplyr::filter(animal == selected_animal) %>% 
-  ggplot(mapping = aes(x = rec_time, y = X %>% as.integer())) +
-  geom_line(aes(col = body_part)) +
-  theme(legend.position = "none") +
-  ylab("X position") +
-  facet_wrap( ~ session, ncol = 1) +
-  ggtitle("X position")
-
-
-
-plt_ypos <- coords %>%
-  dplyr::filter(animal == selected_animal) %>%
-  ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
-  geom_line(aes(col = body_part)) +
-  theme(legend.position = "none") +
-  ylab("Y position") +
-  facet_wrap( ~ session, ncol = 1) +
-  ggtitle("Y position")
-
-cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
-
-```
-
-
-
-
-
 ## Plotting speed in a 1 sec (`r fps` frames) window
 
 Speed of the animal in 1 sec windows. Darker colors represent slower speed. 
@@ -735,7 +677,7 @@ coords %>%
 
 ## Distribution of the distance between points
 
-Cumulative distribution functions and histograms of the difference between consecutive X and Y coordinates and calculated traveled distances across frames. Most of the values are realistic but there are some big jumps probably due to errors in the tracking. The unrealistically big jumps were excluded from the analysis.
+Cumulative distribution functions and histograms of the difference between consecutive X and Y coordinates and calculated traveled distances across frames. Most of the values are realistic but there are some big jumps probably due to errors in the tracking. The unrealistically big jumps were excluded from the analysis (when "coords" data frame was created).
 
 ```{r, message=F, warning=F,  fig.width=10,fig.height=25, message=FALSE, echo = FALSE}
 coords %>%
@@ -797,9 +739,7 @@ coords %>%
 ```
 
 
-## Instantaneous traveled distance
-
-Plotting the traveled distance based on one of the three tracked body parts during stimulus and non-stimulus periods at the rate of 6 data point/sec. 
+## Recalculating distances between tracked points after leaving out frames
 
 ```{r fig.width=10, fig.asp=1, echo = FALSE}
 
@@ -809,8 +749,9 @@ plt_xlim <- coords %>%
     body_part == "center",
     # frame %% datapoint_to_plot == 0
   ) %>%
-  dplyr::slice(1:11) %>% 
-  pull(X_interp) %>% range() + c(-1,1)
+  dplyr::slice(1:11) %>%
+  pull(X_interp) %>%
+  range() + c(-1, 1)
 
 plt_ylim <- coords %>%
   dplyr::filter(
@@ -818,8 +759,9 @@ plt_ylim <- coords %>%
     body_part == "center",
     # frame %% datapoint_to_plot == 0
   ) %>%
-  dplyr::slice(1:11) %>% 
-  pull(Y_interp) %>% range() + c(-1,1)
+  dplyr::slice(1:11) %>%
+  pull(Y_interp) %>%
+  range() + c(-1, 1)
 
 
 plt1_path <- coords %>%
@@ -878,7 +820,7 @@ plt2_path <- coords %>%
     frame %% datapoint_to_plot == 0
   ) %>%
   # recalculates distances after frames were removed
-  dplyr::group_by(session) %>% 
+  dplyr::group_by(session) %>%
   dplyr::mutate(
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
@@ -888,7 +830,7 @@ plt2_path <- coords %>%
     mmps = speed_instant * (1 / time_res),
     mps = (speed_instant * (1 / time_res)) / 1000
   ) %>%
-  ungroup() %>% 
+  ungroup() %>%
   dplyr::slice(1:3) %>%
   dplyr::arrange(frame) %>% ### to be used with geom_path
   ggplot(
@@ -934,15 +876,15 @@ plt2_path <- coords %>%
 library(cowplot)
 
 cowplot::plot_grid(plt1_path, plt2_path, ncol = 2)
-
 ```
 
 
 
+## Instantaneous traveled distance
 
+Plotting the traveled distance based on one of the three tracked body parts during stimulus and non-stimulus periods at the rate of 6 data point/sec.
 
-
-Center
+### Center
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
@@ -952,7 +894,7 @@ coords %>%
     frame %% datapoint_to_plot == 0
   ) %>%
   
-  # recalculates distances after frames were removed
+  ### recalculates distances after frames were removed
   dplyr::group_by(session) %>%
   dplyr::mutate(
     X_diff = c(diff(X_interp), NA) %>% round(4),
@@ -962,11 +904,11 @@ coords %>%
     speed_instant = d_mm / time_res,
     mmps = speed_instant * (1 / time_res),
     mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>% 
-  dplyr::filter(X_diff < 125, X_diff > -125, Y_diff < 125, Y_diff > -125) %>%
+  ) %>%
   
+  # dplyr::filter(X_diff < 125, X_diff > -125, Y_diff < 125, Y_diff > -125) %>%
   
-  
+  ### plotting
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
@@ -977,16 +919,31 @@ coords %>%
   global_facet_theme
 ```
 
-Head
+### Head
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "head",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  ### recalculates distances after frames were removed
+  dplyr::group_by(session) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  
+  # dplyr::filter(X_diff < 125, X_diff > -125, Y_diff < 125, Y_diff > -125) %>%
+  
+  ### plotting
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
@@ -997,16 +954,31 @@ coords %>%
   global_facet_theme
 ```
 
-Tail
+### Tail
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "tail",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  ### recalculates distances after frames were removed
+  dplyr::group_by(session) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  
+  # dplyr::filter(X_diff < 125, X_diff > -125, Y_diff < 125, Y_diff > -125) %>%
+  
+  ### plotting
   ggplot(mapping = aes(x = rec_time, y = d_mm)) +
   geom_line(aes(color = stim, group = 1)) +
   # geom_line(aes(x = rec_time, y = Y_diff -130), alpha = .5) +
@@ -1031,10 +1003,10 @@ line_cols <- gg_color_hue(3)
 
 group_colors <- c("no stim" = "gray30", "before stim" = line_cols[1], "stim" = line_cols[3], "after stim" = line_cols[2])
 group_colors2 <- c("no stim" = "gray30", "right before" = line_cols[1], "stim" = line_cols[3], "right after" = line_cols[2])
-
 ```
 
 
+### Example session
 
 ```{r message=F, fig.width=12, warning=F, echo = FALSE}
 
@@ -1047,42 +1019,7 @@ coords %>%
     frame %% datapoint_to_plot == 0
   ) %>%
   
-  # recalculates distances after frames were removed
-  dplyr::group_by(animal ,session, body_part) %>% 
-  dplyr::mutate(
-    X_diff = c(diff(X_interp), NA) %>% round(4),
-    Y_diff = c(diff(Y_interp), NA) %>% round(4),
-    d = sqrt(X_diff^2 + Y_diff^2),
-    d_mm = d / scale,
-    speed_instant = d_mm / time_res,
-    mmps = speed_instant * (1 / time_res),
-    mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>% 
-  ungroup() %>% 
-  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>% 
-  
-  
-  dplyr::group_by(stim) %>%
-  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
-  ggplot(aes(x = rec_time, y = d_mm)) +
-  # ylim(c(0, 100)) +
-  geom_point(aes(alpha = stim)) +
-  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)")) +
-  scale_color_manual(values = group_colors)
-```
-
-Center
-
-```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    body_part == "center",
-   # X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
-    frame %% datapoint_to_plot == 0
-  ) %>%
-  
+  ### recalculates distances after frames were removed
   dplyr::group_by(animal, session, body_part) %>%
   dplyr::mutate(
     X_diff = c(diff(X_interp), NA) %>% round(4),
@@ -1094,14 +1031,48 @@ coords %>%
     mps = (speed_instant * (1 / time_res)) / 1000
   ) %>%
   ungroup() %>%
-  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>% 
   
+  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>%
+  dplyr::group_by(stim) %>%
+  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
+  
+  ### plotting
+  ggplot(aes(x = rec_time, y = d_mm)) +
+  # ylim(c(0, 100)) +
+  geom_point(aes(alpha = stim)) +
+  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
+  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(center)")) +
+  scale_color_manual(values = group_colors)
+```
 
+### Center
+
+```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
+coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    frame %% datapoint_to_plot == 0
+  ) %>%
   
+  ### recalculates distances after frames were removed
+  dplyr::group_by(animal, session, body_part) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  ungroup() %>%
   
-  
+  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
+  
+  ### plotting
   ggplot(aes(x = rec_time, y = d_mm)) +
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
@@ -1114,7 +1085,7 @@ coords %>%
 ```
 
 
-Head
+### Head
 
 
 ```{r fig.width=12, fig.height=12, warning=F, echo = FALSE}
@@ -1125,8 +1096,25 @@ coords %>%
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  ### recalculates distances after frames were removed
+  dplyr::group_by(animal, session, body_part) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  ungroup() %>%
+  
+  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
+  
+  ### plotting
   ggplot(aes(x = rec_time, y = d_mm)) +
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
@@ -1140,7 +1128,7 @@ coords %>%
 
 
 
-Tail
+### Tail
 
 
 ```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
@@ -1148,11 +1136,27 @@ coords %>%
   dplyr::filter(
     animal == selected_animal,
     body_part == "tail",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
   ) %>%
+  
+  ### recalculates distances after frames were removed
+  dplyr::group_by(animal, session, body_part) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  ungroup() %>%
+  
+  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>%
   dplyr::group_by(session, stim) %>%
   dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
+  
+  ### plotting
   ggplot(aes(x = rec_time, y = d_mm)) +
   # ylim(c(0, 100)) +
   geom_point(aes(alpha = stim)) +
@@ -1192,7 +1196,7 @@ coords %>%
 
 ## Mean traveled distance by individual stimuli within session (full length before and after the stimulus)
 
-Plotting traveled distance during individual stimuli (4 to 6 repeats) within session. Traveled distance is averaged through the full duration of the stimulus (~10s) and `r around_stim_length`s "before stimulus" and "after stimulus" duration. <br>
+Plotting traveled distance during individual stimuli (4 to 6 repeats) within session. Traveled distance is averaged through the full duration of the stimulus (~10s) and `r around_stim_length / fps`s "before stimulus" and "after stimulus" duration. <br>
 
 The same data is shown on the plots with different groupings: <br>
 
@@ -1209,9 +1213,8 @@ coords %>%
     intensity %in% selected_intensities,
     # session == "4",
     frame %% datapoint_to_plot == 0
-  ) %>% 
-  
-  dplyr::group_by(animal, session, body_part) %>% 
+  ) %>%
+  dplyr::group_by(animal, session, body_part) %>%
   dplyr::mutate(
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
@@ -1220,15 +1223,12 @@ coords %>%
     speed_instant = d_mm / time_res,
     mmps = speed_instant * (1 / time_res),
     mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>% 
-  ungroup() %>% 
-  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>% 
-  
-  
+  ) %>%
+  ungroup() %>%
+  dplyr::filter(X_diff < 80, X_diff > -80, Y_diff < 80, Y_diff > -80) %>%
   dplyr::group_by(stim) %>%
-  
   dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
@@ -1242,7 +1242,8 @@ coords %>%
   labs(
     fill = "Intensity",
     x = "Stimulus period",
-    y = "Mean traveled distance") +
+    y = "Mean traveled distance"
+  ) +
   global_facet_theme
 ```
 
@@ -1256,10 +1257,9 @@ coords %>%
     # session == "4",
     X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     frame %% datapoint_to_plot == 0
-  ) %>% 
+  ) %>%
   dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
-
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
@@ -1273,9 +1273,9 @@ coords %>%
   labs(
     fill = "Stimulus number",
     x = "Stimulus period",
-    y = "Mean traveled distance") +
+    y = "Mean traveled distance"
+  ) +
   global_facet_theme
-
 ```
 
 
@@ -1300,13 +1300,12 @@ coords %>%
     stim_categ2 != "no stim",
     intensity2 %in% selected_intensities,
     frame %% datapoint_to_plot == 0
-  ) %>% 
+  ) %>%
   dplyr::group_by(animal, intensity2, stim_number2, stim_categ2) %>%
-  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA))
 
-  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) 
-  
-  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ2, "right before", "stim", "right after"),
@@ -1320,7 +1319,8 @@ coords %>%
   labs(
     fill = "Intensity",
     x = "Stimulus period",
-    y = "Mean traveled distance") +
+    y = "Mean traveled distance"
+  ) +
   global_facet_theme
 ```
 
@@ -1334,13 +1334,12 @@ coords %>%
     stim_categ2 != "no stim",
     intensity2 %in% selected_intensities,
     frame %% datapoint_to_plot == 0
-  ) %>% 
+  ) %>%
   dplyr::group_by(animal, intensity2, stim_number2, stim_categ2) %>%
-  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
+  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA))
 
-  # dplyr::summarise(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) 
-  
-  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>% 
+  # dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ2, "right before", "stim", "right after"),
@@ -1354,27 +1353,10 @@ coords %>%
   labs(
     fill = "Stimulus number",
     x = "Stimulus period",
-    y = "Mean traveled distance") +
+    y = "Mean traveled distance"
+  ) +
   global_facet_theme
-
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1432,7 +1414,7 @@ matlib::angle(
 
 The dot product of two vectors x and y can be defined as:
 
-$x \cdot y = ||x|| * ||y|| \cos(\theta) $
+$ x \cdot y = ||x|| * ||y|| \cos(\theta) $
 
 ```{r}
 vectors %>%
@@ -1538,7 +1520,7 @@ coords %>%
   global_facet_theme
 ```
 
-#### Signed angles 
+#### Calculating signed angles 
 
 ```{r message=F, warning=F, echo = FALSE}
 
@@ -1685,6 +1667,9 @@ corrected_angles %>%
 
 # Population analysis
 
+## Rotation
+
+### Calculating signed population angles
 
 ```{r message=FALSE, warning=FALSE, echo = FALSE}
 corrected_angles_population <- coords %>%
@@ -1725,7 +1710,7 @@ corrected_angles_population %>%
   dplyr::filter(body_part == "head") %>%
   group_by(animal, session) %>%
   mutate(csum = cumsum(ifelse(is.na(signed_angle_corrected), 0, signed_angle_corrected)) %>% round(4)) %>%
-  fill(intensity, .direction = "downup") %>% 
+  fill(intensity, .direction = "downup") %>%
   ggplot(
     mapping = aes(x = rec_time, y = csum %>% scale())
   ) +
@@ -1733,16 +1718,302 @@ corrected_angles_population %>%
   # geom_text(
   #   data = coords$intensity %>% unique(),
   #   aes(label=intensity), check_overlap = T) +
-  facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), scales = "free") +
+  facet_grid(animal ~ session) + # factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), scales = "free") +
   scale_color_manual(values = group_colors) +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45),
-  ) 
+  )
 
 # forcats::fct_relevel(intensity, intensity %>% unique() %>% sort() %>% c())
- # %>% factor(levels = gtools::mixedsort(intensity)) 
+# %>% factor(levels = gtools::mixedsort(intensity))
 ```
+
+
+Mean rotation angle by session
+
+
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
+
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
+
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim"
+    # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
+  ) %>%
+  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang # %>% scale()
+    )
+  ) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~session) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled sum angle")
+```
+
+
+
+Mean/sum rotation angle by session (control)
+
+
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
+
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
+
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %in% control_animals,
+    body_part == "head",
+    stim_categ != "no stim"
+    # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
+  ) %>%
+  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang # %>% scale()
+    )
+  ) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~session) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled sum angle")
+```
+
+
+Mean/sum rotation angle by intensity (stimulus and control)
+
+
+```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
+plt1_angle <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
+    body_part == "head",
+    stim_categ != "no stim",
+    # stim_side == "right"
+  ) %>%
+  dplyr::filter(intensity %in% selected_intensities) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  # dplyr::filter(intensity %in% c(1, 5, 10, 15)) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang # %>% scale()
+    )
+  ) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3) +
+  global_facet_theme +
+  # ylim(-3.5, 2.5) +
+  xlab("State") +
+  ylab("Scaled sum angle") +
+  ggtitle("Stimulus")
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+
+
+plt2_angle <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %in% control_animals,
+    body_part == "head",
+    stim_categ != "no stim",
+    # stim_side == "right"
+  ) %>%
+  dplyr::filter(intensity %in% selected_intensities) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  # dplyr::filter(intensity %in% c(1, 5, 10, 15)) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang # %>% scale()
+    )
+  ) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_line(aes(group = animal)) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3, ) +
+  global_facet_theme +
+  # ylim(-3.5, 2.5) +
+  xlab("State") +
+  ylab("Scaled sum angle") +
+  ggtitle("Control")
+
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+
+
+cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
+```
+
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim"
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  dplyr::filter(
+    intensity %in% selected_intensities
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+      y = sum_ang
+    )
+  ) +
+  geom_boxplot(aes(color = intensity %>% as.factor())) +
+  geom_point(aes(color = intensity %>% as.factor()), position = position_jitterdodge(dodge.width = 0.7)) +
+  # geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
+  # geom_line(aes(group = intensity %>% as.factor())) +
+  facet_wrap(~animal) +
+  global_facet_theme +
+  xlab("State") +
+  ylab("Scaled sum angle")
+
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+```
+
+
+Mean rotation angle before stimulus vs during stimulus
+
+```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
+
+plt_ang_stim <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim",
+    intensity %in% c(selected_intensities, "15 mW")
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    # mean_ang = mean(signed_angle_corrected, na.rm = T),
+    # med_ang = median(signed_angle_corrected, na.rm = T),
+    # sd_ang = sd(signed_angle_corrected, na.rm = T),
+    # sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  tidyr::spread(
+    key = stim_categ, value = sum_ang
+  ) %>%
+  ggplot(
+    mapping = aes(x = `before stim`, y = stim)
+  ) +
+  xlim(-1200, 1200) +
+  ylim(-1200, 1200) +
+  coord_fixed() +
+  # geom_vline(xintercept = 5, alpha = .3) +
+  # geom_hline(yintercept = 5, alpha = .3) +
+  # geom_rect(xmin = 0, xmax = 5, ymin = 5, ymax = 10, fill = "green", alpha = 0.03) +
+  # geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
+
+  # geom_abline(slope = 1, intercept = 0, alpha = .3, lty = "dashed") +
+  geom_vline(xintercept = 0, alpha = .3) +
+  geom_hline(yintercept = 0, alpha = .3) +
+  geom_point(size = 3) +
+  # facet_wrap(~animal) +
+  facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  theme(
+    axis.text.x = element_text(angle = 45)
+  )
+
+plt_ang_ctrl <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim",
+    intensity %in% c(selected_intensities, "15 mW")
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    # mean_ang = mean(signed_angle_corrected, na.rm = T),
+    # med_ang = median(signed_angle_corrected, na.rm = T),
+    # sd_ang = sd(signed_angle_corrected, na.rm = T),
+    # sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  tidyr::spread(
+    key = stim_categ, value = sum_ang
+  ) %>%
+  ggplot(
+    mapping = aes(x = `before stim`, y = stim)
+  ) +
+  xlim(-1200, 1200) +
+  ylim(-1200, 1200) +
+  coord_fixed() +
+  # geom_vline(xintercept = 5, alpha = .3) +
+  # geom_hline(yintercept = 5, alpha = .3) +
+  # geom_rect(xmin = 0, xmax = 5, ymin = 5, ymax = 10, fill = "green", alpha = 0.03) +
+  # geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
+
+  # geom_abline(slope = 1, intercept = 0, alpha = .3, lty = "dashed") +
+  geom_vline(xintercept = 0, alpha = .3) +
+  geom_hline(yintercept = 0, alpha = .3) +
+  geom_point(size = 3) +
+  # facet_wrap(~animal) +
+  facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  theme(
+    axis.text.x = element_text(angle = 45)
+  )
+
+
+cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
+```
+
+
+## Traveled distance
 
 Mean traveled distance across sessions, by animals
 
@@ -1766,7 +2037,7 @@ coords %>%
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   ggpubr::stat_compare_means(
     method = "wilcox.test",
     paired = T,
@@ -1808,11 +2079,12 @@ coords %>%
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   ggpubr::stat_compare_means(
     method = "wilcox.test",
     paired = T,
     comparisons = list(c("before stim", "stim")),
+    method.args = list(alternative = "two.sided"),
     vjust = 1.5,
     hide.ns = F
   ) +
@@ -1820,210 +2092,11 @@ coords %>%
     method = "wilcox.test",
     paired = T,
     comparisons = list(c("stim", "after stim")),
+    method.args = list(alternative = "two.sided"),
     vjust = 1.5,
     hide.ns = F
   ) +
   global_facet_theme
-```
-
-
-
-Mean rotation angle by session
-
-
-```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
-
-sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
-
-corrected_angles_population %>%
-  dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
-    body_part == "head",
-    stim_categ != "no stim"
-    # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
-  ) %>%
-  dplyr::group_by(animal, session, stim_categ) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    med_ang = median(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T),
-    sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang # %>% scale()
-    )
-  ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~ session) +
-  global_facet_theme +
-  xlab("State") +
-  ylab("Scaled sum angle")
-```
-
-
-
-Mean rotation angle by session (control)
-
-
-```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
-
-sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
-
-corrected_angles_population %>%
-  dplyr::filter(
-    animal %in% control_animals,
-    body_part == "head",
-    stim_categ != "no stim"
-    # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
-  ) %>%
-  dplyr::group_by(animal, session, stim_categ) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    med_ang = median(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T),
-    sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang # %>% scale()
-    )
-  ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~ session) +
-  global_facet_theme +
-  xlab("State") +
-  ylab("Scaled sum angle")
-```
-
-Mean rotation angle by intensity (stimulus and control)
-
-
-```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
-plt1_angle <- corrected_angles_population %>%
-  dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
-    body_part == "head",
-    stim_categ != "no stim",
-    # stim_side == "right"
-  ) %>%
-  dplyr::filter(intensity %in% selected_intensities) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    med_ang = median(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T),
-    sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  # dplyr::filter(intensity %in% c(1, 5, 10, 15)) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang %>% scale()
-    )
-  ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3) +
-  global_facet_theme +
-  ylim(-3.5, 2.5) +
-  xlab("State") +
-  ylab("Scaled sum angle") +
-  ggtitle("Stimulus")
-
-# facet_grid(~animal, ~intensity)
-# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
-```
-
-
-```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
-plt2_angle <- corrected_angles_population %>%
-  dplyr::filter(
-    animal %in%control_animals,
-    body_part == "head",
-    stim_categ != "no stim",
-    # stim_side == "right"
-  ) %>%
-  dplyr::filter(intensity %in% selected_intensities) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    med_ang = median(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T),
-    sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  # dplyr::filter(intensity %in% c(1, 5, 10, 15)) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang %>% scale()
-    )
-  ) +
-  geom_point(aes(fill = animal), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~factor(intensity, levels = gtools::mixedsort(intensity %>% unique())),nrow = 3,) +
-  global_facet_theme +
-  ylim(-3.5, 2.5) +
-  xlab("State") +
-  ylab("Scaled sum angle") +
-  ggtitle("Control")
-
-
-# facet_grid(~animal, ~intensity)
-# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
-```
-
-```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
-cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
-```
-
-
-
-
-```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
-corrected_angles_population %>%
-  dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
-    body_part == "head",
-    stim_categ != "no stim"
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    med_ang = median(signed_angle_corrected, na.rm = T),
-    sd_ang = sd(signed_angle_corrected, na.rm = T),
-    sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  dplyr::filter(
-    intensity %in% selected_intensities
-  ) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang %>% scale()
-    )
-  ) +
-  geom_boxplot(aes(color = intensity %>% as.factor())) +
-  geom_point(aes(color = intensity %>% as.factor()), position = position_jitterdodge(dodge.width = 0.7)) +
-  # geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
-  # geom_line(aes(group = intensity %>% as.factor())) +
-  facet_wrap(~stim_number) +
-  global_facet_theme +
-  xlab("State") +
-  ylab("Scaled sum angle")
-
-
-# facet_grid(~animal, ~intensity)
-# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 ```
 
 
@@ -2043,28 +2116,28 @@ plt1_dist <- coords %>%
   dplyr::summarise(
     sum_d_mm = sum(d_mm, na.rm = T),
     mean_d_mm = mean(d_mm, na.rm = T)
-    ) %>% 
-   ggplot(
+  ) %>%
+  ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
       y = mean_d_mm
     )
   ) +
   geom_boxplot(aes(color = intensity)) +
-  geom_point(aes(color = intensity), position = position_jitterdodge(dodge.width = 0.7,jitter.width = 0.1)) +
-  #facet_wrap(~animal) +
+  geom_point(aes(color = intensity), position = position_jitterdodge(dodge.width = 0.7, jitter.width = 0.1)) +
+  # facet_wrap(~animal) +
   theme(legend.position = "none") +
-  ylim(0,8) +
+  ylim(0, 8) +
   xlab("Stimulus") +
   ylab("Travelled distance [mm]") +
   ggtitle("Stimulus") +
-  global_facet_theme 
+  global_facet_theme
 
 plt2_dist <- coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
-    animal %in%control_animals,#, "GIIFM14b"),
+    animal %in% control_animals, # , "GIIFM14b"),
     stim_categ != "no stim",
     intensity %in% selected_intensities
   ) %>%
@@ -2072,34 +2145,35 @@ plt2_dist <- coords %>%
   dplyr::summarise(
     sum_d_mm = sum(d_mm, na.rm = T),
     mean_d_mm = mean(d_mm, na.rm = T)
-    ) %>% 
-   ggplot(
+  ) %>%
+  ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
       y = mean_d_mm
     )
   ) +
   geom_boxplot(aes(color = intensity)) +
-  geom_point(aes(color = intensity), position = position_jitterdodge(dodge.width = 0.7,jitter.width = 0.1)) +
+  geom_point(aes(color = intensity), position = position_jitterdodge(dodge.width = 0.7, jitter.width = 0.1)) +
   theme(
     axis.title.y = element_blank(),
-    legend.position = "none") +
-  ylim(0,8) +
+    legend.position = "none"
+  ) +
+  ylim(0, 8) +
   xlab("Stimulus") +
   ggtitle("Control") +
-  #facet_wrap(~animal) +
-  global_facet_theme 
+  # facet_wrap(~animal) +
+  global_facet_theme
 
-cowplot::plot_grid(plt1_dist, plt2_dist, ncol = 2) %>% 
+cowplot::plot_grid(plt1_dist, plt2_dist, ncol = 2) %>%
   plot_grid(
     get_legend(
-      plt1_dist + 
+      plt1_dist +
         guides(color = guide_legend(nrow = 1)) +
         theme(legend.position = "bottom")
-      ),
+    ),
     ncol = 1,
     rel_heights = c(1, .1)
-    )
+  )
 ```
 
 
@@ -2115,9 +2189,9 @@ coords %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
-    animal != "GIIFM14b",
+    animal %!in% c(control_animals, "GIIFM14b"),
     stim_categ != "no stim",
-    ) %>%
+  ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
   dplyr::summarise(mean_d_mm = mean(d_mm, na.rm = T)) %>%
   tidyr::spread(
@@ -2136,8 +2210,8 @@ coords %>%
   geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
 
   # geom_abline(slope = 1, intercept = 0, alpha = .3) +
-  geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(animal ~ stim_number) +
+  geom_point(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 3) +
+  facet_wrap(~animal) +
   global_facet_theme +
   theme(
     axis.text.x = element_text(angle = 45)
@@ -2151,22 +2225,21 @@ coords %>%
     # animal == selected_animal,
     stim_categ != "no stim",
     intensity %in% selected_intensities
-    ) %>%
-  # group_by(animal, session) %>% 
+  ) %>%
+  # group_by(animal, session) %>%
   # spread(stim_categ, d_mm)
-  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>% 
-  summarise(sum_d_mm = sum(d_mm)) %>% 
+  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
+  summarise(sum_d_mm = sum(d_mm)) %>%
   group_by(animal) %>%
-  spread(stim_categ, sum_d_mm) %>% 
-  mutate(stim_bstim = stim - `before stim`) %>% 
+  spread(stim_categ, sum_d_mm) %>%
+  mutate(stim_bstim = stim - `before stim`) %>%
   ggplot(mapping = aes(x = `before stim`, y = stim_bstim)) +
-  geom_text(aes(label = stim_number, col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 6) +
+  geom_point(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 3) +
+  # geom_text(aes(label = stim_number, col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 6) +
   geom_line(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique())))) +
-  labs(col="Intensity") +
+  labs(col = "Intensity") +
   geom_hline(yintercept = 0, lty = "dashed", col = "gray30") +
   facet_wrap(~animal, scales = "free")
-
-  
 ```
 
 
@@ -2177,12 +2250,12 @@ stim_bstim1 <- coords %>%
     animal %!in% control_animals,
     stim_categ != "no stim",
     intensity %in% c(selected_intensities, 15),
-    ) %>%
+  ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d_mm = sum(d_mm, na.rm = T)) %>%
   group_by(animal) %>%
   tidyr::spread(
-    stim_categ, mean_d_mm
+    stim_categ, sum_d_mm
   ) %>%
   ggplot(
     mapping = aes(x = `before stim`, y = stim)
@@ -2210,12 +2283,12 @@ stim_bstim2 <- coords %>%
     animal %in% control_animals,
     stim_categ != "no stim",
     intensity %in% c(selected_intensities, 15),
-    ) %>%
+  ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d_mm = sum(d_mm, na.rm = T)) %>%
   group_by(animal) %>%
   tidyr::spread(
-    stim_categ, mean_d_mm
+    stim_categ, sum_d_mm
   ) %>%
   ggplot(
     mapping = aes(x = `before stim`, y = stim)
@@ -2239,52 +2312,4 @@ stim_bstim2 <- coords %>%
 
 
 cowplot::plot_grid(stim_bstim1, stim_bstim2, ncol = 2)
-
-```
-
-
-
-
-
-
-
-Mean rotation angle before stimulus vs during stimulus (starting or stopping signal).
-
-```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
-
-corrected_angles_population %>%
-  dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
-    body_part == "head",
-    stim_categ != "no stim"
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(
-    # sum_ang = sum(signed_angle_corrected, na.rm = T),
-    mean_ang = mean(signed_angle_corrected, na.rm = T),
-    # med_ang = median(signed_angle_corrected, na.rm = T),
-    # sd_ang = sd(signed_angle_corrected, na.rm = T),
-    # sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  tidyr::spread(
-    key = stim_categ, value = mean_ang
-  ) %>%
-  ggplot(
-    mapping = aes(x = `before stim`, y = stim)
-  ) +
-  xlim(-5, 5) +
-  ylim(-5, 5) +
-  coord_fixed() +
-  # geom_vline(xintercept = 5, alpha = .3) +
-  # geom_hline(yintercept = 5, alpha = .3) +
-  # geom_rect(xmin = 0, xmax = 5, ymin = 5, ymax = 10, fill = "green", alpha = 0.03) +
-  # geom_rect(xmin = 5, xmax = 10, ymin = 0, ymax = 5, fill = "red", alpha = 0.03) +
-
-  # geom_abline(slope = 1, intercept = 0, alpha = .3) +
-  geom_point(aes(col = as.factor(intensity)), size = 3) +
-  facet_grid(animal ~ stim_number) +
-  global_facet_theme +
-  theme(
-    axis.text.x = element_text(angle = 45)
-  )
 ```
