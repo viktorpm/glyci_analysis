@@ -1414,7 +1414,7 @@ matlib::angle(
 
 The dot product of two vectors x and y can be defined as:
 
-$ x \cdot y = ||x|| * ||y|| \cos(\theta) $
+$$x \cdot y = ||x|| * ||y|| \cos(\theta)$$
 
 ```{r}
 vectors %>%
