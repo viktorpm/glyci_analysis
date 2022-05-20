@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM18b"
+  selected_animal: "GIIFM14b"
 
 
 knit: (
@@ -402,7 +402,17 @@ lengths <- coords %>%
     stim_categ != "no stim",
   ) %>%
   group_by(animal, session, stim_number) %>%
-  count(stim_categ)
+  count(stim_categ) %>% 
+  spread(stim_categ, n) %>% 
+  select(animal, session, stim_number, `before stim`, stim, `after stim`) 
+
+
+# full_join(
+#   lengths,
+#   stims %>% spread(timing, frame) %>% 
+#     select(animal, session, stim_number, start, end) %>% 
+#     mutate(stim_number = stim_number %>% as.character())
+# ) %>% write_csv(file.path("output_data", "stim_lengths.csv"))
 
 
 # lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
@@ -2203,7 +2213,7 @@ coords_1s_window %>%
   ggplot(mapping = aes(x = `before stim`, y = `stim-bstim`)) +
   geom_point(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 3) +
   # geom_text(aes(label = stim_number, col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 6) +
-  geom_line(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique())))) +
+  #geom_line(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique())))) +
   labs(col = "Intensity") +
   geom_hline(yintercept = 0, lty = "dashed", col = "gray30") +
   facet_wrap(~animal, scales = "free")
