@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM14b"
+  selected_animal: "GIIFM17b"
 
 
 knit: (
@@ -279,6 +279,8 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
     stim_number = replace(stim_number, timing == "end", NA),
     stim_side = replace(stim_side, timing == "start", stim_side[1]),
     stim_side = replace(stim_side, timing == "end", NA),
+    quality = replace(quality, timing == "start", quality[1]),
+    quality = replace(quality, timing == "end", NA),
     stim = F,
     stim = replace(stim, timing == "start", T)
   ) %>%
@@ -360,6 +362,8 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
 
 coords %>% dplyr::filter(animal == selected_animal) %>%  head(100)
 ```
+
+
 
 
 ```{r message=F, warning=F, echo=F, include=F}
@@ -532,6 +536,77 @@ plt_ypos <- coords %>%
 
 cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
 ```
+
+
+
+
+```{r fig.width=10, fig.height=10, echo = FALSE}
+coords %>% 
+  dplyr::filter(
+    animal == selected_animal,
+    body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>% 
+  dplyr::mutate(
+    dx = diff(X_interp), 
+    dy = diff(Y_interp),
+    # ldx = lead(dx), 
+    # ldy = lead(dy),
+    hc_d = sqrt(dx^2 + dy^2)
+    ) %>% 
+  ggplot(mapping = aes(x = hc_d/scale)) +
+  geom_histogram() +
+  geom_boxplot(aes(y = 1000), width=250, outlier.colour = "magenta", col = "blue" ) +
+  facet_grid(session~body_part) +
+  global_facet_theme
+
+
+  
+```
+
+```{r fig.width=10, fig.height=10, echo = FALSE}
+coords %>% 
+  dplyr::filter(
+    animal == selected_animal,
+    session == "session_3",
+    body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>%
+  # dplyr::arrange(body_part) %>% 
+  dplyr::mutate(
+    dx = diff(X_interp), 
+    dy = diff(Y_interp),
+    # ldx = lead(dx), 
+    # ldy = lead(dy),
+    hc_d = sqrt(dx^2 + dy^2)
+    ) %>%
+  dplyr::group_by(body_part) %>%
+  dplyr::slice(1:5) %>% 
+ 
+  ggplot(
+    mapping = aes(x = X_interp , y = Y_interp , label = frame)
+  ) +
+  geom_line(
+    aes(group = frame, col = frame %>% as.character()),
+  ) +
+ geom_point(
+    aes(shape = body_part, col = frame %>% as.character()),
+    size = 2
+  ) +
+  geom_label_repel(
+    data = . %>% dplyr::filter(body_part == "head"),
+    aes(
+      x = X_interp + dx / 2,
+      y = Y_interp + dy / 2,
+      label = hc_d %>% round(4)
+    ),
+    direction = "x",
+    nudge_x = -.7
+  ) 
+
+
+  
+```
+
+
 
 ## Dealing with missing coordinates
 
@@ -1912,7 +1987,7 @@ Mean/sum rotation angle by intensity (stimulus and control)
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
+    animal %!in% c(control_animals, "GIIFM14b"),
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "right"
