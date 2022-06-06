@@ -240,7 +240,7 @@ stims %>%  dplyr::filter(animal == selected_animal) %>%  head(100)
 This sections loads the stimulus times from a csv file
 
 ```{r message=F, echo = FALSE, warning = FALSE}
-coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
+coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
   as_tibble() %>%
   ### filter junk data
   dplyr::filter(
@@ -321,17 +321,29 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   dplyr::mutate(
     X = replace(X, miss == 0, NA),
     Y = replace(Y, miss == 0, NA)
-  ) %>%
-  dplyr::group_by(animal, body_part, session) %>%
-  ### this block calculates distances and speed across frames
+  ) %>% 
   dplyr::mutate(
+    stim_number = replace(stim_number, is.na(stim_number), "no stim")
+    ) 
+
+```
+
+```{r}
+coords <- coords_raw %>% 
+  dplyr::filter(
+    body_part != "tail",
+    animal != "GIIFM14b"
+    ) %>% 
+  ### this block calculates distances and speed across frames
+  dplyr::group_by(animal, body_part, session) %>%
+  dplyr::mutate(
+    
+    ### interpolating missing values
     X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
     Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
-
-
-
+    
     ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers or starts to follow something else
     ### these points are replaced by 0 (the animal did not change position between those frames)
     ### outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
@@ -357,9 +369,13 @@ coords <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %
   ) %>%
   group_by(animal, session, body_part, sec_counter) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup() %>%
-  mutate(stim_number = replace(stim_number, is.na(stim_number), "no stim"))
+  ungroup()
+  # dplyr::filter(
+  #   quality != "bad",
+  #   ) 
 
+  
+  
 coords %>% dplyr::filter(animal == selected_animal) %>%  head(100)
 ```
 
@@ -395,6 +411,12 @@ coords %>%
     Y_diff_IQR = Y_diff_IQR %>% unique(),
   )
 ```
+
+
+
+
+
+
 
 
 
@@ -515,7 +537,7 @@ Plotting X and Y positions vs time separately to see jumps in the tracking data 
 ```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
 
 plt_xpos <- coords %>%
-  dplyr::filter(animal == selected_animal) %>%
+  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
   ggplot(mapping = aes(x = rec_time, y = X %>% as.integer())) +
   geom_line(aes(col = body_part)) +
   theme(legend.position = "none") +
@@ -526,7 +548,7 @@ plt_xpos <- coords %>%
 
 
 plt_ypos <- coords %>%
-  dplyr::filter(animal == selected_animal) %>%
+  dplyr::filter(animal == selected_animal,  body_part != "tail") %>%
   ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
   geom_line(aes(col = body_part)) +
   theme(legend.position = "none") +
@@ -536,8 +558,6 @@ plt_ypos <- coords %>%
 
 cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
 ```
-
-
 
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
@@ -553,9 +573,35 @@ coords %>%
     # ldy = lead(dy),
     hc_d = sqrt(dx^2 + dy^2)
     ) %>% 
+  ungroup() %>% 
+  dplyr::filter(body_part == "center") %>% 
+  ggplot(
+    mapping = aes(x = rec_time, y = hc_d)) +
+  geom_line(
+    aes(col = stim, group = 1)) +
+  facet_wrap(~session, ncol = 1, scales = "free_y") +
+  global_facet_theme
+
+
+  
+```
+
+```{r echo=FALSE, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+coords %>% 
+  dplyr::filter(
+    animal == selected_animal,
+    body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>% 
+  dplyr::mutate(
+    dx = diff(X_interp), 
+    dy = diff(Y_interp),
+    # ldx = lead(dx), 
+    # ldy = lead(dy),
+    hc_d = sqrt(dx^2 + dy^2)
+    ) %>% 
   ggplot(mapping = aes(x = hc_d/scale)) +
   geom_histogram() +
-  geom_boxplot(aes(y = 1000), width=250, outlier.colour = "magenta", col = "blue" ) +
+  geom_boxplot(aes(y = 1000), width=300, outlier.colour = "magenta", col = "blue" ) +
   facet_grid(session~body_part) +
   global_facet_theme
 
