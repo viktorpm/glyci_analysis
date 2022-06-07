@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM22b"
+  selected_animal: "GIIFM24b"
 
 
 knit: (
@@ -563,8 +563,12 @@ plt_ypos <- coords %>%
 cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
 ```
 
+<br>
+Plotting head-center distances over time. Dashed lines represent the outlier threshold (+- 1.5*IQR)
+<br>
 
-```{r fig.width=10, fig.height=10, echo = FALSE}
+
+```{r fig.width=10, fig.height=10, echo = FALSE, message=FALSE, warning=FALSE}
 coords %>% 
   dplyr::filter(
     animal == selected_animal,
@@ -602,7 +606,12 @@ coords %>%
   
 ```
 
-```{r echo=FALSE, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+<br>
+Histograms of head-center distances with bloxplots and outliers.
+<br>
+
+
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE, echo=FALSE}
 coords %>% 
   dplyr::filter(
     animal == selected_animal,
@@ -624,6 +633,11 @@ coords %>%
 
   
 ```
+
+<br>
+Plotting first five head-center distances.
+<br>
+
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>% 
@@ -1083,46 +1097,6 @@ coords %>%
   global_facet_theme
 ```
 
-### Tail
-
-```{r fig.width=10, fig.height=10, echo = FALSE, warning=F}
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    body_part == "tail",
-    frame %% datapoint_to_plot == 0
-  ) %>%
-  ### recalculates distances after frames were removed
-  dplyr::mutate(
-    X_diff = c(diff(X_interp), NA) %>% round(4),
-    Y_diff = c(diff(Y_interp), NA) %>% round(4),
-    X_diff = ifelse(
-      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
-        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
-      yes = 0,
-      no = X_diff
-    ),
-    Y_diff = ifelse(
-      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
-        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
-      yes = 0,
-      no = Y_diff
-    ),
-    d = sqrt(X_diff^2 + Y_diff^2),
-    d_mm = d / scale,
-    speed_instant = d_mm / time_res,
-    mmps = speed_instant * (1 / time_res),
-    mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>%
-  ### plotting
-  ggplot(mapping = aes(x = rec_time, y = d_mm)) +
-  geom_line(aes(color = stim, group = 1)) +
-  facet_wrap(~session, scales = "free", ncol = 1) +
-  geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label))) +
-  ggtitle(paste0(selected_animal, " instantaneous traveled distance ", "(tail)")) +
-  global_facet_theme
-```
-
 
 
 ## Rolling mean of traveled distance
@@ -1272,54 +1246,6 @@ coords %>%
   facet_wrap(~session, scales = "free", ncol = 1) +
   geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label))) +
   ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(head)")) +
-  scale_color_manual(values = group_colors) +
-  global_facet_theme
-```
-
-
-
-### Tail
-
-
-```{r fig.width=12, fig.height=12, warning=FALSE, echo = FALSE}
-coords %>%
-  dplyr::filter(
-    animal == selected_animal,
-    body_part == "tail",
-    frame %% datapoint_to_plot == 0
-  ) %>%
-  ### recalculates distances after frames were removed
-  dplyr::group_by(session) %>%
-  dplyr::mutate(
-    X_diff = c(diff(X_interp), NA) %>% round(4),
-    Y_diff = c(diff(Y_interp), NA) %>% round(4),
-    X_diff = ifelse(
-      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
-        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
-      yes = 0,
-      no = X_diff
-    ),
-    Y_diff = ifelse(
-      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
-        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
-      yes = 0,
-      no = Y_diff
-    ),
-    d = sqrt(X_diff^2 + Y_diff^2),
-    d_mm = d / scale,
-    speed_instant = d_mm / time_res,
-    mmps = speed_instant * (1 / time_res),
-    mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>%
-  dplyr::group_by(session, stim_categ) %>%
-  dplyr::mutate(mean_mps_roll = zoo::rollmean(x = d_mm, k = fps, fill = NA)) %>%
-  ### plotting
-  ggplot(aes(x = rec_time, y = d_mm)) +
-  geom_point(aes(alpha = stim)) +
-  geom_line(aes(x = rec_time, y = mean_mps_roll, col = stim_categ, group = 1), size = 1) +
-  facet_wrap(~session, scales = "free", ncol = 1) +
-  geom_label(data = text_layer, aes(x = -Inf, y = Inf, hjust = -.2, vjust = 1.3, label = paste0("Intensity: ", int_label))) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by stimulus period ", "(tail)")) +
   scale_color_manual(values = group_colors) +
   global_facet_theme
 ```
