@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM17b"
+  selected_animal: "GIIFM22b"
 
 
 knit: (
@@ -301,6 +301,8 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
     intensity = lead(intensity, n = around_stim_length),
     stim_freq = lead(stim_freq, n = around_stim_length),
     stim_side = lead(stim_side, n = around_stim_length),
+    quality = lead(quality, n = around_stim_length),
+    
   ) %>%
   ungroup() %>%
   group_by(animal, session, stim_block) %>%
@@ -308,6 +310,7 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
   fill(intensity) %>%
   fill(stim_freq) %>%
   fill(stim_side) %>%
+  fill(quality) %>% 
   # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -369,14 +372,15 @@ coords <- coords_raw %>%
   ) %>%
   group_by(animal, session, body_part, sec_counter) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup()
-  # dplyr::filter(
-  #   quality != "bad",
-  #   ) 
+  ungroup()  %>% 
+  dplyr::filter(
+    quality != "bad" | is.na(quality),
+    stim_number %in% c("1", "2", "3", "4", "5", "no stim")
+    )
 
   
   
-coords %>% dplyr::filter(animal == selected_animal) %>%  head(100)
+coords %>% dplyr::filter(animal == selected_animal) %>% dplyr::group_by(session, body_part) %>% slice(1:5)
 ```
 
 
@@ -427,10 +431,10 @@ lengths <- coords %>%
     body_part == "head",
     stim_categ != "no stim",
   ) %>%
-  group_by(animal, session, stim_number) %>%
+  group_by(animal, session, stim_number, intensity, quality) %>%
   count(stim_categ) %>% 
   spread(stim_categ, n) %>% 
-  select(animal, session, stim_number, `before stim`, stim, `after stim`) 
+  select(animal, session, stim_number,intensity,quality, `before stim`, stim, `after stim`) 
 
 
 # full_join(
@@ -577,9 +581,21 @@ coords %>%
   dplyr::filter(body_part == "center") %>% 
   ggplot(
     mapping = aes(x = rec_time, y = hc_d)) +
+  geom_hline(
+    aes(yintercept = quantile(hc_d, na.rm=T)["25%"] - 1.5 * IQR(hc_d, na.rm = T)),
+    col = "gray50", 
+    lty = "dashed") + 
+  geom_hline(
+    aes(yintercept = quantile(hc_d, na.rm=T)["75%"] + 1.5 * IQR(hc_d, na.rm = T) ), 
+    col = "gray50", 
+    lty = "dashed") +
   geom_line(
     aes(col = stim, group = 1)) +
   facet_wrap(~session, ncol = 1, scales = "free_y") +
+  coord_cartesian(
+    ylim = c(20,130)
+    )+
+  
   global_facet_theme
 
 
@@ -601,7 +617,7 @@ coords %>%
     ) %>% 
   ggplot(mapping = aes(x = hc_d/scale)) +
   geom_histogram() +
-  geom_boxplot(aes(y = 1000), width=300, outlier.colour = "magenta", col = "blue" ) +
+  geom_boxplot(aes(y = 1000), width= 300, outlier.colour = "magenta", col = "blue", alpha = 0.1 ) +
   facet_grid(session~body_part) +
   global_facet_theme
 
