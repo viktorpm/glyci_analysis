@@ -215,16 +215,16 @@ stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) 
   ### creating unique session IDs
   mutate(
     intensity = paste0(intensity, " mW"),
-    s2 = lag(session, default = "1"),
-    s3 = ifelse(s2 == session, 0, 1),
+    # s2 = lag(session, default = "1"),
+    # s3 = ifelse(s2 == session, 0, 1),
     stim_length = end - start
   ) %>%
   group_by(animal) %>%
-  mutate(
-    session = cumsum(s3),
-    session = paste0("session_", session)
-  ) %>%
-  select(-stim_duration, -s2, -s3) %>%
+  # mutate(
+  #   session = cumsum(s3),
+  #   session = paste0("session_", session)
+  # ) %>%
+  # select(-stim_duration, -s2, -s3) %>%
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 
@@ -250,17 +250,29 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
       str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control"),
-    s2 = lag(session, default = "1"),
-    s3 = ifelse(s2 == session, 0, 1),
+    # s2 = lag(session, default = "1"),
+    # s3 = ifelse(s2 == session, 0, 1)
   ) %>%
+  # group_by(animal) %>%
+  # mutate(
+  #   session = cumsum(s3),
+  #   session = paste0("session_", session)
+  # ) %>%
+  # select(-s2, -s3) %>%
+  # ungroup() %>%
+  full_join(stims) %>%
+  
   group_by(animal) %>%
   mutate(
+    s2 = lag(session, default = "1"),
+    s3 = ifelse(s2 == session, 0, 1),
     session = cumsum(s3),
     session = paste0("session_", session)
   ) %>%
   select(-s2, -s3) %>%
   ungroup() %>%
-  full_join(stims) %>%
+
+  
   dplyr::group_by(animal, session) %>%
   dplyr::mutate(
     stim_number = ifelse(timing == "end", NA, stim_number)
