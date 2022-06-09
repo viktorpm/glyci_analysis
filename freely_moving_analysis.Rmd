@@ -212,19 +212,13 @@ stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) 
   dplyr::filter(
     stringr::str_detect(animal, pattern = "b")
   ) %>%
-  ### creating unique session IDs
+  
   mutate(
     intensity = paste0(intensity, " mW"),
-    # s2 = lag(session, default = "1"),
-    # s3 = ifelse(s2 == session, 0, 1),
+   
     stim_length = end - start
   ) %>%
-  group_by(animal) %>%
-  # mutate(
-  #   session = cumsum(s3),
-  #   session = paste0("session_", session)
-  # ) %>%
-  # select(-stim_duration, -s2, -s3) %>%
+  select(-stim_duration) %>%
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 
@@ -246,22 +240,14 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
   dplyr::filter(
     stringr::str_detect(animal, pattern = "b")
   ) %>%
-  ### creating unique session IDs
+ 
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
-      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control"),
-    # s2 = lag(session, default = "1"),
-    # s3 = ifelse(s2 == session, 0, 1)
+      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control")
   ) %>%
-  # group_by(animal) %>%
-  # mutate(
-  #   session = cumsum(s3),
-  #   session = paste0("session_", session)
-  # ) %>%
-  # select(-s2, -s3) %>%
-  # ungroup() %>%
   full_join(stims) %>%
   
+  ### creating unique session IDs
   group_by(animal) %>%
   mutate(
     s2 = lag(session, default = "1"),
@@ -271,7 +257,6 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
   ) %>%
   select(-s2, -s3) %>%
   ungroup() %>%
-
   
   dplyr::group_by(animal, session) %>%
   dplyr::mutate(
@@ -297,6 +282,7 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
     stim = replace(stim, timing == "start", T)
   ) %>%
   ungroup() %>%
+  
   group_by(animal, session) %>%
   dplyr::mutate(
     rec_time = (frame / fps) %>% round(digits = 2),
@@ -313,10 +299,10 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
     intensity = lead(intensity, n = around_stim_length),
     stim_freq = lead(stim_freq, n = around_stim_length),
     stim_side = lead(stim_side, n = around_stim_length),
-    quality = lead(quality, n = around_stim_length),
-    
+    quality = lead(quality, n = around_stim_length)
   ) %>%
   ungroup() %>%
+  
   group_by(animal, session, stim_block) %>%
   fill(stim_number) %>%
   fill(intensity) %>%
@@ -1990,7 +1976,7 @@ plt1_angle <- corrected_angles_population %>%
     animal %!in% c(control_animals, "GIIFM14b"),
     body_part == "head",
     stim_categ != "no stim",
-    # stim_side == "right"
+    #stim_side == "left"
   ) %>%
   dplyr::filter(intensity %in% selected_intensities) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -2010,6 +1996,22 @@ plt1_angle <- corrected_angles_population %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    # method.args = list(alternative = "greater"),
+    comparisons = list(c("before stim", "stim")),
+    vjust = 1.5,
+    hide.ns = F
+  ) +
+  # ggpubr::stat_compare_means(
+  #   method = "wilcox.test",
+  #   paired = T,
+  #   comparisons = list(c("stim", "after stim")),
+  #   vjust = 1.5,
+  #   hide.ns = F
+  # ) +
+  
   facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3) +
   global_facet_theme +
   # ylim(-3.5, 2.5) +
