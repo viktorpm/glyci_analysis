@@ -1,0 +1,482 @@
+---
+title: "IL freely moving analysis"
+author: "Viktor Plattner"
+output:
+  html_document:
+    number_sections: yes
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    keep_tex: true
+  html_notebook:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+spacing: single
+fontsize: 12pt
+always_allow_html: yes
+header-includes:
+   - \usepackage{animate}
+
+params:
+  selected_animal: "GIIFM5"
+
+
+knit: (
+  function (inputFile, encoding) {
+    
+    rmarkdown::render(  
+      input = inputFile,
+      encoding = encoding,
+      output_file = file.path(
+        "notebook_html", 
+        paste0("IL freely_moving_analysis_", 
+        rmarkdown::yaml_front_matter(inputFile)$params$selected_animal,
+        "_",
+        Sys.Date(),
+         ".html")
+        ),
+      envir = globalenv()
+      )
+    }
+  )
+---
+
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 14px;
+      font-family: "Arial", Helvetica, sans-serif;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 38px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #4d4e4f;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h2 { /* Header 2 */
+  font-size: 22px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+
+```{r setup, include=FALSE}
+### cheks all the used libraries in the project. Removes duplicates
+### list of libraries mentioned in the R scripts of the project
+library(tidyverse)
+
+liblist <- map(
+  list.files(pattern = ".Rmd|.R"),
+  ~ readLines(con = .x) %>%
+    grep(pattern = "library\\(", x = ., value = T)
+) %>%
+  unlist() %>%
+  substr(
+    start = 9,
+    stop = regexpr(text = ., pattern = "\\)") - 1 %>% # regexpr: in case of multiple matches it only takes the first one
+      as.vector()
+  ) %>%
+  `[`(!duplicated(.))
+
+### list of installed packages
+pkgs <- installed.packages() %>%
+  as_tibble() %>%
+  pull(1)
+
+### packages that are needed but not installed
+c(liblist[which(!liblist %in% pkgs)])
+
+### installs uninstalled packages
+install.packages(c(liblist[which(!liblist %in% pkgs)]))
+
+### loads all libraries
+lapply(liblist %>% as.list(), require, character.only = TRUE)
+
+
+
+
+### defining global constants, filters and plot scales
+
+library(imputeTS)
+
+scale <- 1.38 ### pixel/mm
+fps <- 29.5 ### frame rate
+standard_stim_length <- 10 ### this is the most commonly used stimulus length (in seconds)
+around_stim_length <- fps * 8
+
+time_res <- 1 / fps ### time between frames
+ang_threshold <- 90
+mouse_speed_mps <- 3.3
+
+
+
+datapoint_to_plot <- 5
+
+global_facet_theme <- theme(
+  strip.text = element_text(size = 15),
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 15)
+)
+
+xlim_mm <- c(0, 1280 / scale)
+ylim_mm <- c(0, 720 / scale)
+
+selected_animal <- params$selected_animal
+selected_intensities <- c("1 mW", "5 mW", "10 mW")
+control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
+
+`%!in%` <- Negate(`%in%`)
+
+
+
+
+### custom functions used in the analysis
+
+
+
+### removing junk animals from the data
+
+RawDataFilter <- function(df) {
+  # browser()
+  df %>%
+    dplyr::filter(
+      stringr::str_detect(animal, pattern = "b")
+    ) %>%
+    as_tibble() %>%
+    return()
+}
+```
+
+
+```{r warning=F, message=F, echo=FALSE}
+stimsIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_stims_IL.csv")) %>%
+  as_tibble() %>%
+  ### creating unique session IDs
+  mutate(
+    intensity = paste0(intensity, " mW"),
+    # s2 = lag(session, default = "1"),
+    # s3 = ifelse(s2 == session, 0, 1),
+    stim_length = end - start
+  ) %>%
+  group_by(animal) %>%
+  # mutate(
+  #   session = cumsum(s3),
+  #   session = paste0("session_", session)
+  # ) %>%
+  # select(-stim_duration, -s2, -s3) %>%
+  rename("stim_number" = stim.number) %>%
+  gather(key = "timing", value = "frame", start, end)
+
+stimsIL %>%  dplyr::filter(animal == selected_animal) %>%  head(100)
+```
+
+
+```{r message=F, echo = FALSE, warning = FALSE}
+coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.csv")) %>%
+  as_tibble() %>%
+
+  ### creating unique session IDs
+  mutate(
+    animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
+      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control") %>% 
+      substr(start = 1, stop = nchar(.)-8)#,
+    # s2 = lag(session, default = "1"),
+    # s3 = ifelse(s2 == session, 0, 1),
+  ) %>% 
+  # group_by(animal) %>%
+  # mutate(
+  #   session = cumsum(s3),
+  #   session = paste0("session_", session)
+  # ) %>%
+  # select(-s2, -s3) %>%
+  # ungroup() %>%
+  full_join(stimsIL) %>% 
+  
+  group_by(animal) %>%
+  mutate(
+    s2 = lag(session, default = "1"),
+    s3 = ifelse(s2 == session, 0, 1),
+    session = cumsum(s3),
+    session = paste0("session_", session)
+  ) %>%
+  select(-s2, -s3) %>%
+  ungroup() %>%
+
+
+  dplyr::group_by(animal, session) %>%
+  dplyr::mutate(
+    stim_number = ifelse(timing == "end", NA, stim_number)
+  ) %>%
+  mutate(grp = cumsum(!is.na(stim_number))) %>%
+  dplyr::group_by(animal, session, grp) %>%
+  fill(timing) %>%
+  mutate(
+    stim_freq = replace(stim_freq, timing == "start", stim_freq[1]),
+    stim_freq = replace(stim_freq, timing == "end", NA),
+    stim_length = replace(stim_length, timing == "start", stim_length[1]),
+    stim_length = replace(stim_length, timing == "end", NA),
+    intensity = replace(intensity, timing == "start", intensity[1]),
+    intensity = replace(intensity, timing == "end", NA),
+    stim_number = replace(stim_number, timing == "start", stim_number[1]),
+    stim_number = replace(stim_number, timing == "end", NA),
+    stim_side = replace(stim_side, timing == "start", stim_side[1]),
+    stim_side = replace(stim_side, timing == "end", NA),
+    quality = replace(quality, timing == "start", quality[1]),
+    quality = replace(quality, timing == "end", NA),
+    stim = F,
+    stim = replace(stim, timing == "start", T)
+  ) %>%
+  ungroup() %>%
+  group_by(animal, session) %>%
+  dplyr::mutate(
+    rec_time = (frame / fps) %>% round(digits = 2),
+    stim_categ = case_when(
+      stim == T ~ "stim",
+      lead(stim, n = around_stim_length) == T ~ "before stim",
+      lag(stim, n = around_stim_length) == T ~ "after stim",
+      stim == F ~ "no stim"
+    ),
+
+    ### shift values to the beginning of the stimulus block to be able to fill missing values in the next step
+    stim_block = ifelse(stim_categ == "no stim", F, T),
+    stim_number = lead(stim_number, n = around_stim_length),
+    intensity = lead(intensity, n = around_stim_length),
+    stim_freq = lead(stim_freq, n = around_stim_length),
+    stim_side = lead(stim_side, n = around_stim_length),
+    quality = lead(quality, n = around_stim_length),
+    
+  ) %>%
+  ungroup() %>%
+  group_by(animal, session, stim_block) %>%
+  fill(stim_number) %>%
+  fill(intensity) %>%
+  fill(stim_freq) %>%
+  fill(stim_side) %>%
+  fill(quality) %>% 
+  # length of the stimulus
+  unite(col = "head", head1, head2, sep = "_") %>%
+  unite(col = "center", center1, center2, sep = "_") %>%
+  unite(col = "tail", tail1, tail2, sep = "_") %>%
+  gather(
+    key = "body_part",
+    value = "coordinate",
+    head, center, tail
+  ) %>%
+  tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>%
+  dplyr::mutate(
+    X = replace(X, miss == 0, NA),
+    Y = replace(Y, miss == 0, NA)
+  ) %>% 
+  dplyr::mutate(
+    stim_number = replace(stim_number, is.na(stim_number), "no stim")
+    ) 
+
+```
+
+```{r}
+coordsIL <- coords_rawIL %>% 
+  dplyr::filter(
+    body_part != "tail",
+    animal != "GIIFM14b"
+    ) %>% 
+  ### this block calculates distances and speed across frames
+  dplyr::group_by(animal, body_part, session) %>%
+  dplyr::mutate(
+    
+    ### interpolating missing values
+    X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
+    Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    
+    ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers or starts to follow something else
+    ### these points are replaced by 0 (the animal did not change position between those frames)
+    ### outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
+
+    X_diff = ifelse(
+      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+      yes = 0,
+      no = X_diff
+    ),
+    Y_diff = ifelse(
+      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+      yes = 0,
+      no = Y_diff
+    ),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000,
+    sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
+  ) %>%
+  group_by(animal, session, body_part, sec_counter) %>%
+  dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
+  ungroup() 
+  
+coords %>% dplyr::filter(animal == selected_animal) %>% dplyr::group_by(session, body_part) %>% slice(1:5)
+```
+
+
+
+
+
+```{r message=F, warning=F, echo=F, include=F}
+lengthsIL <- coords_rawIL %>%
+  dplyr::filter(
+    body_part == "head",
+    stim_categ != "no stim",
+  ) %>%
+  group_by(animal, session, stim_number, intensity, quality) %>%
+  count(stim_categ) %>% 
+  spread(stim_categ, n) %>% 
+  select(animal, session, stim_number,intensity,quality, `before stim`, stim, `after stim`) 
+
+
+# full_join(
+#   lengths,
+#   stims %>% spread(timing, frame) %>% 
+#     select(animal, session, stim_number, start, end) %>% 
+#     mutate(stim_number = stim_number %>% as.character())
+# ) %>% write_csv(file.path("output_data", "stim_lengths.csv"))
+
+
+# lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
+```
+
+
+
+
+
+<br>
+Creating text layer to add intensity values to plots
+<br>
+
+```{r}
+text_layer <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    stim == T
+  ) %>%
+  group_by(session) %>%
+  summarise(int_label = intensity %>% unique())
+```
+
+<br>
+Creating plot colors
+<br>
+
+```{r}
+gg_color_hue <- function(n) {
+  hues <- seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+n <- 6
+cols <- gg_color_hue(n)
+```
+
+
+
+# Analysis (selected animal: `r selected_animal`)
+
+
+## Checking tracking quality
+
+Plotting X and Y positions vs time separately to see jumps in the tracking data and big separation between head-ceter-tail coordinates (unrealistically big mouse). The tracking software occasionally lost the animal and started to follow different points. If there are many of those the session cannot be analysed.
+
+
+```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
+
+plt_xpos <- coords_rawIL %>%
+  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
+  ggplot(mapping = aes(x = rec_time, y = X %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("X position") +
+   facet_grid(session~animal) + 
+  ggtitle(paste0("X position: ", selected_animal))
+
+
+
+plt_ypos <- coords_rawIL %>%
+  dplyr::filter(animal == selected_animal,  body_part != "tail") %>%
+  ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("Y position") +
+  facet_grid(session~animal) +
+  ggtitle(paste0("Y position: ", selected_animal))
+
+cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
+```
+
+
+<br>
+Plotting head-center distances over time. Dashed lines represent the outlier threshold (+- 1.5*IQR)
+<br>
+
+
+```{r fig.width=10, fig.height=10, echo = FALSE, message=FALSE, warning=FALSE}
+coords_rawIL %>% 
+  dplyr::filter(
+    animal == selected_animal,
+    body_part != "tail") %>%
+  dplyr::group_by(session, frame) %>% 
+  dplyr::mutate(
+    dx = diff(X_interp), 
+    dy = diff(Y_interp),
+    # ldx = lead(dx), 
+    # ldy = lead(dy),
+    hc_d = sqrt(dx^2 + dy^2)
+    ) %>% 
+  ungroup() %>% 
+  dplyr::filter(body_part == "center") %>% 
+  ggplot(
+    mapping = aes(x = rec_time, y = hc_d)) +
+  geom_hline(
+    aes(yintercept = quantile(hc_d, na.rm=T)["25%"] - 1.5 * IQR(hc_d, na.rm = T)),
+    col = "gray50", 
+    lty = "dashed") + 
+  geom_hline(
+    aes(yintercept = quantile(hc_d, na.rm=T)["75%"] + 1.5 * IQR(hc_d, na.rm = T) ), 
+    col = "gray50", 
+    lty = "dashed") +
+  geom_line(
+    aes(col = stim, group = 1)) +
+  facet_wrap(~session, ncol = 1, scales = "free_y") +
+  coord_cartesian(
+    ylim = c(20,130)
+    )+
+  
+  global_facet_theme
+
+
+  
+```
