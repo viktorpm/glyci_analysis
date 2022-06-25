@@ -1808,7 +1808,6 @@ corrected_angles %>%
 ```{r message=FALSE, warning=FALSE, echo = FALSE}
 corrected_angles_population <- coords %>%
   dplyr::filter(
-    animal != "GIIFM14b",
     body_part != "tail"
   ) %>%
   dplyr::group_by(animal, session, frame) %>%
@@ -1869,7 +1868,6 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
     body_part == "head",
     stim_categ != "no stim"
   ) %>%
