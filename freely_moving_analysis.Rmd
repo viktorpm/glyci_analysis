@@ -22,7 +22,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM24b"
+  selected_animal: "GIIFM18b"
 
 
 knit: (
@@ -329,11 +329,16 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
 
 ```
 
+
+<br>
+Filtering raw data
+<br>
+
 ```{r}
 coords <- coords_raw %>% 
   dplyr::filter(
     body_part != "tail",
-    animal != "GIIFM14b"
+    animal != "GIIFM14b",
     ) %>% 
   ### this block calculates distances and speed across frames
   dplyr::group_by(animal, body_part, session) %>%
@@ -382,45 +387,9 @@ coords %>% dplyr::filter(animal == selected_animal) %>% dplyr::group_by(session,
 ```
 
 
-
-
-```{r message=F, warning=F, echo=F, include=F}
-coords %>%
-  dplyr::filter() %>%
-  dplyr::group_by(animal, body_part, session) %>%
-  dplyr::mutate(
-    X_diff_mean = mean(X_diff, na.rm = T),
-    X_diff_range = paste0(range(X_diff, na.rm = T) %>% `[[`(1), ":", range(X_diff, na.rm = T) %>% `[[`(2)),
-    X_diff_Q1 = quantile(X_diff, na.rm = T)["25%"],
-    X_diff_Q3 = quantile(X_diff, na.rm = T)["75%"],
-    X_diff_IQR = IQR(X_diff, na.rm = T),
-    Y_diff_mean = mean(Y_diff, na.rm = T),
-    Y_diff_range = paste0(range(Y_diff, na.rm = T) %>% `[[`(1), ":", range(Y_diff, na.rm = T) %>% `[[`(2)),
-    Y_diff_Q1 = quantile(Y_diff, na.rm = T)["25%"],
-    Y_diff_Q3 = quantile(Y_diff, na.rm = T)["75%"],
-    Y_diff_IQR = IQR(Y_diff, na.rm = T),
-  ) %>%
-  summarise(
-    X_diff_mean = X_diff_mean %>% unique(),
-    X_diff_range = X_diff_range %>% unique(),
-    X_diff_Q1 = X_diff_Q1 %>% unique(),
-    X_diff_Q3 = X_diff_Q3 %>% unique(),
-    X_diff_IQR = X_diff_IQR %>% unique(),
-    Y_diff_mean = Y_diff_mean %>% unique(),
-    Y_diff_range = Y_diff_range %>% unique(),
-    Y_diff_Q1 = Y_diff_Q1 %>% unique(),
-    Y_diff_Q3 = Y_diff_Q3 %>% unique(),
-    Y_diff_IQR = Y_diff_IQR %>% unique(),
-  )
-```
-
-
-
-
-
-
-
-
+<br>
+Length of stimuli, number of repeats of each stimulus with a given intensity
+<br>
 
 
 ```{r message=F, warning=F, echo=F, include=F}
@@ -432,7 +401,13 @@ lengths <- coords %>%
   group_by(animal, session, stim_number, intensity, quality) %>%
   count(stim_categ) %>% 
   spread(stim_categ, n) %>% 
-  select(animal, session, stim_number,intensity,quality, `before stim`, stim, `after stim`) 
+  select(animal, session, stim_number,intensity,quality, `before stim`, stim, `after stim`)
+ 
+
+n_repeat <- lengths %>%
+  dplyr::group_by(animal, intensity) %>% 
+  dplyr::filter(intensity %in% selected_intensities) %>% 
+  summarise(length(stim_number))
 
 
 # full_join(
@@ -540,7 +515,7 @@ Plotting X and Y positions vs time separately to see jumps in the tracking data 
 
 plt_xpos <- coords %>%
   dplyr::filter(animal == selected_animal, body_part != "tail") %>%
-  ggplot(mapping = aes(x = rec_time, y = X %>% as.integer())) +
+  ggplot(mapping = aes(x = rec_time, y = X_interp %>% as.integer())) +
   geom_line(aes(col = body_part)) +
   theme(legend.position = "none") +
   ylab("X position") +
@@ -578,7 +553,7 @@ coords %>%
     # ldx = lead(dx), 
     # ldy = lead(dy),
     hc_d = sqrt(dx^2 + dy^2)
-    ) %>% 
+    ) %>%
   ungroup() %>% 
   dplyr::filter(body_part == "center") %>% 
   ggplot(
@@ -593,6 +568,19 @@ coords %>%
     lty = "dashed") +
   geom_line(
     aes(col = stim, group = 1)) +
+  geom_label_repel(
+    data = . %>% 
+      dplyr::filter(stim_number != "no stim", stim_categ == "stim") %>% 
+      dplyr::group_by(session, stim_number) %>% 
+      slice(1),
+     aes(
+      x = rec_time,
+      y = mean(hc_d, na.rm=T),
+      label = quality
+    ),
+    direction = "x",
+    nudge_x = 1
+  ) +
   facet_wrap(~session, ncol = 1, scales = "free_y") +
   coord_cartesian(
     ylim = c(20,130)
@@ -605,7 +593,7 @@ coords %>%
 ```
 
 <br>
-Histograms of head-center distances with bloxplots and outliers.
+Histograms of head-center distances with boxplots and outliers.
 <br>
 
 
@@ -1250,14 +1238,14 @@ coords %>%
 
 
 
-```{r fig.width=10, fig.height=10, include=FALSE, echo=FALSE, eval=FALSE}
+```{r fig.width=10, fig.height=10, include=F, echo=F, eval=F}
 coords %>%
   dplyr::select(animal, session, frame, rec_time, stim_categ, body_part, d_mm, X_diff, Y_diff, stim_number) %>%
   mutate(stim_number = replace(stim_number, stim_number == "no stim", NA)) %>%
   dplyr::filter(
     animal == "GIIFM22b",
     body_part == "center",
-    X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
+    #X_diff < 20, X_diff > -20, Y_diff < 20, Y_diff > -20,
     stim_categ != "no stim"
   ) %>%
   group_by(session, stim_categ) %>%
@@ -1274,9 +1262,9 @@ coords %>%
 
 
 
-## Mean traveled distance by individual stimuli within session (full length before and after the stimulus)
+## Sum traveled distance by individual stimuli within session (full length before and after the stimulus)
 
-Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is averaged through the full duration of the stimulus (~10s) and `r around_stim_length / fps`s "before stimulus". Traveled distance "after stimulus" is not included.  <br>
+Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the full duration of the stimulus (~10s) and `r around_stim_length / fps`s "before stimulus". Traveled distance "after stimulus" is not included.  <br>
 
 The same data is shown on the plots with different groupings: <br>
 
@@ -1317,21 +1305,21 @@ coords %>%
     mps = (speed_instant * (1 / time_res)) / 1000
   ) %>%
   dplyr::group_by(intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), shape = 21, size = 4) +
   facet_wrap(~stim_number) +
   geom_line(aes(group = intensity)) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  ggtitle(paste0(selected_animal, " sum traveled distance by individual stimuli within session ", "(center)")) +
   labs(
     fill = "Intensity",
     x = "Stimulus period",
-    y = "Mean traveled distance"
+    y = "Sum traveled distance [pixel]"
   ) +
   global_facet_theme
 ```
@@ -1369,31 +1357,31 @@ coords %>%
     mps = (speed_instant * (1 / time_res)) / 1000
   ) %>%
   dplyr::group_by(intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = stim_number), shape = 21, size = 4) +
   facet_wrap(~factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   geom_line(aes(group = stim_number)) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  ggtitle(paste0(selected_animal, " sum traveled distance by individual stimuli within session ", "(center)")) +
   labs(
     fill = "Stimulus number",
     x = "Stimulus period",
-    y = "Mean traveled distance"
+    y = "Sum traveled distance [pixel]"
   ) +
   global_facet_theme
 ```
 
 
 
-## Mean traveled distance by individual stimuli within session (1s before and during the stimulus)
+## Sum traveled distance by individual stimuli within session (1s before and during the stimulus)
 
 
-Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is averaged through the last second of "before stimulus" category and through first second of the stimulus. Traveled distance "after stimulus" is not included. <br>
+Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the last second of "before stimulus" category and through first second of the stimulus. Traveled distance "after stimulus" is not included. <br>
 
 
 The same data is shown on the plots with different groupings: <br>
@@ -1474,9 +1462,11 @@ coords_1s_window <- bind_rows(
 
 coords_1s_window %>% 
   dplyr::filter(
-    animal == selected_animal
+    animal == selected_animal,
+    intensity %in% selected_intensities
   ) %>% 
-  head(100) 
+  select(session,animal,frame,rec_time,stim_categ,d,stim_number,intensity,body_part,X_diff,Y_diff) %>% 
+  head(50) 
 ```
 
 
@@ -1489,45 +1479,22 @@ coords_1s_window %>%
     intensity %in% selected_intensities,
 
   ) %>%
-  ### recalculates distances after frames were removed
-  dplyr::group_by(session) %>%
-  dplyr::mutate(
-    X_diff = c(diff(X_interp), NA) %>% round(4),
-    Y_diff = c(diff(Y_interp), NA) %>% round(4),
-    X_diff = ifelse(
-      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
-        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
-      yes = 0,
-      no = X_diff
-    ),
-    Y_diff = ifelse(
-      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
-        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
-      yes = 0,
-      no = Y_diff
-    ),
-    d = sqrt(X_diff^2 + Y_diff^2),
-    d_mm = d / scale,
-    speed_instant = d_mm / time_res,
-    mmps = speed_instant * (1 / time_res),
-    mps = (speed_instant * (1 / time_res)) / 1000
-  ) %>%
   dplyr::group_by(intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), shape = 21, size = 4) +
   facet_wrap(~stim_number) +
   geom_line(aes(group = intensity)) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  ggtitle(paste0(selected_animal, " sum traveled distance by individual stimuli within session ", "(center)")) +
   labs(
     fill = "Intensity",
     x = "Stimulus period",
-    y = "Mean traveled distance"
+    y = "Sum traveled distance [pixel]"
   ) +
   global_facet_theme
 ```
@@ -1542,11 +1509,11 @@ coords_1s_window %>%
     intensity %in% selected_intensities
   ) %>%
   dplyr::group_by(intensity, stim_number, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = stim_number %>% as.factor()), shape = 21, size = 4) +
@@ -1556,7 +1523,7 @@ coords_1s_window %>%
   labs(
     fill = "Stimulus number",
     x = "Stimulus period",
-    y = "Mean traveled distance"
+    y = "Sum traveled distance [pixel]"
   ) +
   global_facet_theme
 ```
@@ -2145,7 +2112,7 @@ cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
 
 ## Traveled distance
 
-Mean traveled distance across sessions at different intensities by animals
+Sum traveled distance across sessions at different intensities by animals
 <br>
 1 second before stimulus, first second of stimulation
 
@@ -2159,11 +2126,11 @@ coords_1s_window %>%
     animal %!in% c(control_animals, "GIIFM14b"),
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2187,7 +2154,7 @@ coords_1s_window %>%
   global_facet_theme
 ```
 
-Mean traveled distance across sessions at different intensities by animals (control)
+Sum traveled distance across sessions at different intensities by animals (control)
 <br>
 1 second before stimulus, first second of stimulation
 
@@ -2202,11 +2169,11 @@ coords_1s_window %>%
     animal %in% control_animals,
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d_mm
+      y = sum_d
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2247,9 +2214,9 @@ coords_1s_window %>%
     stim_categ != "no stim",
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(mean_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   tidyr::spread(
-    stim_categ, mean_d_mm
+    stim_categ, sum_d
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, 15)) %>%
   ggplot(
@@ -2283,9 +2250,9 @@ coords_1s_window %>%
     intensity %in% selected_intensities
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  summarise(sum_d_mm = sum(d_mm)) %>%
+  summarise(sum_d = sum(d)) %>%
   group_by(animal) %>%
-  spread(stim_categ, sum_d_mm) %>%
+  spread(stim_categ, sum_d) %>%
   mutate(`stim-bstim` = stim - `before stim`) %>%
   ggplot(mapping = aes(x = `before stim`, y = `stim-bstim`)) +
   geom_point(aes(col = factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))), size = 3) +
@@ -2306,10 +2273,10 @@ stim_bstim1 <- coords_1s_window %>%
     intensity %in% c(selected_intensities, 15),
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(sum_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   group_by(animal) %>%
   tidyr::spread(
-    stim_categ, sum_d_mm
+    stim_categ, sum_d
   ) %>%
   ggplot(
     mapping = aes(x = `before stim`, y = stim)
@@ -2334,10 +2301,10 @@ stim_bstim2 <- coords_1s_window %>%
     intensity %in% c(selected_intensities, 15),
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(sum_d_mm = sum(d_mm, na.rm = T)) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   group_by(animal) %>%
   tidyr::spread(
-    stim_categ, sum_d_mm
+    stim_categ, sum_d
   ) %>%
   ggplot(
     mapping = aes(x = `before stim`, y = stim)
