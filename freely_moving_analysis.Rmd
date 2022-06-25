@@ -1519,7 +1519,7 @@ coords_1s_window %>%
   geom_point(aes(fill = stim_number %>% as.factor()), shape = 21, size = 4) +
   facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   geom_line(aes(group = stim_number)) +
-  ggtitle(paste0(selected_animal, " mean traveled distance by individual stimuli within session ", "(center)")) +
+  ggtitle(paste0(selected_animal, " sum traveled distance by individual stimuli within session ", "(center)")) +
   labs(
     fill = "Stimulus number",
     x = "Stimulus period",
