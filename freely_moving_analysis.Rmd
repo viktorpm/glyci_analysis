@@ -2173,10 +2173,11 @@ plt1_angle <- corrected_angles_population %>%
   
   facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  #expand_limits(y = c(0, 3000)) +
+  expand_limits(y = c(0, 3000)) +
   xlab("State") +
   ylab("Scaled sum angle") +
-  ggtitle("Stimulus")
+  ggtitle("Stimulus") +
+  theme(aspect.ratio=1)
 
 # facet_grid(~animal, ~intensity)
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
@@ -2208,7 +2209,7 @@ plt2_angle <- corrected_angles_population %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang #  %>% abs() #/ max(sum_ang %>% abs())# %>% scale()
+      y = sum_ang   %>% abs() #/ max(sum_ang %>% abs())# %>% scale()
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -2234,10 +2235,11 @@ plt2_angle <- corrected_angles_population %>%
   
   facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3, ) +
   global_facet_theme +
-  # expand_limits(y = c(0, 3000)) +
+   expand_limits(y = c(0, 3000)) +
   xlab("State") +
   ylab("Scaled sum angle") +
-  ggtitle("Control")
+  ggtitle("Control") +
+  theme(aspect.ratio=1)
 
 
 # facet_grid(~animal, ~intensity)
@@ -2340,7 +2342,7 @@ norm_ref <- coords_1s_window %>%
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
-    intensity %in% c(selected_intensities, "15 mW"),
+    intensity %in% c(selected_intensities),
     animal %!in% c(control_animals, "GIIFM14b"),
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -2353,7 +2355,7 @@ plt_pop_dist_stim <- coords_1s_window %>%
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
-    intensity %in% c(selected_intensities, "15 mW"),
+    intensity %in% c(selected_intensities),
     animal %!in% c(control_animals, "GIIFM14b"),
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -2367,7 +2369,7 @@ plt_pop_dist_stim <- coords_1s_window %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = sum_d / max_sum_d #norm_ref
+      y = sum_d / max_sum_d # norm_ref # 
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2389,8 +2391,8 @@ plt_pop_dist_stim <- coords_1s_window %>%
   #   hide.ns = F
   # ) +
   expand_limits(y = c(0, 12)) +
-  global_facet_theme
-
+  global_facet_theme +
+  theme(aspect.ratio=1)
 
 
 
@@ -2399,7 +2401,7 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
-    intensity %in% c(selected_intensities, "15 mW"),
+    intensity %in% c(selected_intensities),
     animal %in% control_animals,
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -2413,7 +2415,7 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = sum_d / max_sum_d # norm_ref # 
+      y = sum_d / max_sum_d # norm_ref #
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2436,7 +2438,8 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
   #   hide.ns = F
   # ) +
   expand_limits(y = c(0, 12)) +
-  global_facet_theme
+  global_facet_theme +
+  theme(aspect.ratio=1)
 
 
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
@@ -2509,7 +2512,8 @@ plt_pop_dist_stim <- coords_8s_window %>%
   #   hide.ns = F
   # ) +
   expand_limits(y = c(0, 1)) +
-  global_facet_theme
+  global_facet_theme +
+  theme(aspect.ratio=1)
 
 
 
@@ -2556,7 +2560,8 @@ plt_pop_dist_ctrl <- coords_8s_window %>%
   #   hide.ns = F
   # ) +
   expand_limits(y = c(0, 1)) +
-  global_facet_theme
+  global_facet_theme +
+  theme(aspect.ratio=1)
 
 
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
