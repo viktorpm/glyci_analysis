@@ -1295,7 +1295,7 @@ gp_hist <- ggplot(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == freq_to_plot
-      #animal_id == "GII_21"
+      #,animal_id == "GII_21"
     ),
   mapping = aes(x = first_ap_reltimes)
 ) +
@@ -1311,7 +1311,7 @@ gp_hist <- ggplot(
   ) +
   facet_wrap(~animal_id, ncol = 3) +
   geom_vline(xintercept = 0) +
-  xlab("Time (s)") +
+  xlab("Latency (s)") +
   ylab("Count")
 
 
@@ -1323,7 +1323,7 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1340,7 +1340,7 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1355,7 +1355,7 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
@@ -1366,7 +1366,7 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
@@ -1380,7 +1380,7 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = mean, y = y_max + 4), size = 2
@@ -1391,14 +1391,27 @@ gp_hist +
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot,
-        #animal_id == "GII_21"
+        #,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = peak, y = y_max + 4),
     shape = 25,
     size = 2,
     fill = "red"
-  )
+  ) +
+  #expand_limits(y = c(0, 75)) +
+  
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+  #scale_y_continuous(expand=c(0,0))
+  
 ```
 
 ### PSTH @ 10 Hz cortical activation
@@ -1520,7 +1533,19 @@ gp_hist +
     shape = 25,
     size = 2,
     fill = "red"
-  )
+  ) +
+  
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+
 ```
 
 ### PSTH @ 20 Hz cortical activation
@@ -1642,7 +1667,17 @@ gp_hist +
     shape = 25,
     size = 2,
     fill = "red"
-  )
+  ) +
+  
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 ```
 
 
