@@ -1964,7 +1964,7 @@ Content of mat files:
   + **values:**
 
 ```{r}
-file_to_load <- file_list[[1]]
+file_to_load <- file_list[[2]]
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
 raw.rec <- readMat(file.path("data", file_to_load))
 
@@ -2083,6 +2083,89 @@ x <- dev.off()
 p_isi
 ```
 
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+wavelets <- lapply(all_eeg_df, function(x) {
+  time_window <- c(70, 110)
+  samp_rate_ds <- x$samp_rate_ds %>% unique()
+  first_peak <- x$first_peak %>% unique()
+  
+ 
+  ### calculating wavelet
+  wave <- analyze.wavelet(x %>%
+    dplyr::filter(times > time_window[1], times < time_window[2]),
+  "eeg_values",
+  loess.span = 0,
+  dt = 1 / samp_rate_ds, ### 1/sampling rate (number of intervals/time unit)
+  dj = 1 / samp_rate_ds / 2,
+  # lowerPeriod = ,
+  # upperPeriod = 2,
+  make.pval = T,
+  method = "ARIMA",
+  n.sim = 1
+  )
+
+  ### calculating frequency from period
+  # wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
+
+  powers <- wave$Power
+  freqs <- (1 / wave$Period) # %>% round(2)
+  period <- (wave$Period) %>% round(2)
+
+
+  powers <- powers %>%
+    melt() %>%
+    group_by(Var2) %>%
+    dplyr::mutate(freqs = freqs) %>%
+    ungroup()
+
+  ### distance between freqs: logarithmic!!! in ggplot it only works if I set y scale to log10
+  ### y axis can be the index of each value (in that case I have to reverse y scale and add the freq values manually)
+  # powers$freqs %>%
+  #   unique() %>%
+  #   diff() %>%
+  #   plot()
+  
+  ggplot() +
+  ### wavelet
+  geom_raster(
+    data = powers,
+    mapping = aes(
+      x = Var2 / samp_rate_ds + time_window[1],
+      y = freqs, ### Var1: index of values, normal y scale but reversed!!!
+      fill = scale(value)
+    )
+  ) +
+    ### theme and scale settings
+  theme_minimal() +
+  # theme(
+  #   panel.grid.major = element_blank(),
+  #   panel.grid.minor = element_blank(),
+  #   axis.text.y = element_text(margin = margin(t = 0, r = -30, b = 0, l = 20)),
+  #   axis.text.x = element_text(margin = margin(t = -20, r = 0, b = 20, l = 0)),
+  #   panel.background = element_blank(),
+  #   panel.border = element_blank(),
+  #   axis.ticks.length = unit(5, "mm")
+  # ) +
+  xlab("Time (s)") +
+  scale_y_log10() +
+  # scale_y_reverse(
+  #   name = "Frequency (Hz)",
+  #   breaks = c(1, 200, 400, 600),
+  #   labels = c(
+  #     freqs[1],
+  #     freqs[200],
+  #     freqs[400],
+  #     freqs[600]
+  #   )
+  # ) +
+  scale_fill_distiller(palette = "RdGy", name = "Power")
+  
+
+})
+```
+
+
+
 ### LFP and APs
 
 ```{r echo=FALSE, fig.width=10, fig.height=20, message=FALSE, warning=FALSE}
@@ -2190,6 +2273,13 @@ p_eeg
 
 # eeg_sum_plot[[5]] # plots only one row
 ```
+
+### Wavelet
+
+```{r echo=FALSE, fig.width=15, fig.height=10, message=FALSE, warning=FALSE}
+cowplot::plot_grid(wavelets[[2]], eeg_sum_plot[[2]], nrow = 2, align = "v")
+```
+
 
 ### Autocorrelogram
 

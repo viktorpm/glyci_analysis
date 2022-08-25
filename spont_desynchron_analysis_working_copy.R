@@ -914,8 +914,8 @@ wave <- analyze.wavelet(all_eeg_df[[2]] %>%
   dplyr::filter(times > time_window[1], times < time_window[2]),
 "eeg_values",
 loess.span = 0,
-dt = 1 / all_eeg_df[[2]]$samp_rate_ds %>% unique(), ### 1/sampling rate (number of intervals/time unit)
-dj = 1 / all_eeg_df[[2]]$samp_rate_ds %>% unique() / 2,
+dt = 1 / samp_rate_ds, ### 1/sampling rate (number of intervals/time unit)
+dj = 1 / samp_rate_ds / 2,
 # lowerPeriod = ,
 # upperPeriod = 2,
 make.pval = T,
@@ -947,7 +947,7 @@ powers$freqs %>%
 powers %>% View()
 ### PLOT: wavelet --------------------------------------------------------------
 
-ggplot() +
+wavelet_plot <- ggplot() +
   ### wavelet
   geom_raster(
     data = powers,
@@ -958,61 +958,61 @@ ggplot() +
     )
   ) +
 
-  ### EEG
-  geom_line(
-    data = all_eeg_df[[2]] %>%
-      dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = times, y = -.5 * eeg_values + 5), color = "white"
-  ) +
-
-  ### APs
-  geom_point(
-    data = all_eeg_df[[2]] %>%
-      dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = ap_peak_times, y = 10),
-    shape = "|",
-    color = "white", size = 5
-  ) +
-
-  ### first spikes of clusters defined by ISI
-  geom_point(
-    data = all_eeg_df[[2]] %>%
-      dplyr::filter(ap_peak_times > time_window[1], ap_peak_times < time_window[2]) %>%
-      dplyr::filter(burst_isi == 1),
-    mapping = aes(x = ap_peak_times, y = 10),
-    shape = "|",
-    color = "red", size = 7
-  ) +
-
-  ### eeg state (sync: high, desync: low)
-  geom_line(
-    data = all_eeg_df[[2]] %>%
-      dplyr::filter(times > time_window[1], times < time_window[2]),
-    mapping = aes(x = times, y = .5 * levels + 7), color = "white"
-  ) +
-
-  ### PSD first peak
-  geom_segment(
-    aes(
-      x = time_window[1], xend = time_window[2],
-      y = first_peak, yend = first_peak
-    ),
-    col = "gray",
-    linetype = "dashed"
-  ) +
-  geom_hline(yintercept = first_peak, size = 1, linetype = "dashed", col = "gray") +
+  # ### EEG
+  # geom_line(
+  #   data = all_eeg_df[[2]] %>%
+  #     dplyr::filter(times > time_window[1], times < time_window[2]),
+  #   mapping = aes(x = times, y = -.5 * eeg_values + 5), color = "white"
+  # ) +
+  # 
+  # ### APs
+  # geom_point(
+  #   data = all_eeg_df[[2]] %>%
+  #     dplyr::filter(times > time_window[1], times < time_window[2]),
+  #   mapping = aes(x = ap_peak_times, y = 10),
+  #   shape = "|",
+  #   color = "white", size = 5
+  # ) +
+  # 
+  # ### first spikes of clusters defined by ISI
+  # geom_point(
+  #   data = all_eeg_df[[2]] %>%
+  #     dplyr::filter(ap_peak_times > time_window[1], ap_peak_times < time_window[2]) %>%
+  #     dplyr::filter(burst_isi == 1),
+  #   mapping = aes(x = ap_peak_times, y = 10),
+  #   shape = "|",
+  #   color = "red", size = 7
+  # ) +
+  # 
+  # ### eeg state (sync: high, desync: low)
+  # geom_line(
+  #   data = all_eeg_df[[2]] %>%
+  #     dplyr::filter(times > time_window[1], times < time_window[2]),
+  #   mapping = aes(x = times, y = .5 * levels + 7), color = "white"
+  # ) +
+  # 
+  # ### PSD first peak
+  # geom_segment(
+  #   aes(
+  #     x = time_window[1], xend = time_window[2],
+  #     y = first_peak, yend = first_peak
+  #   ),
+  #   col = "gray",
+  #   linetype = "dashed"
+  # ) +
+  # geom_hline(yintercept = first_peak, size = 1, linetype = "dashed", col = "gray") +
 
   ### theme and scale settings
   theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_text(margin = margin(t = 0, r = -30, b = 0, l = 20)),
-    axis.text.x = element_text(margin = margin(t = -20, r = 0, b = 20, l = 0)),
-    panel.background = element_blank(),
-    panel.border = element_blank(),
-    axis.ticks.length = unit(5, "mm")
-  ) +
+  # theme(
+  #   #panel.grid.major = element_blank(),
+  #   #panel.grid.minor = element_blank(),
+  #   #axis.text.y = element_text(margin = margin(t = 0, r = -30, b = 0, l = 20)),
+  #   #axis.text.x = element_text(margin = margin(t = -20, r = 0, b = 20, l = 0)),
+  #   panel.background = element_blank(),
+  #   panel.border = element_blank(),
+  #   #axis.ticks.length = unit(5, "mm")
+  # ) +
   xlab("Time (s)") +
   scale_y_log10() +
   # scale_y_reverse(
@@ -1026,6 +1026,9 @@ ggplot() +
   #   )
   # ) +
   scale_fill_distiller(palette = "RdGy", name = "Power")
+
+
+cowplot::plot_grid(wavelet_plot, eeg_sum_plot[[2]], nrow = 2, align = "v")
 
 
 # ggsave(file.path("output_data", paste0(filename, c("_wavelet.png"))),
