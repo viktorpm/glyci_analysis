@@ -13,6 +13,8 @@ library(ggsignif)
 library(lumberjack)
 library(imputeTS)
 
+
+# to get the files for baseline_df, csd_df and all_eeg_df. file.path has to match!!!!!
 file_list <- list.files(
   path = file.path("data") ,
   pattern = "*.mat", full.names = F, recursive = F
@@ -374,6 +376,7 @@ SyncDesyncAnalysis <- function(file, filepath) {
     burst_threshold_isi,
     burst_threshold_isi2,
     burst_threshold_isi3,
+    samp_rate_ds,
     clustered = burst_threshold_detect$clustered, 
     nbins = burst_threshold_detect$bins_n,
     moving_sd = slide_sd,
@@ -418,6 +421,8 @@ SyncDesyncAnalysis <- function(file, filepath) {
 
 # lapply(file_list[3], SyncDesyncAnalysis, filepath = file.path("data"))
 
+
+# to get the files for baseline_df, csd_df and all_eeg_df. file.path has to match!!!!!
 baseline_df <- lapply(file_list, SyncDesyncAnalysis, filepath = file.path("data", "csd", "baseline"))
 saveRDS(baseline_df, file = file.path("data", "sync_desync", "baseline_df.rds"))
 
@@ -627,7 +632,7 @@ eeg_sum_plot <- lapply(all_eeg_df, function(x) {
 })
 
 
-ggpubr::ggarrange(plotlist = eeg_sum_plot)
+ggpubr::ggarrange(plotlist = eeg_sum_plot[2])
 
 
 
@@ -901,14 +906,16 @@ ggplot() +
 ### WAVELET -------------------------------------------------------------------
 
 time_window <- c(90, 150)
+samp_rate_ds <- all_eeg_df[[2]]$samp_rate_ds %>% unique()
+first_peak <- all_eeg_df[[2]]$first_peak %>% unique()
 
 ### calculating wavelet
-wave <- analyze.wavelet(EEG_ds_df %>%
+wave <- analyze.wavelet(all_eeg_df[[2]] %>%
   dplyr::filter(times > time_window[1], times < time_window[2]),
 "eeg_values",
 loess.span = 0,
-dt = 1 / samp_rate_ds, ### 1/sampling rate (number of intervals/time unit)
-dj = 1 / samp_rate_ds / 2,
+dt = 1 / all_eeg_df[[2]]$samp_rate_ds %>% unique(), ### 1/sampling rate (number of intervals/time unit)
+dj = 1 / all_eeg_df[[2]]$samp_rate_ds %>% unique() / 2,
 # lowerPeriod = ,
 # upperPeriod = 2,
 make.pval = T,
@@ -953,14 +960,14 @@ ggplot() +
 
   ### EEG
   geom_line(
-    data = EEG_ds_df %>%
+    data = all_eeg_df[[2]] %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
     mapping = aes(x = times, y = -.5 * eeg_values + 5), color = "white"
   ) +
 
   ### APs
   geom_point(
-    data = EEG_ds_df %>%
+    data = all_eeg_df[[2]] %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
     mapping = aes(x = ap_peak_times, y = 10),
     shape = "|",
@@ -969,7 +976,7 @@ ggplot() +
 
   ### first spikes of clusters defined by ISI
   geom_point(
-    data = EEG_ds_df %>%
+    data = all_eeg_df[[2]] %>%
       dplyr::filter(ap_peak_times > time_window[1], ap_peak_times < time_window[2]) %>%
       dplyr::filter(burst_isi == 1),
     mapping = aes(x = ap_peak_times, y = 10),
@@ -979,7 +986,7 @@ ggplot() +
 
   ### eeg state (sync: high, desync: low)
   geom_line(
-    data = EEG_ds_df %>%
+    data = all_eeg_df[[2]] %>%
       dplyr::filter(times > time_window[1], times < time_window[2]),
     mapping = aes(x = times, y = .5 * levels + 7), color = "white"
   ) +
@@ -993,7 +1000,7 @@ ggplot() +
     col = "gray",
     linetype = "dashed"
   ) +
-  # geom_hline(yintercept = first_peak, size = 1, linetype = "dashed", col = "gray") +
+  geom_hline(yintercept = first_peak, size = 1, linetype = "dashed", col = "gray") +
 
   ### theme and scale settings
   theme_minimal() +
