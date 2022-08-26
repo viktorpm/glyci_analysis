@@ -1862,6 +1862,39 @@ ggplot(
   labs(linetype = "Animals", color = "Animals") +
   xlab("No. stimulus in train") +
   ylab("Number of APs")
+
+
+
+APC %>% 
+  dplyr::filter(
+  stim_freq_categ %in% c("1", "10", "20"),
+      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      stim_number < 11) %>%
+  dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>% 
+  summarise(mAP = mean(No_APs)) %>% 
+  dplyr::mutate(APchange = mAP/mAP[1]) %>% 
+  ggplot(
+    mapping = aes(
+      x = stim_number, 
+      y = APchange,
+      color = as.factor(animal_id))) + 
+  geom_line() + 
+  geom_point(size = 3) +
+  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
+  scale_y_discrete(limits = c(0:6), breaks = c(0:6)) +
+  facet_wrap(~stim_freq_categ, nrow = 3) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number == 10),
+    aes(label = animal_id),
+    direction = "y", nudge_x = 1,
+    hjust = 1,
+    # alpha = .7
+  ) +
+  expand_limits(x = 11) +
+  theme(legend.position="none")+
+  guides(color = "none") +    
+  theme_minimal()
 ```
 
 
