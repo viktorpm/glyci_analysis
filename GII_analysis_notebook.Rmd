@@ -1722,8 +1722,8 @@ $$\mathbf{Response\ probability} = \frac{Number\ of\ APs}{Number\ of\ stimuli} *
 
 ```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(
-  data = RESP_PROB, # %>%
-  # dplyr::filter(animal_id != "GII_20"),
+  data = RESP_PROB, #%>%
+  #dplyr::filter(animal_id %!in% c("GII_20", "GV_40","GV_42","GV_47")),
   mapping = aes(
     x = as.factor(stim_freq),
     y = resp_prob_range
@@ -1745,13 +1745,13 @@ ggplot(
   ylab("Response probability") +
   geom_signif(
     comparisons = list(c("1", "10")),
-    map_signif_level = TRUE,
+    #map_signif_level = TRUE,
     test = "mood.test",
     color = "gray"
   ) +
   geom_signif(
     comparisons = list(c("10", "20")),
-    map_signif_level = TRUE,
+    #map_signif_level = TRUE,
     test = "mood.test",
     margin_top = .1,
     color = "gray"
