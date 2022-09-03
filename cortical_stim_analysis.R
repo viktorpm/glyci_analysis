@@ -216,16 +216,28 @@ CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
   #   isTRUE(freqs %in% read.csv(file.path("output_data", "cortical_stim_analysis.csv"))$freq)
   # }
 
+  # write_csv(tibble(
+  #   animal_id = animal_filter,
+  #   first_ap_reltimes = first_ap_reltimes %>%
+  #     melt() %>%
+  #     pull(value),
+  #   freq = freq_filter[1]
+  # ),
+  # file.path("output_data", "cortical_stim_analysis.csv"),
+  # append = T,
+  # col_names = !file_exist_test
+  # )
+  
   write_csv(tibble(
     animal_id = animal_filter,
-    first_ap_reltimes = first_ap_reltimes %>%
+    ap_reltimes = rel_times %>%
       melt() %>%
       pull(value),
     freq = freq_filter[1]
   ),
-  file.path("output_data", "cortical_stim_analysis.csv"),
+  file.path("output_data", "cortical_stim_analysis_all_APs.csv"),
   append = T,
-  col_names = !file_exist_test
+  col_names = file_exist_test
   )
 
 
@@ -302,6 +314,29 @@ ggplot(
   facet_wrap(~freq)
 
 
+STIM_RESULTS %>% 
+  dplyr::filter(
+    first_ap_reltimes > PSTH_range[1],
+    first_ap_reltimes < PSTH_range[2],
+    animal_id %!in% c("GV_40","GV_42","GV_47" )
+  ) %>% 
+  ggplot(aes(x = first_ap_reltimes)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~freq) +
+  facet_grid(animal_id~freq) +
+  geom_histogram()
+
+STIM_RESULTS_ALL %>% 
+  dplyr::filter(
+    ap_reltimes > PSTH_range[1],
+    ap_reltimes < PSTH_range[2],
+    animal_id %!in% c("GV_40","GV_42","GV_47" )
+  ) %>% 
+  ggplot(aes(x = ap_reltimes)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~freq) +
+  #facet_grid(animal_id~freq) +
+  geom_histogram()
 
 
 
