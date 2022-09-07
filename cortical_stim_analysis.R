@@ -12,84 +12,124 @@ library(gghalves) # half violin plot
 library(see) # half violin half dot
 
 ### LOADING RECORDINGS (tibble with AP and stim times) ###############
+# source(file.path("supplementary_functions", "CreateRecTibble.R"))
+# RECORDINGS <- CreateRecTibble(
+#   AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
+#   stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
+# )
+# 
+# ### adding stimulus number within train
+# RECORDINGS <- RECORDINGS %>%
+#   mutate(stim_number = 0)
+# 
+# ### calculating stimulus number within train
+# initial_value <- RECORDINGS$stim_freq[1] %>%
+#   `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
+# 
+# stim_counter <- 1 %>%
+#   `comment<-`("Counts stimuli in a train")
+# index <- 1 %>%
+#   `comment<-`("Tracks the position (index) of stim_freq")
+# 
+# RECORDINGS$stim_number[1] <- stim_counter
+# repeat{
+#   if (RECORDINGS$stim_freq[index + 1] == initial_value) {
+#     RECORDINGS$stim_number[index + 1] <- stim_counter + 1
+#     stim_counter <- stim_counter + 1
+#     index <- index + 1
+#   } else {
+#     initial_value <- RECORDINGS$stim_freq[index + 1]
+#     stim_counter <- 1
+#     RECORDINGS$stim_number[index + 1] <- stim_counter
+#     index <- index + 1
+#   }
+# 
+#   if (index == length(RECORDINGS$stim_number)) {
+#     break
+#   }
+# }
+# 
+# ### Alternative to repeat loop to number stimuli
+# # RECORDINGS %>%
+# #   dplyr::filter(signal_type == "stim") %>%
+# #   mutate(
+# #     lag_sf = lag(stim_freq),
+# #     asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
+# #     cum_asd = cumsum(asd)
+# #   ) %>% 
+# #   select(file_name, stim_freq, cum_asd, stim_number) %>%
+# #   group_by(cum_asd) %>%
+# #   mutate(stim_number_asd = row_number()) %>%
+# #   ungroup() %>%
+# #   View()
+# 
+# ### replacing stim_number with NA at "AP"
+# RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
+# 
+# ### categorizing stimuli
+# RECORDINGS <- RECORDINGS %>%
+#   mutate(stim_freq_categ = stim_freq) %>%
+#   mutate(stim_freq_categ = replace(
+#     x = stim_freq_categ,
+#     list = (stim_freq_categ == 12 | stim_freq_categ == 8),
+#     values = 10
+#   )) %>%
+#   mutate(stim_freq_categ = replace(
+#     x = stim_freq_categ,
+#     list = (stim_freq_categ == 18),
+#     values = 20
+#   ))
+# 
+# RECORDINGS$stim_freq %>%
+#   as.factor() %>%
+#   levels()
+# RECORDINGS$stim_freq %>% unique()
+# 
+# RECORDINGS$stim_freq_categ %>%
+#   as.factor() %>%
+#   levels()
+# 
+# # RECORDINGS <- RECORDINGS %>% dplyr::filter(animal_id != "not specified")
+# 
+
+
+
+### LOADING RECORDINGS (tibble with AP and stim times) ###############
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 RECORDINGS <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
 )
 
-### adding stimulus number within train
 RECORDINGS <- RECORDINGS %>%
-  mutate(stim_number = 0)
-
-### calculating stimulus number within train
-initial_value <- RECORDINGS$stim_freq[1] %>%
-  `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
-
-stim_counter <- 1 %>%
-  `comment<-`("Counts stimuli in a train")
-index <- 1 %>%
-  `comment<-`("Tracks the position (index) of stim_freq")
-
-RECORDINGS$stim_number[1] <- stim_counter
-repeat{
-  if (RECORDINGS$stim_freq[index + 1] == initial_value) {
-    RECORDINGS$stim_number[index + 1] <- stim_counter + 1
-    stim_counter <- stim_counter + 1
-    index <- index + 1
-  } else {
-    initial_value <- RECORDINGS$stim_freq[index + 1]
-    stim_counter <- 1
-    RECORDINGS$stim_number[index + 1] <- stim_counter
-    index <- index + 1
-  }
-
-  if (index == length(RECORDINGS$stim_number)) {
-    break
-  }
-}
-
-### Alternative to repeat loop to number stimuli
-# RECORDINGS %>%
-#   dplyr::filter(signal_type == "stim") %>%
-#   mutate(
-#     lag_sf = lag(stim_freq),
-#     asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
-#     cum_asd = cumsum(asd)
-#   ) %>% 
-#   select(file_name, stim_freq, cum_asd, stim_number) %>%
-#   group_by(cum_asd) %>%
-#   mutate(stim_number_asd = row_number()) %>%
-#   ungroup() %>%
-#   View()
-
-### replacing stim_number with NA at "AP"
-RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
-
-### categorizing stimuli
-RECORDINGS <- RECORDINGS %>%
-  mutate(stim_freq_categ = stim_freq) %>%
-  mutate(stim_freq_categ = replace(
+  dplyr::mutate(
+    stim_number = 0,
+    lag_sf = lag(stim_freq),
+    asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
+    cum_asd = cumsum(asd)
+  ) %>% 
+  dplyr::group_by(file_name, cum_asd) %>%
+  dplyr::mutate(stim_number = row_number()) %>%
+  ungroup() %>% 
+  dplyr::mutate(
+    stim_number = replace(stim_number, signal_type == "AP", NA)
+  ) %>%
+  select(-lag_sf, -asd, -cum_asd) %>%
+  dplyr::mutate(stim_freq_categ = stim_freq) %>%
+  dplyr::mutate(stim_freq_categ = replace(
     x = stim_freq_categ,
     list = (stim_freq_categ == 12 | stim_freq_categ == 8),
     values = 10
   )) %>%
-  mutate(stim_freq_categ = replace(
+  dplyr::mutate(stim_freq_categ = replace(
     x = stim_freq_categ,
     list = (stim_freq_categ == 18),
     values = 20
-  ))
+  )) 
 
-RECORDINGS$stim_freq %>%
-  as.factor() %>%
-  levels()
-RECORDINGS$stim_freq %>% unique()
 
-RECORDINGS$stim_freq_categ %>%
-  as.factor() %>%
-  levels()
 
-# RECORDINGS <- RECORDINGS %>% dplyr::filter(animal_id != "not specified")
+
 
 animal_ID_list <- RECORDINGS$animal_id %>%
   as.factor() %>%
@@ -252,9 +292,15 @@ CreatePSTHTibble <- function(animal_id, RECORDINGS, freqs) {
 }
 
 
-# freq_filter_10
-# freq_filter_1
-# freq_filter_20
+### Replace freq_filter_*, CAREFUL!!! running it multiple times creates duplicates!!!!!
+lapply(animal_ID_list,
+       CreatePSTHTibble,
+       RECORDINGS = RECORDINGS,
+       freqs = freq_filter_20
+       
+)
+
+
 
 RECORDINGS %>%
   dplyr::group_by(animal_id, stim_freq_categ, signal_type, stim_number) %>%
@@ -268,12 +314,7 @@ tmp %>%
   unlist() %>%
   as.numeric()
 
-### Replace freq_filter_*, CAREFUL!!! running it multiple times creates duplicates!!!!!
-lapply(animal_ID_list,
-  CreatePSTHTibble,
-  RECORDINGS = RECORDINGS,
-  freqs = freq_filter_20
-)
+
 
 
 
