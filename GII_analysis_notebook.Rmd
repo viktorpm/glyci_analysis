@@ -822,9 +822,9 @@ ggplot(
 ```{r}
 
 filelist <- info_stim$file_name
+trainlength <- info_stim$train_length
 
-
-CreatePSTH <- function(file.name){
+CreatePSTH <- function(file.name, train.length, start){
   
   fn <- as.character(file.name)
   #browser()
@@ -836,7 +836,7 @@ CreatePSTH <- function(file.name){
   pull(signal_time)
 
 
-  stim <- start_times$cell11
+  stim <- start
 
 RTM_creator <- function(ap, stim) {
     ap_vect <- ap %>% as.vector()
@@ -862,6 +862,7 @@ RTM_creator <- function(ap, stim) {
 
 psth_mat <- RTM_creator(ap, stim) 
 psth_tibble <- tibble(
+  train_length = train.length,
   file = fn,
   reltimes = psth_mat %>% melt() %>% pull(value)
 )
@@ -869,45 +870,70 @@ psth_tibble
 
 }
 
-psth_tibble <- CreatePSTH("cell11_05_right_IL_t1_2890_pinch_stim_int10") 
 
-ap <- IL_stim_firing %>% 
+
+psth_tibble <- Map(CreatePSTH, filelist, trainlength, start_times) 
+psth_tibble <- lapply(psth_tibble, as_tibble) %>% bind_rows() 
+psth_tibble <- left_join(psth_tibble,info_stim %>% select(file = file_name, No_Trains))
+psth_tibble <- left_join(psth_tibble, CELL_INFO %>% select(file = file_name, pinch, control))
+
+
+psth_tibble %>% 
   dplyr::filter(
-    file_name == "cell11_05_right_IL_t1_2890_pinch_stim_int10", 
-    signal_type == "AP") %>% 
-  pull(signal_time)
-
-
-stim <- start_times$cell11
-
-RTM_creator <- function(ap, stim) {
-    ap_vect <- ap %>% as.vector()
-    stim_vect <- stim %>% as.vector()
-
-    mat_AP <- matrix(
-      ap_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect), byrow = T
-    )
-
-    mat_stim <- matrix(
-      stim_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect)
-    )
-
-
-    mat_reltimes <- mat_AP - mat_stim
-    mat_reltimes[mat_reltimes == 0] <- NA
-    return(mat_reltimes)
-}
-
-psth_mat <- RTM_creator(ap, stim) 
+    reltimes > -(train_length/4),
+    reltimes < train_length+train_length/2
+  ) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) + 
+  geom_histogram(aes(fill = control),bins = 30) +
+  geom_vline(xintercept = 0) +
+  geom_vline(aes(xintercept = train_length)) +
+  # geom_text(
+  #   data = psth_tibble %>% select(No_Trains) %>%  unique(),
+  #   aes(label = No_Trains)) +
+  facet_wrap(train_length %>% round() ~ file, scales = "free",)
 
 
 
-
-psth_mat[psth_mat > -1 & psth_mat < 8] %>% hist(breaks = 40)
+# psth_tibble <- CreatePSTH("cell11_05_right_IL_t1_2890_pinch_stim_int10") 
+# 
+# ap <- IL_stim_firing %>% 
+#   dplyr::filter(
+#     file_name == "cell11_05_right_IL_t1_2890_pinch_stim_int10", 
+#     signal_type == "AP") %>% 
+#   pull(signal_time)
+# 
+# 
+# stim <- start_times$cell11
+# 
+# RTM_creator <- function(ap, stim) {
+#     ap_vect <- ap %>% as.vector()
+#     stim_vect <- stim %>% as.vector()
+# 
+#     mat_AP <- matrix(
+#       ap_vect,
+#       nrow = length(stim_vect),
+#       ncol = length(ap_vect), byrow = T
+#     )
+# 
+#     mat_stim <- matrix(
+#       stim_vect,
+#       nrow = length(stim_vect),
+#       ncol = length(ap_vect)
+#     )
+# 
+# 
+#     mat_reltimes <- mat_AP - mat_stim
+#     mat_reltimes[mat_reltimes == 0] <- NA
+#     return(mat_reltimes)
+# }
+# 
+# psth_mat <- RTM_creator(ap, stim) 
+# 
+# 
+# 
+# psth_mat[psth_mat > -1 & psth_mat < 9] %>% hist(breaks = 30) 
 
 ```
 
@@ -1113,42 +1139,69 @@ STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-### adding stimulus number within train
+# ### adding stimulus number within train
+# RECORDINGS <- RECORDINGS %>%
+#   dplyr::mutate(stim_number = 0)
+# 
+# ### calculating stimulus number within train
+# initial_value <- RECORDINGS$stim_freq[1] %>%
+#   `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
+# 
+# stim_counter <- 1 %>%
+#   `comment<-`("Counts stimuli in a train")
+# index <- 1 %>%
+#   `comment<-`("Tracks the position (index) of stim_freq")
+# 
+# RECORDINGS$stim_number[1] <- stim_counter
+# repeat{
+#   if (RECORDINGS$stim_freq[index + 1] == initial_value) {
+#     RECORDINGS$stim_number[index + 1] <- stim_counter + 1
+#     stim_counter <- stim_counter + 1
+#     index <- index + 1
+#   } else {
+#     initial_value <- RECORDINGS$stim_freq[index + 1]
+#     stim_counter <- 1
+#     RECORDINGS$stim_number[index + 1] <- stim_counter
+#     index <- index + 1
+#   }
+# 
+#   if (index == length(RECORDINGS$stim_number)) {
+#     break
+#   }
+# }
+# 
+# ### replacing stim_number with NA at "AP"
+# RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
+# 
+# ### categorizing stimuli
+# RECORDINGS <- RECORDINGS %>%
+#   dplyr::mutate(stim_freq_categ = stim_freq) %>%
+#   dplyr::mutate(stim_freq_categ = replace(
+#     x = stim_freq_categ,
+#     list = (stim_freq_categ == 12 | stim_freq_categ == 8),
+#     values = 10
+#   )) %>%
+#   dplyr::mutate(stim_freq_categ = replace(
+#     x = stim_freq_categ,
+#     list = (stim_freq_categ == 18),
+#     values = 20
+#   ))
+
+
 RECORDINGS <- RECORDINGS %>%
-  dplyr::mutate(stim_number = 0)
-
-### calculating stimulus number within train
-initial_value <- RECORDINGS$stim_freq[1] %>%
-  `comment<-`("First value of stim_freq variable. When it changes stimulus counting restarts")
-
-stim_counter <- 1 %>%
-  `comment<-`("Counts stimuli in a train")
-index <- 1 %>%
-  `comment<-`("Tracks the position (index) of stim_freq")
-
-RECORDINGS$stim_number[1] <- stim_counter
-repeat{
-  if (RECORDINGS$stim_freq[index + 1] == initial_value) {
-    RECORDINGS$stim_number[index + 1] <- stim_counter + 1
-    stim_counter <- stim_counter + 1
-    index <- index + 1
-  } else {
-    initial_value <- RECORDINGS$stim_freq[index + 1]
-    stim_counter <- 1
-    RECORDINGS$stim_number[index + 1] <- stim_counter
-    index <- index + 1
-  }
-
-  if (index == length(RECORDINGS$stim_number)) {
-    break
-  }
-}
-
-### replacing stim_number with NA at "AP"
-RECORDINGS$stim_number[RECORDINGS$signal_type == "AP"] <- NA
-
-### categorizing stimuli
-RECORDINGS <- RECORDINGS %>%
+  dplyr::mutate(
+    stim_number = 0,
+    lag_sf = lag(stim_freq),
+    asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
+    cum_asd = cumsum(asd)
+  ) %>% 
+  dplyr::group_by(file_name, cum_asd) %>%
+  dplyr::mutate(stim_number = row_number()) %>%
+  ungroup() %>% 
+  dplyr::mutate(
+    stim_number = replace(stim_number, signal_type == "AP", NA)
+  ) %>%
+  select(-lag_sf, -asd, -cum_asd) %>%
   dplyr::mutate(stim_freq_categ = stim_freq) %>%
   dplyr::mutate(stim_freq_categ = replace(
     x = stim_freq_categ,
@@ -1159,7 +1212,10 @@ RECORDINGS <- RECORDINGS %>%
     x = stim_freq_categ,
     list = (stim_freq_categ == 18),
     values = 20
-  ))
+  )) 
+
+
+
 ```
 
 ```{r , echo=FALSE, message=FALSE, warning=FALSE}
@@ -1871,7 +1927,7 @@ APC %>%
         stim_freq_categ %in% c("1","10","20")
     ) %>% 
     dplyr::group_by(animal_id, stim_freq_categ) %>% 
-    summarise(No_APs = sum(No_APs)) %>%   
+    summarise(No_APs = mean(No_APs)) %>%  
   ggplot(
     aes(x = stim_freq_categ, y = No_APs)
   ) +
@@ -2006,7 +2062,7 @@ ggplot(
 APC %>% 
   dplyr::filter(
   stim_freq_categ %in% c("1", "10", "20"),
-      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      #!animal_id %in% c("GV_40", "GV_42", "GV_47"),
       stim_number < 11) %>%
   dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>% 
   summarise(mAP = mean(No_APs)) %>% 
