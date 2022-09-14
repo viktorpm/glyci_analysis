@@ -991,7 +991,7 @@ psth_tibble %>%
     data = . %>% 
        dplyr::filter(
          control == F,
-         stim_onset_ratio < 0.8,
+         stim_onset_ratio < 0.75,
          train_length > 4
          ),
     binwidth = 0.164,
