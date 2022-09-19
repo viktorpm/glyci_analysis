@@ -359,12 +359,12 @@ STIM_RESULTS %>%
   dplyr::filter(
     first_ap_reltimes > PSTH_range[1],
     first_ap_reltimes < PSTH_range[2],
-    animal_id %!in% c("GV_40","GV_42","GV_47" )
+    #animal_id %!in% c("GV_40","GV_42","GV_47" )
   ) %>% 
   ggplot(aes(x = first_ap_reltimes)) +
   geom_vline(xintercept = 0) +
   facet_wrap(~freq) +
-  facet_grid(animal_id~freq) +
+  #facet_grid(animal_id~freq) +
   geom_histogram()
 
 STIM_RESULTS_ALL %>% 
