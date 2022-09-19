@@ -1252,7 +1252,12 @@ RECORDINGS <- RECORDINGS %>%
     values = 20
   )) 
 
-
+# RECORDINGS %>% 
+#   dplyr::filter(
+#     animal_id %in% c("GV_40", "GV_42", "GV_47"),
+#     signal_type == "stim") %>% 
+#   group_by(animal_id, stim_freq_categ) %>% 
+#   summarise(length(stim_number))
 
 ```
 
@@ -1347,7 +1352,10 @@ RESP_PROB <- left_join(
     pull(mean)) %>% 
   add_column(median_latency = hist_stats %>%
     arrange(animal_id) %>%
-    pull(median))
+    pull(median)) %>% 
+  dplyr::mutate(
+    stim_type = ifelse(animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical")
+  )
 ```
 
 ```{r , echo=FALSE, message=FALSE, warning=FALSE}
@@ -1488,6 +1496,33 @@ ggplot(
   geom_hline(yintercept = 0) +
   facet_wrap(~freq)
 ```
+```{r}
+STIM_RESULTS %>% 
+  dplyr::filter(
+    first_ap_reltimes > PSTH_range[1],
+    first_ap_reltimes < PSTH_range[2],
+    #animal_id %!in% c("GV_40","GV_42","GV_47" )
+  ) %>% 
+  ggplot(aes(x = first_ap_reltimes)) +
+  geom_vline(xintercept = 0, col = "blue") +
+  facet_wrap(~freq) +
+  #facet_grid(animal_id~freq) +
+  geom_histogram() +
+  geom_text(
+    data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
+    mapping = aes(
+      x = med_lat %>% round(4) + 0.013,
+      y = 180,
+      label = paste0("Median: ", med_lat %>% round(4), "s"))
+  ) +
+  geom_vline(
+    data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
+    aes(xintercept = med_lat)
+  ) +
+  theme_minimal()
+```
+
+
 <br><br><br>
 
 ### PSTH @ 1 Hz cortical activation
@@ -1940,15 +1975,15 @@ ggplot(
   #dplyr::filter(animal_id %!in% c("GII_20", "GV_40","GV_42","GV_47")),
   mapping = aes(
     x = as.factor(stim_freq),
-    y = resp_prob_5_20ms #resp_prob, resp_prob_range, resp_prob_5_20ms 
+    y = resp_prob_range #resp_prob, resp_prob_range, resp_prob_5_20ms 
   )
 ) +
   geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
   geom_point(
     aes(
-      # fill = animal_id
+      fill = stim_type
     ),
-    fill = "gray",
+    #fill = "gray",
     color = "black",
     size = 3,
     shape = 21,
@@ -1961,13 +1996,15 @@ ggplot(
     comparisons = list(c("1", "10")),
     #map_signif_level = TRUE,
     test = "mood.test",
-    color = "gray"
+    color = "gray",
+    y_position = 115
   ) +
   geom_signif(
     comparisons = list(c("10", "20")),
     #map_signif_level = TRUE,
     test = "mood.test",
-    margin_top = .1,
+    #margin_top = .1,
+    y_position = 115,
     color = "gray"
   ) +
   geom_text_repel(
@@ -1975,7 +2012,9 @@ ggplot(
     direction = "y",
     hjust = -.5
   ) +
-  ylim(40, 110)
+  expand_limits(y = c(35,130)) +
+  #ylim(35, 110) +
+  theme_minimal()
 
 
 ```
@@ -2028,9 +2067,9 @@ ggplot(
   geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
   geom_point(
     aes(
-      # fill = animal_id
+      fill = stim_type
     ),
-    fill = "gray",
+    # fill = "gray",
     color = "black",
     size = 3,
     shape = 21,
@@ -2039,25 +2078,29 @@ ggplot(
   # geom_line(aes(group = animal_id)) +
   xlab("Stimulus frequency") +
   ylab("Medain latency") +
-  ylim(0,0.025) + 
+  #ylim(0,0.025) + 
   geom_signif(
     comparisons = list(c("1", "10")),
     #map_signif_level = TRUE,
     test = "mood.test",
-    color = "gray"
+    color = "gray",
+    y_position = 0.025
   ) +
   geom_signif(
     comparisons = list(c("10", "20")),
     #map_signif_level = TRUE,
     test = "mood.test",
-    margin_top = .1,
-    color = "gray"
+    #margin_top = .1,
+    color = "gray",
+    y_position = 0.025
   ) +
   geom_text_repel(
     aes(label = animal_id),
     direction = "y",
     hjust = -.5
-  )
+  ) +
+  theme_minimal() +
+  expand_limits(y = c(0, 0.03))
 
 ```
 
@@ -2124,7 +2167,7 @@ ggplot(
   data = APC %>%
     dplyr::filter(
       stim_freq_categ %in% c("1", "10", "20"),
-      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      #!animal_id %in% c("GV_40", "GV_42", "GV_47"),
       stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
     dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
@@ -2169,7 +2212,8 @@ APC %>%
       #!animal_id %in% c("GV_40", "GV_42", "GV_47"),
       stim_number < 11) %>%
   dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>% 
-  summarise(mAP = mean(No_APs)) %>% 
+  ### +1 to avoid division by zero!!! 
+  summarise(mAP = mean(No_APs) + 1) %>%
   dplyr::mutate(APchange = mAP/mAP[1]) %>% 
   ggplot(
     mapping = aes(
@@ -2179,7 +2223,7 @@ APC %>%
   geom_line() + 
   geom_point(size = 3) +
   scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
-  scale_y_discrete(limits = c(0:6), breaks = c(0:6)) +
+  #scale_y_discrete(limits = c(0:6), breaks = c(0:6)) +
   facet_wrap(~stim_freq_categ, nrow = 3) +
   geom_label_repel(
     data = . %>%
@@ -2189,6 +2233,7 @@ APC %>%
     hjust = 1,
     # alpha = .7
   ) +
+  geom_segment(aes(x = min(stim_number), y = 1, xend = max(stim_number), yend = 1), size  = 1, color = "black", lty = "dashed") + 
   expand_limits(x = 11) +
   theme(legend.position="none")+
   guides(color = "none") +    
@@ -2202,7 +2247,7 @@ Range of the number of APs in the stimulus train
 APC %>%
     dplyr::filter(
       stim_freq_categ %in% c("1", "10", "20"),
-      !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      #!animal_id %in% c("GV_40", "GV_42", "GV_47"),
       stim_number < 11) %>%
     dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
     dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
