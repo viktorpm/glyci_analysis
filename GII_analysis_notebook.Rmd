@@ -82,6 +82,7 @@ library(signal)
 library(STAR)
 library(see) # for half violinplot
 library(gghalves) # for half violinplot
+library(ggh4x) #control panel sizes in facet_grid
 
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
 
@@ -126,7 +127,7 @@ IL_baseline_firing <- CreateRecTibble(
   AP_times = read_csv(file.path("data", "IL_MFR", "baseline", "AP_times.csv")),
   stim_times = read_csv(file.path("data", "IL_MFR", "baseline", "stim_times.csv"))
 )
-IL_stim_firing %>% dplyr::group_by(signal_type) %>% slice(1:5)
+IL_baseline_firing %>% dplyr::group_by(signal_type) %>% slice(1:5)
 ```
 
 <br><br>
@@ -273,7 +274,10 @@ CELL_INFO <- info_baseline %>%
       .$cell_id == "cell23" |
       .$cell_id == "cell24",
     "PF"
-  ))
+  )) %>% 
+  dplyr::mutate(
+    gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), yes = "y", no = "n")
+  )
 
 datatable(CELL_INFO,
   caption = "CELL_INFO table",
@@ -633,7 +637,259 @@ datatable(TO_PLOT,
 
 Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and sponteneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stiulus compared to baseline.
 
+
+Categorizing cells into week and strong based on the dynamics of inhibition
+
+```{r}
+
+filelist <- info_stim$file_name
+trainlength <- info_stim$train_length
+
+CreatePSTH <- function(file.name, train.length, start){
+  
+  fn <- as.character(file.name)
+  #browser()
+  
+  ap <- IL_stim_firing %>% 
+  dplyr::filter(
+    file_name == fn, 
+    signal_type == "AP") %>% 
+  pull(signal_time)
+
+
+  stim <- start
+
+RTM_creator <- function(ap, stim) {
+    ap_vect <- ap %>% as.vector()
+    stim_vect <- stim %>% as.vector()
+
+    mat_AP <- matrix(
+      ap_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect), byrow = T
+    )
+
+    mat_stim <- matrix(
+      stim_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect)
+    )
+
+
+    mat_reltimes <- mat_AP - mat_stim
+    mat_reltimes[mat_reltimes == 0] <- NA
+    return(mat_reltimes)
+}
+
+psth_mat <- RTM_creator(ap, stim) 
+psth_tibble <- tibble(
+  train_length = train.length,
+  file = fn,
+  reltimes = psth_mat %>% melt() %>% pull(value)
+)
+psth_tibble
+
+}
+
+
+
+psth_tibble <- Map(CreatePSTH, filelist, trainlength, start_times) 
+psth_tibble <- lapply(psth_tibble, as_tibble) %>% bind_rows() 
+psth_tibble <- left_join(psth_tibble,info_stim %>% select(file = file_name, No_Trains))
+psth_tibble <- psth_tibble %>% 
+  dplyr::mutate(
+    cell_id = substr(file, 1, 6))  %>% 
+  group_by(cell_id) %>% 
+  dplyr::mutate(
+    before_stim_spikes = length(reltimes[reltimes > -1 & reltimes < 0]),
+    during_stim_spikes = length(reltimes[reltimes > 0 & reltimes < 1]),
+    stim_onset_ratio = during_stim_spikes / before_stim_spikes,
+    inhib_strength = ifelse(stim_onset_ratio > 0.75, yes = "week", no = "strong"))
+  
+psth_tibble <- left_join(psth_tibble, CELL_INFO %>% select(cell_id, pinch, control, gap))
+
+
+psth_tibble %>% 
+  dplyr::filter(
+    reltimes > -(train_length/4),
+    reltimes < train_length+train_length/2,
+    # control == F,
+    # train_length != 3.267300,
+    # stim_onset_diff < 5
+  ) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) + 
+  geom_histogram(
+    data = . %>% 
+      dplyr::filter(control == T),
+    binwidth = 0.164,
+    alpha = 0.3
+  ) +
+  geom_histogram(
+    data = . %>% 
+      dplyr::filter(control == F,  train_length < 4),
+    binwidth = 0.164,
+    alpha = 0.3
+  ) +
+   geom_histogram(
+    data = . %>% 
+       dplyr::filter(
+         control == F,
+         train_length > 4
+         ),
+    binwidth = 0.164,
+    aes(fill = inhib_strength, col = gap)
+    ) +
+  geom_vline(xintercept = 0) +
+  geom_vline(aes(xintercept = train_length)) +
+  facet_wrap(file~train_length %>% round() , scales = "free") +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+
+
+
+
+psth_tibble %>% 
+  dplyr::filter(
+    reltimes > -(train_length/4),
+    reltimes < train_length+train_length/2,
+    control == F,
+    train_length > 4,
+    stim_onset_ratio < 0.75,
+  ) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) + 
+  geom_histogram(binwidth = 0.1) +
+  geom_vline(xintercept = 0) +
+  xlim(-1,5) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+```
+
+
+
+```{r}
+
+
+filelist <- info_stim$file_name
+trainlength <- info_stim$train_length
+
+CreatePSTH <- function(file.name, train.length, start){
+  
+  fn <- as.character(file.name)
+  #browser()
+  
+  ap <- IL_stim_firing %>% 
+  dplyr::filter(
+    file_name == fn, 
+    signal_type == "AP") %>% 
+  pull(signal_time)
+
+
+  stim <- IL_stim_firing %>% 
+  dplyr::filter(
+    file_name == fn, 
+    signal_type == "stim") %>% 
+  pull(signal_time)
+
+RTM_creator <- function(ap, stim) {
+    ap_vect <- ap %>% as.vector()
+    stim_vect <- stim %>% as.vector()
+
+    mat_AP <- matrix(
+      ap_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect), byrow = T
+    )
+
+    mat_stim <- matrix(
+      stim_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect)
+    )
+
+
+    mat_reltimes <- mat_AP - mat_stim
+    mat_reltimes[mat_reltimes == 0] <- NA
+    return(mat_reltimes)
+}
+
+psth_mat <- RTM_creator(ap, stim) 
+psth_tibble <- tibble(
+  train_length = train.length,
+  file = fn,
+  reltimes = psth_mat %>% melt() %>% pull(value)
+)
+psth_tibble
+
+}
+
+psth_tibble_gap <- Map(CreatePSTH, filelist, trainlength, start_times) 
+psth_tibble_gap <- lapply(psth_tibble_gap, as_tibble) %>% bind_rows()
+psth_tibble_gap <- psth_tibble_gap %>% dplyr::filter(
+  
+)
+
+psth_tibble_gap <- left_join(psth_tibble_gap,info_stim %>% select(file = file_name, No_Trains))
+psth_tibble_gap <- psth_tibble_gap %>% dplyr::filter(reltimes > -0.05, reltimes < 0.05)
+
+psth_tibble_gap <- psth_tibble_gap %>% 
+  dplyr::mutate(
+    cell_id = substr(file, 1, 6))
+
+  
+psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinch, control, gap))
+
+
+
+psth_tibble_gap %>% 
+  dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09")) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) + 
+  geom_histogram(bins = 50) +
+  geom_vline(xintercept = 0) +
+  geom_vline(xintercept = -0.0005) +
+  xlim(-0.01,0.02) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+```
+
+
+
+
 ```{r, fig.width=10, echo = FALSE, warning=FALSE, out.width = "100%"}
+TO_PLOT <- left_join(
+  TO_PLOT,
+  psth_tibble %>% select(cell_id, inhib_strength) %>% dplyr::group_by(cell_id) %>% slice(1)
+          )
+
 ggplot(
   data = TO_PLOT %>%
     dplyr::filter(
@@ -646,15 +902,16 @@ ggplot(
   )
 ) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
-  geom_point(aes(fill = pinch),
-    shape = 21,
+  geom_point(
+    aes(color = inhib_strength),
+    #shape = 21,
     # fill = "#EB8104",
     # color = "white",
     size = 4
   ) +
   # stroke = 2) +
   geom_line(
-    aes(group = cell_id, col = pinch)
+    aes(group = cell_id, col = inhib_strength)
   ) +
   theme(panel.background = element_rect(fill = 0)) +
   theme_minimal() +
@@ -665,18 +922,28 @@ ggplot(
   xlab("Recording period") +
   facet_wrap(vars(pinch)) +
   ggpubr::stat_compare_means(method = "wilcox.test", paired = T) +
-  geom_label_repel(
-    data = TO_PLOT %>%
-      dplyr::filter(
-        control == F,
-        stim_cond == "baseline"
-      ),
-    mapping = aes(label = cell_id),
-    nudge_x = -.9,
-    direction = "y",
-    # hjust = 2,
-    segment.size = .2
-  )
+  # geom_label_repel(
+  #   data = TO_PLOT %>%
+  #     dplyr::filter(
+  #       control == F,
+  #       stim_cond == "baseline"
+  #     ),
+  #   mapping = aes(label = cell_id),
+  #   nudge_x = -.9,
+  #   direction = "y",
+  #   # hjust = 2,
+  #   segment.size = .2
+  # ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
 
 ```
 
@@ -707,28 +974,40 @@ ggplot(
   ylim(0, 35) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   geom_point(
-    shape = 21,
-    fill = "#EB8104",
+    aes(color = inhib_strength),
+    # shape = 21,
+    # fill = "#EB8104",
     # color = "white",
     size = 4
   ) +
   # stroke = 2) +
+  geom_point(
+    data = . %>% dplyr::filter(gap == "y"),
+    shape = 21,
+    # fill = "#EB8104",
+    color = "black",
+    size = 4,
+    stroke = 1.5
+  ) +
+  
   geom_line(
-    aes(group = cell_id),
-    color = "#EB8104"
+    aes(
+      color = inhib_strength,
+      group = cell_id),
+    # color = "#EB8104"
   ) +
-  geom_label_repel(
-    data = TO_PLOT %>%
-      dplyr::filter(
-        control == F,
-        stim_cond == "a"
-      ),
-    mapping = aes(label = cell_id),
-    nudge_x = 0.15,
-    direction = "y",
-    hjust = -0.5,
-    segment.size = .2
-  ) +
+  # geom_label_repel(
+  #   data = TO_PLOT %>%
+  #     dplyr::filter(
+  #       control == F,
+  #       stim_cond == "a"
+  #     ),
+  #   mapping = aes(label = cell_id),
+  #   nudge_x = 0.15,
+  #   direction = "y",
+  #   hjust = -0.5,
+  #   segment.size = .2
+  # ) +
   # geom_signif(
   #   comparisons = list(c("b", "d"), c("d","a")),
   #   map_signif_level = TRUE,
@@ -746,12 +1025,21 @@ ggplot(
     paired = T,
     comparisons = list(c("d", "a"))
   ) +
-  ggpubr::stat_compare_means(
-    method = "wilcox.test",
-    paired = F,
-    comparisons = list(c("b", "a"))
-  ) +
-  facet_wrap(~pinch)
+  # ggpubr::stat_compare_means(
+  #   method = "wilcox.test",
+  #   paired = F,
+  #   comparisons = list(c("b", "a"))
+  # ) +
+  facet_wrap(~pinch) +
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 ```
 
 <br><br>
@@ -821,7 +1109,16 @@ TO_PLOT %>%
     paired = T,
     comparisons = list(c("d", "a"))
   ) +
-  facet_wrap(~pinch)
+  facet_wrap(~pinch) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 ```
 
 <br><br>
@@ -890,138 +1187,6 @@ ggplot(
   ) 
 ```
 
-
-
-
-
-
-
-```{r}
-
-filelist <- info_stim$file_name
-trainlength <- info_stim$train_length
-
-CreatePSTH <- function(file.name, train.length, start){
-  
-  fn <- as.character(file.name)
-  #browser()
-  
-  ap <- IL_stim_firing %>% 
-  dplyr::filter(
-    file_name == fn, 
-    signal_type == "AP") %>% 
-  pull(signal_time)
-
-
-  stim <- start
-
-RTM_creator <- function(ap, stim) {
-    ap_vect <- ap %>% as.vector()
-    stim_vect <- stim %>% as.vector()
-
-    mat_AP <- matrix(
-      ap_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect), byrow = T
-    )
-
-    mat_stim <- matrix(
-      stim_vect,
-      nrow = length(stim_vect),
-      ncol = length(ap_vect)
-    )
-
-
-    mat_reltimes <- mat_AP - mat_stim
-    mat_reltimes[mat_reltimes == 0] <- NA
-    return(mat_reltimes)
-}
-
-psth_mat <- RTM_creator(ap, stim) 
-psth_tibble <- tibble(
-  train_length = train.length,
-  file = fn,
-  reltimes = psth_mat %>% melt() %>% pull(value)
-)
-psth_tibble
-
-}
-
-
-
-psth_tibble <- Map(CreatePSTH, filelist, trainlength, start_times) 
-psth_tibble <- lapply(psth_tibble, as_tibble) %>% bind_rows() 
-psth_tibble <- left_join(psth_tibble,info_stim %>% select(file = file_name, No_Trains))
-psth_tibble <- psth_tibble %>% 
-  dplyr::mutate(
-    cell_id = substr(file, 1, 6))  %>% 
-  group_by(cell_id) %>% 
-  dplyr::mutate(
-    before_stim_spikes = length(reltimes[reltimes > -1 & reltimes < 0]),
-    during_stim_spikes = length(reltimes[reltimes > 0 & reltimes < 1]),
-    stim_onset_ratio = during_stim_spikes / before_stim_spikes)
-  
-psth_tibble <- left_join(psth_tibble, CELL_INFO %>% select(cell_id, pinch, control))
-
-
-psth_tibble %>% 
-  dplyr::filter(
-    reltimes > -(train_length/4),
-    reltimes < train_length+train_length/2,
-    # control == F,
-    # train_length != 3.267300,
-    # stim_onset_diff < 5
-  ) %>%
-  ggplot(
-    aes(x = reltimes)
-  ) + 
-  geom_histogram(
-    data = . %>% 
-       dplyr::filter(
-         control == F
-         ),
-    binwidth = 0.164) +
-  geom_histogram(
-    data = . %>% 
-      dplyr::filter(control == T),
-    binwidth = 0.164,
-    alpha = 0.3
-  ) +
-  geom_histogram(
-    data = . %>% 
-       dplyr::filter(
-         control == F,
-         stim_onset_ratio < 0.75,
-         train_length > 4
-         ),
-    binwidth = 0.164,
-    fill = "red"
-    ) +
-  geom_vline(xintercept = 0) +
-  geom_vline(aes(xintercept = train_length)) +
-  facet_wrap(file~train_length %>% round() , scales = "free")
-
-
-
-
-
-psth_tibble %>% 
-  dplyr::filter(
-    reltimes > -(train_length/4),
-    reltimes < train_length+train_length/2,
-    control == F,
-    train_length > 4,
-    stim_onset_ratio < 0.8,
-  ) %>%
-  ggplot(
-    aes(x = reltimes)
-  ) + 
-  geom_histogram(binwidth = 0.1) +
-  geom_vline(xintercept = 0) +
-  xlim(-1,5)
-
-
-```
 
 
 <br><br>
@@ -1391,9 +1556,16 @@ APCount <- function(animal) {
 
 APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>%
   bind_rows() %>%
-  mutate(norm_No_APs_all = No_APs / max(No_APs)) %>%
-  group_by(animal_id) %>%
-  mutate(norm_No_APs_animal = No_APs / max(No_APs))
+  dplyr::mutate(norm_No_APs_all = No_APs / max(No_APs)) %>%
+  dplyr::group_by(animal_id) %>%
+  dplyr::mutate(norm_No_APs_animal = No_APs / max(No_APs)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(
+    stim_type = ifelse(
+      test = animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical" 
+  
+    )
+    )
 ```
 
 <br><br><br>
@@ -1501,13 +1673,14 @@ STIM_RESULTS %>%
   dplyr::filter(
     first_ap_reltimes > PSTH_range[1],
     first_ap_reltimes < PSTH_range[2],
+    #freq == 18
     #animal_id %!in% c("GV_40","GV_42","GV_47" )
   ) %>% 
   ggplot(aes(x = first_ap_reltimes)) +
   geom_vline(xintercept = 0, col = "blue") +
   facet_wrap(~freq) +
   #facet_grid(animal_id~freq) +
-  geom_histogram() +
+  geom_histogram(binwidth = 0.001) +
   geom_text(
     data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
     mapping = aes(
@@ -1519,7 +1692,23 @@ STIM_RESULTS %>%
     data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
     aes(xintercept = med_lat)
   ) +
-  theme_minimal()
+  xlim(PSTH_range[1], PSTH_range[2]) +
+  expand_limits(y = c(0, 180)) +
+  
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) +
+  xlab("Latency (s)") +
+  ylab("Count")
+
+
+#popPSTH_PnO_1Hz
 ```
 
 
@@ -1535,14 +1724,14 @@ STIM_RESULTS %>%
 ### select frequency to plot (1, 8, 18)
 freq_to_plot <- 1 %>% as.character()
 
-gp_hist <- ggplot(
+gp_hist1 <- ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == freq_to_plot,
       #animal_id %!in% c("GV_40", "GV_42", "GV_47") 
-      #,animal_id == "GII_21"
+      animal_id == "GII_21"
     ),
   mapping = aes(x = first_ap_reltimes)
 ) +
@@ -1564,14 +1753,14 @@ gp_hist <- ggplot(
 
 
 ### lines
-gp_hist +
+gp_hist1 <- gp_hist1 +
   ### median
   geom_segment(
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1589,7 +1778,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1605,7 +1794,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in%  c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
@@ -1617,7 +1806,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
@@ -1632,7 +1821,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in%  c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = mean, y = y_max + 4), size = 2
@@ -1644,7 +1833,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #,animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = peak, y = y_max + 4),
@@ -1658,6 +1847,7 @@ gp_hist +
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
@@ -1677,14 +1867,14 @@ gp_hist +
 ### select frequency to plot (1, 8, 18)
 freq_to_plot <- 8 %>% as.character()
 
-gp_hist <- ggplot(
+gp_hist8 <- ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == freq_to_plot,
       #animal_id %!in% c("GV_40", "GV_42", "GV_47")
-      #animal_id == "GII_21"
+      animal_id == "GII_21"
     ),
   mapping = aes(x = first_ap_reltimes)
 ) +
@@ -1700,20 +1890,20 @@ gp_hist <- ggplot(
   ) +
   facet_wrap(~animal_id, ncol = 3) +
   geom_vline(xintercept = 0) +
-  xlab("Time (s)") +
+  xlab("Latency (s)") +
   ylab("Count")
 
 
 
 ### lines
-gp_hist +
+gp_hist8 <- gp_hist8 +
   ### median
   geom_segment(
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1731,7 +1921,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1747,7 +1937,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
@@ -1759,7 +1949,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
@@ -1774,7 +1964,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = mean, y = y_max + 4), size = 2
@@ -1786,7 +1976,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42", "GV_47")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = peak, y = y_max + 4),
@@ -1800,6 +1990,7 @@ gp_hist +
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
@@ -1819,14 +2010,14 @@ gp_hist +
 ### select frequency to plot (1, 8, 18)
 freq_to_plot <- 18 %>% as.character()
 
-gp_hist <- ggplot(
+gp_hist18 <- ggplot(
   data = STIM_RESULTS %>%
     dplyr::filter(
       first_ap_reltimes > PSTH_range[1],
       first_ap_reltimes < PSTH_range[2],
       freq == freq_to_plot,
       #animal_id %!in% c("GV_40", "GV_42")
-      #animal_id == "GII_21"
+      animal_id == "GII_21"
     ),
   mapping = aes(x = first_ap_reltimes)
 ) +
@@ -1842,20 +2033,20 @@ gp_hist <- ggplot(
   ) +
   facet_wrap(~animal_id, ncol = 3) +
   geom_vline(xintercept = 0) +
-  xlab("Time (s)") +
+  xlab("Latency (s)") +
   ylab("Count")
 
 
 
 ### lines
-gp_hist +
+gp_hist18 <- gp_hist18 +
   ### median
   geom_segment(
     data = hist_stats %>%
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1873,7 +2064,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(
@@ -1889,7 +2080,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
@@ -1901,7 +2092,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
@@ -1916,7 +2107,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = mean, y = y_max + 4), size = 2
@@ -1928,7 +2119,7 @@ gp_hist +
       dplyr::filter(
         freq == freq_to_plot,
         animal_id %!in% c("GV_40", "GV_42")
-        #animal_id == "GII_21"
+        ,animal_id == "GII_21"
       ) %>%
       dplyr::group_by(animal_id),
     mapping = aes(x = peak, y = y_max + 4),
@@ -1947,6 +2138,11 @@ gp_hist +
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   ) 
+```
+
+
+```{r}
+cowplot::plot_grid(gp_hist1, gp_hist8, gp_hist18,nrow = 1) 
 ```
 
 
@@ -2014,7 +2210,15 @@ ggplot(
   ) +
   expand_limits(y = c(35,130)) +
   #ylim(35, 110) +
-  theme_minimal()
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 
 
 ```
@@ -2099,8 +2303,16 @@ ggplot(
     direction = "y",
     hjust = -.5
   ) +
-  theme_minimal() +
-  expand_limits(y = c(0, 0.03))
+  expand_limits(y = c(0, 0.03)) +
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 
 ```
 
@@ -2215,29 +2427,58 @@ APC %>%
   ### +1 to avoid division by zero!!! 
   summarise(mAP = mean(No_APs) + 1) %>%
   dplyr::mutate(APchange = mAP/mAP[1]) %>% 
+  dplyr::mutate(
+    stim_type = ifelse(
+      test = animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical" 
+  
+    )
+    ) %>% 
   ggplot(
     mapping = aes(
       x = stim_number, 
-      y = APchange,
-      color = as.factor(animal_id))) + 
-  geom_line() + 
-  geom_point(size = 3) +
+      y = APchange)) + 
+  geom_line(
+    aes(group = as.factor(animal_id),color = stim_type)
+    ) + 
+  geom_point(
+    aes(group = as.factor(animal_id),color = stim_type),
+    size = 3
+    ) +
   scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
   #scale_y_discrete(limits = c(0:6), breaks = c(0:6)) +
   facet_wrap(~stim_freq_categ, nrow = 3) +
   geom_label_repel(
     data = . %>%
       dplyr::filter(stim_number == 10),
-    aes(label = animal_id),
+    aes(
+      color = stim_type,
+      label = animal_id
+      ),
     direction = "y", nudge_x = 1,
     hjust = 1,
     # alpha = .7
   ) +
-  geom_segment(aes(x = min(stim_number), y = 1, xend = max(stim_number), yend = 1), size  = 1, color = "black", lty = "dashed") + 
+  geom_segment(
+    aes(
+      x = min(stim_number), 
+      y = 1, 
+      xend = max(stim_number), 
+      yend = 1), 
+    size  = 1,
+    color = "black", 
+    lty = "dashed") + 
   expand_limits(x = 11) +
   theme(legend.position="none")+
   guides(color = "none") +    
-  theme_minimal()
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 ```
 
 
@@ -2705,7 +2946,20 @@ bind_rows(sync_reltimes, desync_reltimes) %>%
   ggplot(mapping = aes(x=time)) +
   geom_histogram(bins = 200) +
   facet_grid(animal~eeg_state, scales = "free_y") +
-  global_facet_theme
+  ggh4x::force_panelsizes(
+    cols = unit(c(4,4),"inch"),
+    rows = unit(c(3, 3, 3, 3, 3, 3, 3 ),"inch"), TRUE) +
+  global_facet_theme +
+   theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
   
   
 
@@ -3070,7 +3324,22 @@ bind_rows(baseline_reltimes, csd_reltimes) %>%
         "sync" = "baseline"
       )
   )) +
-  global_facet_theme
+  ggh4x::force_panelsizes(
+    cols = unit(c(4,4),"inch"),
+    rows = unit(c(3, 3, 3, 3, 3 ),"inch"), TRUE
+  ) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+  
   
   
 
