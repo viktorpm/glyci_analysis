@@ -335,6 +335,44 @@ end_times <- IL_stim_firing %>%
   lapply(as.numeric)
 
 
+### Corrected cellList: stims with no controls are removed
+
+check_controls <- melt(start_times) %>% 
+  tibble() %>% 
+  rename("start_times" = value, "cell_id" = L1) %>% 
+  add_column(end_times = melt(end_times) %>% 
+               tibble() %>% 
+               select(1) %>% 
+               pull()
+             ) %>%
+  left_join(
+    info_stim %>% 
+      select(file_name, train_length) %>% 
+      mutate(cell_id = substr(file_name, 1,6)) %>% 
+      select(-file_name)
+    ) %>% 
+  group_by(cell_id) %>% 
+  mutate(train_length = end_times-start_times) %>% 
+  dplyr::group_by(cell_id) %>% 
+  mutate(
+    stim_check = "OK",
+    stim_check = replace(stim_check,  start_times - train_length < 0, "n"),
+    stim_check = replace(stim_check,  (lead(start_times) - train_length) < end_times , "n"),
+    stim_check = replace(stim_check, end_times + train_length > lead(start_times), "n"))
+    
+
+# start_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), start_times ~ cell_id)
+# end_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), end_times ~ cell_id)
+    
+# cellList$cell01 <- cellList$cell01[-1, ]
+# cellList$cell15 <- cellList$cell15[-3:-4, ]
+# cellList$cell16 <- cellList$cell16[-3:-4, ]
+# cellList$cell16 <- cellList$cell16[-5:-6, ]
+# cellList$cell17 <- cellList$cell17[-3:-4, ]
+# cellList$cell17 <- cellList$cell17[-5:-6, ]
+# cellList$cell18 <- cellList$cell18[-1, ]
+# cellList$cell19 <- cellList$cell19[-1, ]    
+
 cell_list <- substr(info_stim$file_name, 1, 6)
 CELL_INFO$cell_id
 ```
@@ -771,7 +809,8 @@ psth_tibble %>%
   ) + 
   geom_histogram(binwidth = 0.1) +
   geom_vline(xintercept = 0) +
-  xlim(-1,5) +
+  xlim(-2,5) +
+  facet_wrap(~pinch)+
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
@@ -861,7 +900,8 @@ psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinc
 
 
 psth_tibble_gap %>% 
-  dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09")) %>%
+  # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09")) %>%
+  dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
   ggplot(
     aes(x = reltimes)
   ) + 
@@ -922,18 +962,18 @@ ggplot(
   xlab("Recording period") +
   facet_wrap(vars(pinch)) +
   ggpubr::stat_compare_means(method = "wilcox.test", paired = T) +
-  # geom_label_repel(
-  #   data = TO_PLOT %>%
-  #     dplyr::filter(
-  #       control == F,
-  #       stim_cond == "baseline"
-  #     ),
-  #   mapping = aes(label = cell_id),
-  #   nudge_x = -.9,
-  #   direction = "y",
-  #   # hjust = 2,
-  #   segment.size = .2
-  # ) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "baseline"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = -.9,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  ) +
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
