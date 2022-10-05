@@ -361,8 +361,8 @@ check_controls <- melt(start_times) %>%
     stim_check = replace(stim_check, end_times + train_length > lead(start_times), "n"))
     
 
-# start_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), start_times ~ cell_id)
-# end_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), end_times ~ cell_id)
+start_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), start_times ~ cell_id)
+end_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), end_times ~ cell_id)
     
 # cellList$cell01 <- cellList$cell01[-1, ]
 # cellList$cell15 <- cellList$cell15[-3:-4, ]
@@ -678,7 +678,7 @@ Comparison of baseline and "before" stimulus firing rates in the case of spontan
 
 Categorizing cells into week and strong based on the dynamics of inhibition
 
-```{r}
+```{r fig.width=15}
 
 filelist <- info_stim$file_name
 trainlength <- info_stim$train_length
@@ -766,7 +766,9 @@ psth_tibble %>%
   ) +
   geom_histogram(
     data = . %>% 
-      dplyr::filter(control == F,  train_length < 4),
+      dplyr::filter(
+        control == F, 
+        train_length < 4),
     binwidth = 0.164,
     alpha = 0.3
   ) +
@@ -777,7 +779,7 @@ psth_tibble %>%
          train_length > 4
          ),
     binwidth = 0.164,
-    aes(fill = inhib_strength, col = gap)
+    aes(fill = inhib_strength)
     ) +
   geom_vline(xintercept = 0) +
   geom_vline(aes(xintercept = train_length)) +
@@ -791,26 +793,25 @@ psth_tibble %>%
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   ) 
+```
 
-
-
-
-
+```{r}
 psth_tibble %>% 
   dplyr::filter(
     reltimes > -(train_length/4),
     reltimes < train_length+train_length/2,
-    control == F,
+    control == T,
     train_length > 4,
-    stim_onset_ratio < 0.75,
-  ) %>%
+    #inhib_strength == "strong",
+  ) %>%  # select(cell_id) %>% unique()
   ggplot(
     aes(x = reltimes)
   ) + 
   geom_histogram(binwidth = 0.1) +
   geom_vline(xintercept = 0) +
-  xlim(-2,5) +
-  facet_wrap(~pinch)+
+  xlim(-1,5) +
+  expand_limits(y = c(0,85)) + 
+  # facet_wrap(~pinch)+
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
@@ -819,10 +820,8 @@ psth_tibble %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) 
-
+  )
 ```
-
 
 
 ```{r}
@@ -900,15 +899,18 @@ psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinc
 
 
 psth_tibble_gap %>% 
-  # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09")) %>%
-  dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
+   dplyr::filter(
+     control == F,
+     cell_id %in% c("cell06","cell07","cell08","cell09")) %>%
+  # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
   ggplot(
     aes(x = reltimes)
   ) + 
-  geom_histogram(bins = 50) +
+  geom_histogram(binwidth = 0.001) +
   geom_vline(xintercept = 0) +
-  geom_vline(xintercept = -0.0005) +
+  # geom_vline(xintercept = -0.005) +
   xlim(-0.01,0.02) +
+  expand_limits(y = c(0,125)) + 
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
