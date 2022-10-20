@@ -783,7 +783,7 @@ psth_tibble %>%
     ) +
   geom_vline(xintercept = 0) +
   geom_vline(aes(xintercept = train_length)) +
-  facet_wrap(file~train_length %>% round() , scales = "free") +
+  facet_wrap(file~train_length %>% round() , scales = "free_x") +
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
@@ -848,7 +848,7 @@ CreatePSTH <- function(file.name, train.length, start){
     signal_type == "stim") %>% 
   pull(signal_time)
 
-RTM_creator <- function(ap, stim) {
+  RTM_creator <- function(ap, stim) {
     ap_vect <- ap %>% as.vector()
     stim_vect <- stim %>% as.vector()
 
@@ -1112,15 +1112,27 @@ TO_PLOT %>%
   #ylim(0, 35) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   geom_point(
-    shape = 21,
-    fill = "#EB8104",
+    aes(color = inhib_strength),
+    # shape = 21,
+    # fill = "#EB8104",
     # color = "white",
     size = 4
   ) +
   # stroke = 2) +
+  geom_point(
+    data = . %>% dplyr::filter(gap == "y"),
+    shape = 21,
+    # fill = "#EB8104",
+    color = "black",
+    size = 4,
+    stroke = 1.5
+  ) +
+  
   geom_line(
-    aes(group = cell_id),
-    color = "#EB8104"
+    aes(
+      color = inhib_strength,
+      group = cell_id)
+    # color = "#EB8104"
   ) +
   geom_label_repel(
     data = . %>%
@@ -2806,7 +2818,7 @@ wavelets <- lapply(all_eeg_df, function(x) {
   #   axis.ticks.length = unit(5, "mm")
   # ) +
   xlab("Time (s)") +
-  scale_y_log10() 
+  scale_y_log10() +
   # scale_y_reverse(
   #   name = "Frequency (Hz)",
   #   breaks = c(1, 200, 400, 600),
