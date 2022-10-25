@@ -2298,6 +2298,83 @@ cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
 
 ## Traveled distance
 
+
+
+```{r}
+# saving the mean of the "before stim" "sum traveled distance" of all the animals (by intensity) for normalization  
+
+mean_sum_d_1mW <- coords_1s_window %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0,
+    body_part == "center",
+    intensity %in% selected_intensities
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::filter(
+    stim_categ == "before stim",
+    intensity == "1 mW"
+  ) %>% pull(mean_sum_d)
+
+mean_sum_d_5mW <- coords_1s_window %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0,
+    body_part == "center",
+    intensity %in% selected_intensities
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::filter(
+    stim_categ == "before stim",
+    intensity == "5 mW"
+  ) %>% pull(mean_sum_d)
+
+mean_sum_d_10mW <- coords_1s_window %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0,
+    body_part == "center",
+    intensity %in% selected_intensities
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::filter(
+    stim_categ == "before stim",
+    intensity == "10 mW"
+  ) %>% pull(mean_sum_d)
+
+
+coords_1s_window %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0,
+    body_part == "center",
+    intensity %in% selected_intensities
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(
+    mean_sum_d = mean(sum_d),
+    sd_sum_d = sd(sum_d)
+    ) 
+
+
+```
+
+
+
+
+
+
+
+
+
+
 Sum traveled distance across sessions at different intensities by animals (stimulus and control)
 <br>
 1 second before stimulus, first second of stimulation
@@ -2320,14 +2397,6 @@ norm_ref <- coords_1s_window %>%
   max()
 
 
-# dplyr::mutate(
-#     mean_sum_d = case_when(
-#       intensity == "1 mW" ~ mean_sum_d_1mW,
-#       intensity == "5 mW" ~ mean_sum_d_5mW,
-#       intensity == "10 mW" ~ mean_sum_d_10mW,
-#     )
-#   ) %>%
-
 plt_pop_dist_stim <- coords_1s_window %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
@@ -2339,22 +2408,22 @@ plt_pop_dist_stim <- coords_1s_window %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
   ) %>% 
   dplyr::mutate(
-    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA)
-    ##these are calculated later in the code!!!! 
-    # mean_sum_d = case_when(
-    #   intensity == "1 mW" ~ mean_sum_d_1mW,
-    #   intensity == "5 mW" ~ mean_sum_d_5mW,
-    #   intensity == "10 mW" ~ mean_sum_d_10mW,
-    # )
-  ) %>%
+    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
+    mean_sum_d = case_when(
+      intensity == "1 mW" ~ mean_sum_d_1mW,
+      intensity == "5 mW" ~ mean_sum_d_5mW,
+      intensity == "10 mW" ~ mean_sum_d_10mW,
+    )
+  ) %>% 
   fill(max_sum_d) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = sum_d # / mean_sum_d #norm_ref # # norm_ref #
+      y = mean_d  #/mean_sum_d  #norm_ref # # norm_ref #
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2375,9 +2444,18 @@ plt_pop_dist_stim <- coords_1s_window %>%
   #   vjust = 1.5,
   #   hide.ns = F
   # ) +
-  # expand_limits(y = c(0, 12)) +
+  expand_limits(y = c(0, 50)) +
   global_facet_theme +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 
 
 
@@ -2392,16 +2470,22 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
   ) %>%  
   dplyr::mutate(
-    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA)
+    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
+    mean_sum_d = case_when(
+      intensity == "1 mW" ~ mean_sum_d_1mW,
+      intensity == "5 mW" ~ mean_sum_d_5mW,
+      intensity == "10 mW" ~ mean_sum_d_10mW,
+    )
   ) %>%
   fill(max_sum_d) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = sum_d # / norm_ref # max_sum_d # norm_ref #
+      y = mean_d  #/mean_sum_d / norm_ref # max_sum_d # norm_ref #
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2423,11 +2507,20 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
   #   vjust = 1.5,
   #   hide.ns = F
   # ) +
-  # expand_limits(y = c(0, 12)) +
+  expand_limits(y = c(0, 50)) +
   global_facet_theme +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 
-
+#sum_trav_dist_norm_by_before_mean
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
 ```
 
@@ -2699,116 +2792,12 @@ coords_1s_window %>%
 ```
 
 
-```{r}
-# saving the mean of the "before stim" "sum traveled distance" of all the animals (by intensity) for normalization  
-
-mean_sum_d_1mW <- coords_1s_window %>%
-  dplyr::filter(
-    frame %% datapoint_to_plot == 0,
-    body_part == "center",
-    intensity %in% selected_intensities
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
-  dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
-  dplyr::filter(
-    stim_categ == "before stim",
-    intensity == "1 mW"
-  ) %>% pull(mean_sum_d)
-
-mean_sum_d_5mW <- coords_1s_window %>%
-  dplyr::filter(
-    frame %% datapoint_to_plot == 0,
-    body_part == "center",
-    intensity %in% selected_intensities
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
-  dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
-  dplyr::filter(
-    stim_categ == "before stim",
-    intensity == "5 mW"
-  ) %>% pull(mean_sum_d)
-
-mean_sum_d_10mW <- coords_1s_window %>%
-  dplyr::filter(
-    frame %% datapoint_to_plot == 0,
-    body_part == "center",
-    intensity %in% selected_intensities
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
-  dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
-  dplyr::filter(
-    stim_categ == "before stim",
-    intensity == "10 mW"
-  ) %>% pull(mean_sum_d)
-
-
-coords_1s_window %>%
-  dplyr::filter(
-    frame %% datapoint_to_plot == 0,
-    body_part == "center",
-    intensity %in% selected_intensities
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
-  dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(
-    mean_sum_d = mean(sum_d),
-    sd_sum_d = sd(sum_d)
-    ) 
-
-
-```
-
 
 Combining 1 sec before stim and stim division to 1st and last 9 sec tables. Needs work!!!
 
 ```{r fig.height=25, fig.width=15}
 bind_rows(
-  # before stim
-  # coords %>%
-  #   dplyr::filter(
-  #     frame %% datapoint_to_plot == 0,
-  #     stim_categ == "before stim",
-  #     body_part == "center"
-  #   ) %>%
-  #   ### recalculates distances after frames were removed
-  #   dplyr::group_by(animal, body_part, session) %>%
-  #   dplyr::mutate(
-  #     X_diff = c(diff(X_interp), NA) %>% round(4),
-  #     Y_diff = c(diff(Y_interp), NA) %>% round(4),
-  #     X_diff = ifelse(
-  #       test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
-  #         X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
-  #       yes = 0,
-  #       no = X_diff
-  #     ),
-  #     Y_diff = ifelse(
-  #       Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
-  #         Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
-  #       yes = 0,
-  #       no = Y_diff
-  #     ),
-  #     d = sqrt(X_diff^2 + Y_diff^2),
-  #     d_mm = d / scale,
-  #     speed_instant = d_mm / time_res,
-  #     mmps = speed_instant * (1 / time_res),
-  #     mps = (speed_instant * (1 / time_res)) / 1000
-  #   ) %>%
-  #   ## grouping by session vs intensity!!!!! check!!!! looks similar, sometimes the intensity and the session doesn't match
-  #   dplyr::group_by(animal, body_part, session, stim_categ, stim_number) %>%
-  #   # dplyr::top_n(6),
-  #   dplyr::slice(tail(row_number(), 6)) %>%
-  #   dplyr::mutate(
-  #     stim_division = "before_stim",
-  #     stim_div_length = 1
-  #   ),
-
+  ### before stim 1 sec
   coords_1s_window %>%
     dplyr::filter(
       stim_categ == "before stim",
@@ -2818,6 +2807,7 @@ bind_rows(
       stim_division = "before_stim",
       stim_div_length = 1
     ),
+  ### stim devided to first_part (1s) and last part (9s)
   coords %>%
     dplyr::filter(
       frame %% datapoint_to_plot == 0,
@@ -2853,41 +2843,81 @@ bind_rows(
     dplyr::ungroup() %>%
     dplyr::group_by(animal, body_part, session, stim_number) %>%
     dplyr::mutate(
-      stim_division = ifelse(rec_time <= min(rec_time) + 1, "first_part", "last_part"),
-      stim_div_length = ifelse(rec_time <= min(rec_time) + 1, 1, 9)
+      stim_division = ifelse(rec_time <= min(rec_time) + 1, yes = "first_part", no = "last_part"),
+      stim_div_length = ifelse(rec_time <= min(rec_time) + 1, yes = 1, no = 9)
     )
-) %>% 
-  
-  
-  
-  
-  
-  
-  
-  dplyr::group_by(animal, intensity, stim_number, stim_division, stim_div_length) %>%
-  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+) %>%
+  dplyr::group_by(animal, intensity, stim_categ, stim_division, stim_div_length) %>% #stim_number,
+  dplyr::summarise(
+    sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T),
+    max_sum_d = sum_d %>% max()
+  ) %>% 
   dplyr::mutate(
+    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
     mean_sum_d = case_when(
       intensity == "1 mW" ~ mean_sum_d_1mW,
       intensity == "5 mW" ~ mean_sum_d_5mW,
       intensity == "10 mW" ~ mean_sum_d_10mW,
     )
-  ) %>%
- 
- 
-   dplyr::filter(
+  ) %>% 
+  dplyr::filter(
     animal %!in% control_animals,
     intensity %in% selected_intensities
-  ) %>%
+  ) %>%  
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_division, "before_stim", "first_part", "last_part"),
-      y = (sum_d / stim_div_length)/mean_sum_d
+      y = sum_d / stim_div_length /mean_sum_d
     )
   ) +
-  geom_point(aes(fill = stim_number %>% as.factor()), shape = 21, size = 4) +
-  facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
-  geom_line(aes(group = stim_number))
+  geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 1) +
+  # facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  geom_line(aes(group = animal)) +
+  
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("before_stim", "first_part")),
+    method.args = list(alternative = "less"),
+    vjust = 1.6,
+    hide.ns = F
+  ) +
+  
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("first_part", "last_part")),
+    method.args = list(alternative = "greater"),
+    vjust = 1.6,
+    hide.ns = F
+  ) +
+  
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",label.y = 6.5,
+    paired = T,
+    comparisons = list(c("before_stim", "last_part")),
+    method.args = list(alternative = "less"),
+    vjust = 1.7,
+    hide.ns = F
+  ) +
+  
+  expand_limits(y = c(0, 7.5)) +
+  global_facet_theme +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+#sum_trav_dist_norm_by_before_mean
+
 ```
 
 
