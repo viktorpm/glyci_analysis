@@ -42,10 +42,9 @@ knit: (
       envir = globalenv()
       )
     }
-  )
 ---
 
-
+```{=html}
 <style type="text/css">
 
 body{ /* Normal  */
@@ -82,8 +81,7 @@ pre { /* Code block - determines code spacing between lines */
     font-size: 14px;
 }
 </style>
-
-
+```
 ```{r setup, include=FALSE}
 ### cheks all the used libraries in the project. Removes duplicates
 ### list of libraries mentioned in the R scripts of the project
@@ -171,29 +169,24 @@ RawDataFilter <- function(df) {
 }
 ```
 
-
-
-
 # Loading and orginising data
 
-## Global constants and scales 
-<br>
-These are defined in the "setup" chunk <br>
+## Global constants and scales
 
-+ **scale**: 1.38 (pixels/mm) <br>
-+ **fps**: `r fps` (frame rate) <br>
-+ **time_res**: 1/**fps** = `r 1/fps` (time between frames) <br>
-+ **xlim_mm**, **ylim_mm**: pixels converted to mm (`r paste0(xlim_mm, ":", ylim_mm)`)
-+ **global_facet_theme**: plot text sizes
-+ **datapoint_to_plot**: which datapoint to plot *(frame %% datapoint_to_plot == 0)*
-+ **text_layer**: stimulus intensity in each session (used to create the text layer on plots, defined after "coords" was created)
+<br> These are defined in the "setup" chunk <br>
+
+-   **scale**: 1.38 (pixels/mm) <br>
+-   **fps**: `r fps` (frame rate) <br>
+-   **time_res**: 1/**fps** = `r 1/fps` (time between frames) <br>
+-   **xlim_mm**, **ylim_mm**: pixels converted to mm (`r paste0(xlim_mm, ":", ylim_mm)`)
+-   **global_facet_theme**: plot text sizes
+-   **datapoint_to_plot**: which datapoint to plot *(frame %% datapoint_to_plot == 0)*
+-   **text_layer**: stimulus intensity in each session (used to create the text layer on plots, defined after "coords" was created)
 
 <br>
 
-**Current animal**: `r selected_animal`  
-<br>
-For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used. <br>
-The global angle threshold used in this file is `r ang_threshold`. Grater rotation angles between consecutive frames are replaced by zero
+**Current animal**: `r selected_animal`\
+<br> For the trajectories and traveled distance plots every `r datapoint_to_plot`th frame (data point) was used. <br> The global angle threshold used in this file is `r ang_threshold`. Grater rotation angles between consecutive frames are replaced by zero
 
 **Control animals**: GIIFM34b, GIIFM35b, GIIFM36b, GIIFM37b
 
@@ -225,9 +218,7 @@ stims %>%
   head(100)
 ```
 
-
 ## Loading coordinates
-
 
 <br>
 
@@ -323,10 +314,7 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
   )
 ```
 
-
-<br>
-Filtering raw data
-<br>
+<br> Filtering raw data <br>
 
 ```{r}
 coords <- coords_raw %>%
@@ -383,11 +371,7 @@ coords %>%
   slice(1:5)
 ```
 
-
-<br>
-Length of stimuli, number of repeats of each stimulus with a given intensity
-<br>
-
+<br> Length of stimuli, number of repeats of each stimulus with a given intensity <br>
 
 ```{r message=F, warning=F, echo=F, include=F}
 lengths <- coords %>%
@@ -417,11 +401,6 @@ n_repeat <- lengths %>%
 
 # lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
 ```
-
-
-
-
-
 
 ```{r include=FALSE}
 
@@ -464,16 +443,7 @@ n_repeat <- lengths %>%
 #   value = X) %>% View()
 ```
 
-
-
-
-
-
-
-
-<br>
-Creating text layer to add intensity values to plots
-<br>
+<br> Creating text layer to add intensity values to plots <br>
 
 ```{r}
 text_layer <- coords %>%
@@ -485,9 +455,7 @@ text_layer <- coords %>%
   summarise(int_label = intensity %>% unique())
 ```
 
-<br>
-Creating plot colors
-<br>
+<br> Creating plot colors <br>
 
 ```{r}
 gg_color_hue <- function(n) {
@@ -499,14 +467,11 @@ n <- 6
 cols <- gg_color_hue(n)
 ```
 
-
 # Analysis (selected animal: `r selected_animal`)
-
 
 ## Checking tracking quality
 
 Plotting X and Y positions vs time separately to see jumps in the tracking data and big separation between head-ceter-tail coordinates (unrealistically big mouse). The tracking software occasionally lost the animal and started to follow different points. If there are many of those the session cannot be analysed.
-
 
 ```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
 
@@ -533,10 +498,7 @@ plt_ypos <- coords %>%
 cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
 ```
 
-<br>
-Plotting head-center distances over time. Dashed lines represent the outlier threshold (+- 1.5*IQR)
-<br>
-
+<br> Plotting head-center distances over time. Dashed lines represent the outlier threshold (+- 1.5\*IQR) <br>
 
 ```{r fig.width=10, fig.height=10, echo = FALSE, message=FALSE, warning=FALSE}
 coords %>%
@@ -590,10 +552,7 @@ coords %>%
   global_facet_theme
 ```
 
-<br>
-Histograms of head-center distances with boxplots and outliers.
-<br>
-
+<br> Histograms of head-center distances with boxplots and outliers. <br>
 
 ```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE, echo=FALSE}
 coords %>%
@@ -616,10 +575,7 @@ coords %>%
   global_facet_theme
 ```
 
-<br>
-Plotting first five head-center distances.
-<br>
-
+<br> Plotting first five head-center distances. <br>
 
 ```{r fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
@@ -661,12 +617,9 @@ coords %>%
   )
 ```
 
-
-
 ## Dealing with missing coordinates
 
-The tracking software occasionally lost the tracked points. To fill those gaps linear interpolation was applied. The figure below shows the interpolated values in red.
-Note that only every 5th frame was used for the tracking and for the later analysis except for calculating the rotation angle.
+The tracking software occasionally lost the tracked points. To fill those gaps linear interpolation was applied. The figure below shows the interpolated values in red. Note that only every 5th frame was used for the tracking and for the later analysis except for calculating the rotation angle.
 
 ```{r fig.width=10, fig.height=10, warning=FALSE, echo = FALSE}
 coords %>%
@@ -695,12 +648,9 @@ coords %>%
   global_facet_theme
 ```
 
-
-
 ## Plotting trajectories
 
 To show the animals trajectory during stimuli the head-center-tail body points were plotted. Colors correspond to the order of stimuli in each session. The black points represent the trajectory when there was no stimulus. For visualization purposes the number of plotted data points are different during the stimulus vs non-stimulus period (2 data points/sec vs 6 data points/sec respectively). For the statistical analysis similar data point rate was used for the two states.
-
 
 ```{r warning=FALSE, fig.width=10, fig.height=10, echo = FALSE}
 coords %>%
@@ -746,9 +696,6 @@ coords %>%
   global_facet_theme
 ```
 
-
-
-
 ```{r message=FALSE, fig.width=10, fig.height=10, echo = FALSE, warning=FALSE, include=F}
 ## Plotting speed in a 1 sec (`r fps` frames) window
 
@@ -769,8 +716,6 @@ coords %>%
   geom_label(data = text_layer, aes(x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5, label = paste0("Intensity: ", int_label))) +
   global_facet_theme
 ```
-
-
 
 ## Distribution of the distance between points
 
@@ -796,7 +741,6 @@ coords %>%
   dplyr::filter(animal == selected_animal) %>%
   summarise(min = min(X_diff, na.rm = T), max = max(X_diff, na.rm = T))
 ```
-
 
 ```{r message=F, warning=F, fig.width=10, fig.height=25, echo = FALSE}
 coords %>%
@@ -830,9 +774,7 @@ coords %>%
   scale_y_continuous(trans = "log10")
 ```
 
-
 ## Recalculating distances between tracked points after leaving out frames
-
 
 ```{r fig.width=10, fig.asp=1, echo = FALSE}
 
@@ -983,8 +925,6 @@ library(cowplot)
 cowplot::plot_grid(plt1_path, plt2_path, ncol = 2)
 ```
 
-
-
 ## Instantaneous traveled distance
 
 Plotting the traveled distance based on one of the three tracked body parts during stimulus and non-stimulus periods at the rate of 6 data point/sec.
@@ -1070,12 +1010,9 @@ coords %>%
   global_facet_theme
 ```
 
-
-
 ## Rolling mean of traveled distance
 
-Plotting the mean traveled distance calculated in a rolling window (1 sec). The mean was calculated separately during stimulus (rolling window restarts with the beginning of stimuli). Colors represent different periods of the recording (no-stimulus, before stimulus, during stimulus, after stimulus). 
-
+Plotting the mean traveled distance calculated in a rolling window (1 sec). The mean was calculated separately during stimulus (rolling window restarts with the beginning of stimuli). Colors represent different periods of the recording (no-stimulus, before stimulus, during stimulus, after stimulus).
 
 Defining line colors
 
@@ -1085,7 +1022,6 @@ line_cols <- gg_color_hue(3)
 group_colors <- c("no stim" = "gray30", "before stim" = line_cols[1], "stim" = line_cols[3], "after stim" = line_cols[2])
 group_colors2 <- c("no stim" = "gray30", "right before" = line_cols[1], "stim" = line_cols[3], "right after" = line_cols[2])
 ```
-
 
 ### Example session
 
@@ -1176,9 +1112,7 @@ coords %>%
   global_facet_theme
 ```
 
-
 ### Head
-
 
 ```{r fig.width=12, fig.height=12, warning=F, echo = FALSE}
 coords %>%
@@ -1223,8 +1157,6 @@ coords %>%
   global_facet_theme
 ```
 
-
-
 ```{r fig.width=10, fig.height=10, include=F, echo=F, eval=F}
 coords %>%
   dplyr::select(animal, session, frame, rec_time, stim_categ, body_part, d_mm, X_diff, Y_diff, stim_number) %>%
@@ -1247,17 +1179,14 @@ coords %>%
   global_facet_theme
 ```
 
-
-
 ## Sum traveled distance by individual stimuli within session (full length before and after the stimulus)
 
-Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the full duration of the stimulus (~10s) and `r around_stim_length / fps`s "before stimulus". Traveled distance "after stimulus" is not included.  <br>
+Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the full duration of the stimulus (\~10s) and `r around_stim_length / fps`s "before stimulus". Traveled distance "after stimulus" is not included. <br>
 
 The same data is shown on the plots with different groupings: <br>
 
-+ intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
-+ stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
-
+-   intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
+-   stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
 
 ```{r message=F, fig.width=12, fig.height=8, warning=F, echo = FALSE}
 coords %>%
@@ -1363,22 +1292,16 @@ coords %>%
   global_facet_theme
 ```
 
-
-
 ## Sum traveled distance by individual stimuli within session (1s before and during the stimulus)
-
 
 Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the last second of "before stimulus" category and through first second of the stimulus. Traveled distance "after stimulus" is not included. <br>
 
-
 The same data is shown on the plots with different groupings: <br>
 
-+ intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
-+ stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
+-   intensities are grouped together (colors), stimulus numbers are separated (panels) <br>
+-   stimulus numbers are grouped together (colors), intensities are separated (panels) <br>
 
-<br>
-The table shows the filtered data (1s before and 1s during stimulus)
-<br>
+<br> The table shows the filtered data (1s before and 1s during stimulus) <br>
 
 ```{r message=F, warning=F, echo=F}
 coords_1s_window <- bind_rows(
@@ -1457,8 +1380,6 @@ coords_1s_window %>%
   head(50)
 ```
 
-
-
 ```{r message=F, warning=F, echo=F}
 coords_8s_window <- bind_rows(
   ### before stim
@@ -1536,10 +1457,6 @@ coords_8s_window %>%
   head(200)
 ```
 
-
-
-
-
 ```{r message=F, fig.width=12, fig.height=8, warning=F, echo = FALSE}
 coords_1s_window %>%
   dplyr::filter(
@@ -1566,8 +1483,6 @@ coords_1s_window %>%
   ) +
   global_facet_theme
 ```
-
-
 
 ```{r message=F, fig.width=12, fig.height=4, warning=F, echo = FALSE}
 coords_1s_window %>%
@@ -1596,10 +1511,6 @@ coords_1s_window %>%
   global_facet_theme
 ```
 
-
-
-
-
 ## Calculating angles
 
 ### Toy data
@@ -1613,7 +1524,6 @@ vectors <- tibble(
 )
 vectors %>% arrange(body)
 ```
-
 
 ```{r}
 ang <- function(a, b) {
@@ -1635,7 +1545,6 @@ vectors %>%
   )
 ```
 
-
 ```{r}
 matlib::angle(
   x = vectors %>%
@@ -1650,7 +1559,6 @@ matlib::angle(
     select(-1) %>% as.matrix() %>% as.vector()
 )
 ```
-
 
 The dot product of two vectors x and y can be defined as:
 
@@ -1667,7 +1575,6 @@ vectors %>%
 ```
 
 ### Real data (coords tibble)
-
 
 #### First 10 head - center vectors
 
@@ -1716,16 +1623,13 @@ coords %>%
   pull(X)
 ```
 
-
-
 #### Distribution of angles
 
 Because of the periodicity of tangent function unrealistic angles were introduced (jumps in data). Angles greater than 180 or smaller than -180 were subtracted from 360 and -360 respectively to get the correct angle.
 
 In the control animals (34, 35, 36, 37) there are unrealistically large angles between frames probably due to tracking problem (switch of head and tail/center coordinate). Those angles are replaced by 0!
 
-mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_treshold, 0, signed_angle_corrected))
-
+mutate(signed_angle_corrected = ifelse(signed_angle_corrected %\>% abs() \> ang_treshold, 0, signed_angle_corrected))
 
 ```{r message=FALSE, fig.width=10, fig.height=10, warning=FALSE, echo = FALSE}
 coords %>%
@@ -1759,7 +1663,7 @@ coords %>%
   global_facet_theme
 ```
 
-#### Calculating signed angles 
+#### Calculating signed angles
 
 ```{r message=F, warning=F, echo = FALSE}
 
@@ -1814,8 +1718,6 @@ corrected_angles <- coords %>%
   mutate(signed_angle_corrected = ifelse(signed_angle_corrected %>% abs() > ang_threshold, 0, signed_angle_corrected))
 ```
 
-
-
 ```{r message=F, fig.width=10, fig.height=10, warning=FALSE}
 corrected_angles %>%
   ggplot(aes(x = rec_time, y = signed_angle_corrected)) +
@@ -1853,21 +1755,9 @@ corrected_angles %>%
 #   global_facet_theme
 ```
 
-
-
-
-
-
-
-
-
-
-
-
 #### Plotting cumulative angles
 
-
-Cumulative signed rotation angles during the sessions. 
+Cumulative signed rotation angles during the sessions.
 
 ```{r message=FALSE,fig.width=10, fig.height=10}
 corrected_angles %>%
@@ -1884,9 +1774,6 @@ corrected_angles %>%
   global_facet_theme
 ```
 
-
-
-
 ```{r message=FALSE,fig.width=10, fig.height=10}
 corrected_angles %>%
   dplyr::filter(body_part == "center") %>%
@@ -1901,7 +1788,6 @@ corrected_angles %>%
   scale_color_manual(values = group_colors) +
   global_facet_theme
 ```
-
 
 # Population analysis
 
@@ -1955,8 +1841,6 @@ corrected_angles_population <- coords %>%
   )
 ```
 
-
-
 ```{r message=FALSE,fig.width=15, fig.height=15, out.width="100%"}
 corrected_angles_population %>%
   dplyr::filter(body_part == "head") %>%
@@ -1977,8 +1861,6 @@ corrected_angles_population %>%
     axis.text.x = element_text(angle = 45),
   )
 ```
-
-
 
 ```{r message=F, fig.width=15, fig.height=15, warning=FALSE}
 corrected_angles_population %>%
@@ -2013,9 +1895,7 @@ corrected_angles_population %>%
 #   dplyr::filter(first(stim_categ == "stim")) %>%
 ```
 
-
-Mean rotation angle by session
-
+Mean/sum rotation angle by session
 
 ```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
@@ -2048,10 +1928,7 @@ corrected_angles_population %>%
   ylab("Scaled sum angle")
 ```
 
-
-
 Mean/sum rotation angle by session (control)
-
 
 ```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 
@@ -2086,9 +1963,7 @@ corrected_angles_population %>%
   ylab("Scaled sum angle")
 ```
 
-
 Mean/sum rotation angle by intensity (stimulus and control)
-
 
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
@@ -2117,14 +1992,15 @@ plt1_angle <- corrected_angles_population %>%
   ) %>%
   dplyr::group_by(animal, intensity) %>%
   fill(ipsicontra, .direction = "up") %>%
-  # dplyr::filter(
-  #   sum_ang[stim_categ == "stim"] > 0) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
-    )
-  ) +
+  View()
+# dplyr::filter(
+#   sum_ang[stim_categ == "stim"] > 0) %>%
+ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+    y = mean_ang %>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+  )
+) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
   ggpubr::stat_compare_means(
@@ -2145,11 +2021,11 @@ plt1_angle <- corrected_angles_population %>%
     hide.ns = F
     # label.y = 3000
   ) +
-  facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(0, 3000)) +
-  xlab("State") +
-  ylab("Scaled sum angle") +
+  expand_limits(y = c(-3, 3)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
   theme(aspect.ratio = 1)
 
@@ -2181,7 +2057,7 @@ plt2_angle <- corrected_angles_population %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang %>% abs() # / max(sum_ang %>% abs())# %>% scale()
+      y = mean_ang %>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs())# %>% scale()
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -2204,11 +2080,11 @@ plt2_angle <- corrected_angles_population %>%
     hide.ns = F
     # label.y = 3000
   ) +
-  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 3, ) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 3) +
   global_facet_theme +
-  expand_limits(y = c(0, 3000)) +
-  xlab("State") +
-  ylab("Scaled sum angle") +
+  expand_limits(y = c(-3, 3)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
   ggtitle("Control") +
   theme(aspect.ratio = 1)
 
@@ -2217,9 +2093,8 @@ plt2_angle <- corrected_angles_population %>%
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 
 
-cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
+cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
 ```
-
 
 Mean rotation angle before stimulus vs during stimulus
 
@@ -2295,13 +2170,10 @@ plt_ang_ctrl <- corrected_angles_population %>%
 cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
 ```
 
-
 ## Traveled distance
 
-
-
 ```{r}
-# saving the mean of the "before stim" "sum traveled distance" of all the animals (by intensity) for normalization  
+# saving the mean of the "before stim" "sum traveled distance" of all the animals (by intensity) for normalization
 
 mean_sum_d_1mW <- coords_1s_window %>%
   dplyr::filter(
@@ -2312,11 +2184,12 @@ mean_sum_d_1mW <- coords_1s_window %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>%
   dplyr::filter(
     stim_categ == "before stim",
     intensity == "1 mW"
-  ) %>% pull(mean_sum_d)
+  ) %>%
+  pull(mean_sum_d)
 
 mean_sum_d_5mW <- coords_1s_window %>%
   dplyr::filter(
@@ -2327,11 +2200,12 @@ mean_sum_d_5mW <- coords_1s_window %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>%
   dplyr::filter(
     stim_categ == "before stim",
     intensity == "5 mW"
-  ) %>% pull(mean_sum_d)
+  ) %>%
+  pull(mean_sum_d)
 
 mean_sum_d_10mW <- coords_1s_window %>%
   dplyr::filter(
@@ -2342,11 +2216,12 @@ mean_sum_d_10mW <- coords_1s_window %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
   dplyr::group_by(intensity, stim_categ) %>%
-  dplyr::summarise(mean_sum_d = mean(sum_d)) %>% 
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>%
   dplyr::filter(
     stim_categ == "before stim",
     intensity == "10 mW"
-  ) %>% pull(mean_sum_d)
+  ) %>%
+  pull(mean_sum_d)
 
 
 coords_1s_window %>%
@@ -2361,23 +2236,10 @@ coords_1s_window %>%
   dplyr::summarise(
     mean_sum_d = mean(sum_d),
     sd_sum_d = sd(sum_d)
-    ) 
-
-
+  )
 ```
 
-
-
-
-
-
-
-
-
-
-Sum traveled distance across sessions at different intensities by animals (stimulus and control)
-<br>
-1 second before stimulus, first second of stimulation
+Sum traveled distance across sessions at different intensities by animals (stimulus and control) <br> 1 second before stimulus, first second of stimulation
 
 ```{r message=FALSE, fig.height=15, fig.width=17, echo = FALSE}
 
@@ -2410,7 +2272,7 @@ plt_pop_dist_stim <- coords_1s_window %>%
     sum_d = sum(d, na.rm = T),
     mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
-  ) %>% 
+  ) %>%
   dplyr::mutate(
     max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
     mean_sum_d = case_when(
@@ -2418,12 +2280,12 @@ plt_pop_dist_stim <- coords_1s_window %>%
       intensity == "5 mW" ~ mean_sum_d_5mW,
       intensity == "10 mW" ~ mean_sum_d_10mW,
     )
-  ) %>% 
+  ) %>%
   fill(max_sum_d) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d  #/mean_sum_d  #norm_ref # # norm_ref #
+      y = mean_d # /mean_sum_d  #norm_ref # # norm_ref #
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2451,11 +2313,11 @@ plt_pop_dist_stim <- coords_1s_window %>%
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(), 
+    panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) 
+  )
 
 
 
@@ -2472,7 +2334,7 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
     sum_d = sum(d, na.rm = T),
     mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
-  ) %>%  
+  ) %>%
   dplyr::mutate(
     max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
     mean_sum_d = case_when(
@@ -2485,7 +2347,7 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d  #/mean_sum_d / norm_ref # max_sum_d # norm_ref #
+      y = mean_d # /mean_sum_d / norm_ref # max_sum_d # norm_ref #
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
@@ -2514,24 +2376,17 @@ plt_pop_dist_ctrl <- coords_1s_window %>%
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(), 
+    panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) 
+  )
 
-#sum_trav_dist_norm_by_before_mean
+# sum_trav_dist_norm_by_before_mean
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
 ```
 
-
-
-Sum traveled distance across sessions at different intensities by animals (stimulus and control)
-<br>
-8 second before stimulus, first 8 second of stimulation (8 because some "before stim" periods are only 8 seconds long)
-
-
-
+Sum traveled distance across sessions at different intensities by animals (stimulus and control) <br> 8 second before stimulus, first 8 second of stimulation (8 because some "before stim" periods are only 8 seconds long)
 
 ```{r message=FALSE, fig.height=15, fig.width=17, echo = FALSE}
 
@@ -2649,12 +2504,6 @@ plt_pop_dist_ctrl <- coords_8s_window %>%
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
 ```
 
-
-
-
-
-
-
 ```{r fig.width=18, fig.height=8}
 
 norm_ref <- coords_1s_window %>%
@@ -2674,7 +2523,6 @@ norm_ref <- coords_1s_window %>%
 
 library(plotrix)
 cowplot::plot_grid(
-
   coords_1s_window %>%
     dplyr::filter(
       body_part == "center",
@@ -2697,7 +2545,7 @@ cowplot::plot_grid(
     ggplot(
       mapping = aes(
         x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-        y = sum_d / norm_ref
+        y = mean_d
       )
     ) +
     geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
@@ -2759,11 +2607,6 @@ cowplot::plot_grid(
 )
 ```
 
-
-
-
-
-
 ```{r fig.height=25, fig.width=15}
 coords_1s_window %>%
   dplyr::filter(
@@ -2791,11 +2634,9 @@ coords_1s_window %>%
   global_facet_theme
 ```
 
+Combining 1 sec before stim and stim division to 1st and last 9 sec tables. In control cases if I normalize with the period length the "last_part" drops. The reason is that the animal moves at a constant rate so dividing the mean traveled distance will decrease the mean.
 
-
-Combining 1 sec before stim and stim division to 1st and last 9 sec tables. Needs work!!!
-
-```{r fig.height=25, fig.width=15}
+```{r fig.width=15}
 bind_rows(
   ### before stim 1 sec
   coords_1s_window %>%
@@ -2844,15 +2685,22 @@ bind_rows(
     dplyr::group_by(animal, body_part, session, stim_number) %>%
     dplyr::mutate(
       stim_division = ifelse(rec_time <= min(rec_time) + 1, yes = "first_part", no = "last_part"),
-      stim_div_length = ifelse(rec_time <= min(rec_time) + 1, yes = 1, no = 9)
+      # stim_div_length = ifelse(rec_time <= min(rec_time) + 1, yes = 1, no = 9)
     )
 ) %>%
-  dplyr::group_by(animal, intensity, stim_categ, stim_division, stim_div_length) %>% #stim_number,
+  dplyr::group_by(animal, body_part, session, stim_number, stim_division) %>%
+  dplyr::mutate(stim_div_length = length(stim_division)) %>%
+  ungroup() %>%
+  # arrange(animal, session, stim_number, rec_time) %>% View()
+
+
+
+  dplyr::group_by(animal, body_part, intensity, stim_categ, stim_division, across(stim_div_length)) %>% # stim_number,
   dplyr::summarise(
     sum_d = sum(d, na.rm = T),
     mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
-  ) %>% 
+  ) %>%
   dplyr::mutate(
     max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
     mean_sum_d = case_when(
@@ -2860,22 +2708,23 @@ bind_rows(
       intensity == "5 mW" ~ mean_sum_d_5mW,
       intensity == "10 mW" ~ mean_sum_d_10mW,
     )
-  ) %>% 
+  ) %>%
   dplyr::filter(
     animal %!in% control_animals,
     intensity %in% selected_intensities
-  ) %>%  
+  ) %>%
+  ungroup() %>%
+  fill(max_sum_d, .direction = "down") %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_division, "before_stim", "first_part", "last_part"),
-      y = sum_d / stim_div_length /mean_sum_d
+      y = mean_d # / stim_div_length #/mean_sum_d
     )
   ) +
   geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
-  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 1) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 1) +
   # facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   geom_line(aes(group = animal)) +
-  
   ggpubr::stat_compare_means(
     method = "wilcox.test",
     paired = T,
@@ -2884,7 +2733,6 @@ bind_rows(
     vjust = 1.6,
     hide.ns = F
   ) +
-  
   ggpubr::stat_compare_means(
     method = "wilcox.test",
     paired = T,
@@ -2893,38 +2741,33 @@ bind_rows(
     vjust = 1.6,
     hide.ns = F
   ) +
-  
   ggpubr::stat_compare_means(
-    method = "wilcox.test",label.y = 6.5,
+    method = "wilcox.test", label.y = 55,
     paired = T,
     comparisons = list(c("before_stim", "last_part")),
     method.args = list(alternative = "less"),
     vjust = 1.7,
     hide.ns = F
   ) +
-  
-  expand_limits(y = c(0, 7.5)) +
+  expand_limits(y = c(0, 60)) +
   global_facet_theme +
   theme(aspect.ratio = 1) +
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(), 
+    panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) 
+  ) -> plt_pop_dist_stim
 
-#sum_trav_dist_norm_by_before_mean
+# sum_trav_dist_norm_by_before_mean
 
+cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
 ```
 
-
-
-<br>
-Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus photoactivation initiates movement, if it is smaller it slows down the animal.
-
+<br> Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus photoactivation initiates movement, if it is smaller it slows down the animal.
 
 ```{r message=FALSE, warning=FALSE, fig.width=15, fig.height=15, echo = FALSE}
 coords_1s_window %>%
@@ -2959,8 +2802,6 @@ coords_1s_window %>%
   )
 ```
 
-
-
 ```{r message=FALSE, warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
 coords_1s_window %>%
   dplyr::filter(
@@ -2982,7 +2823,6 @@ coords_1s_window %>%
   geom_hline(yintercept = 0, lty = "dashed", col = "gray30") +
   facet_wrap(~animal, scales = "free")
 ```
-
 
 ```{r message=FALSE, warning=FALSE, fig.width=15, fig.height=20 , echo = FALSE}
 stim_bstim1 <- coords_1s_window %>%

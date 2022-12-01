@@ -191,22 +191,23 @@ stimsIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_stims_IL.csv
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
 
-stimsIL %>%  dplyr::filter(animal == selected_animal) %>%  head(100)
+stimsIL %>%
+  dplyr::filter(animal == selected_animal) %>%
+  head(100)
 ```
 
 
 ```{r message=F, echo = FALSE, warning = FALSE}
 coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.csv")) %>%
   as_tibble() %>%
-
   ### creating unique session IDs
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
-      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control") %>% 
-      substr(start = 1, stop = nchar(.)-8)#,
+      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control") %>%
+      substr(start = 1, stop = nchar(.) - 8) # ,
     # s2 = lag(session, default = "1"),
     # s3 = ifelse(s2 == session, 0, 1),
-  ) %>% 
+  ) %>%
   # group_by(animal) %>%
   # mutate(
   #   session = cumsum(s3),
@@ -214,17 +215,16 @@ coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.
   # ) %>%
   # select(-s2, -s3) %>%
   # ungroup() %>%
-  full_join(stimsIL) %>% 
-  
-  group_by(animal) %>%
-  mutate(
-    s2 = lag(session, default = "1"),
-    s3 = ifelse(s2 == session, 0, 1),
-    session = cumsum(s3),
-    session = paste0("session_", session)
-  ) %>%
-  select(-s2, -s3) %>%
-  ungroup() %>%
+  full_join(stimsIL) %>%
+  # group_by(animal) %>%
+  # mutate(
+  #   s2 = lag(session, default = "1"),
+  #   s3 = ifelse(s2 == session, 0, 1),
+  #   session = cumsum(s3),
+  #   session = paste0("session_", session)
+  # ) %>%
+  # select(-s2, -s3) %>%
+  # ungroup() %>%
 
 
   dplyr::group_by(animal, session) %>%
@@ -268,7 +268,6 @@ coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.
     stim_freq = lead(stim_freq, n = around_stim_length),
     stim_side = lead(stim_side, n = around_stim_length),
     quality = lead(quality, n = around_stim_length),
-    
   ) %>%
   ungroup() %>%
   group_by(animal, session, stim_block) %>%
@@ -276,7 +275,7 @@ coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.
   fill(intensity) %>%
   fill(stim_freq) %>%
   fill(stim_side) %>%
-  fill(quality) %>% 
+  fill(quality) %>%
   # length of the stimulus
   unite(col = "head", head1, head2, sep = "_") %>%
   unite(col = "center", center1, center2, sep = "_") %>%
@@ -290,29 +289,28 @@ coords_rawIL <- read.csv(file.path("data", "IL_stim_rotation", "rotation_all_IL.
   dplyr::mutate(
     X = replace(X, miss == 0, NA),
     Y = replace(Y, miss == 0, NA)
-  ) %>% 
+  ) %>%
   dplyr::mutate(
     stim_number = replace(stim_number, is.na(stim_number), "no stim")
-    ) 
-
+  )
 ```
 
 ```{r}
-coordsIL <- coords_rawIL %>% 
+coordsIL <- coords_rawIL %>%
   dplyr::filter(
     body_part != "tail",
     animal != "GIIFM14b"
-    ) %>% 
+  ) %>%
   ### this block calculates distances and speed across frames
   dplyr::group_by(animal, body_part, session) %>%
   dplyr::mutate(
-    
+
     ### interpolating missing values
     X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
     Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
-    
+
     ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers or starts to follow something else
     ### these points are replaced by 0 (the animal did not change position between those frames)
     ### outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
@@ -338,9 +336,12 @@ coordsIL <- coords_rawIL %>%
   ) %>%
   group_by(animal, session, body_part, sec_counter) %>%
   dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
-  ungroup() 
-  
-coords %>% dplyr::filter(animal == selected_animal) %>% dplyr::group_by(session, body_part) %>% slice(1:5)
+  ungroup()
+
+coordsIL %>%
+  dplyr::filter(animal == selected_animal) %>%
+  dplyr::group_by(session, body_part) %>%
+  slice(1:5)
 ```
 
 
@@ -354,15 +355,15 @@ lengthsIL <- coords_rawIL %>%
     stim_categ != "no stim",
   ) %>%
   group_by(animal, session, stim_number, intensity, quality) %>%
-  count(stim_categ) %>% 
-  spread(stim_categ, n) %>% 
-  select(animal, session, stim_number,intensity,quality, `before stim`, stim, `after stim`) 
+  count(stim_categ) %>%
+  spread(stim_categ, n) %>%
+  select(animal, session, stim_number, intensity, quality, `before stim`, stim, `after stim`)
 
 
 # full_join(
 #   lengths,
-#   stims %>% spread(timing, frame) %>% 
-#     select(animal, session, stim_number, start, end) %>% 
+#   stims %>% spread(timing, frame) %>%
+#     select(animal, session, stim_number, start, end) %>%
 #     mutate(stim_number = stim_number %>% as.character())
 # ) %>% write_csv(file.path("output_data", "stim_lengths.csv"))
 
@@ -420,18 +421,18 @@ plt_xpos <- coords_rawIL %>%
   geom_line(aes(col = body_part)) +
   theme(legend.position = "none") +
   ylab("X position") +
-   facet_grid(session~animal) + 
+  facet_grid(session ~ animal) +
   ggtitle(paste0("X position: ", selected_animal))
 
 
 
 plt_ypos <- coords_rawIL %>%
-  dplyr::filter(animal == selected_animal,  body_part != "tail") %>%
+  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
   ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
   geom_line(aes(col = body_part)) +
   theme(legend.position = "none") +
   ylab("Y position") +
-  facet_grid(session~animal) +
+  facet_grid(session ~ animal) +
   ggtitle(paste0("Y position: ", selected_animal))
 
 cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
@@ -444,39 +445,40 @@ Plotting head-center distances over time. Dashed lines represent the outlier thr
 
 
 ```{r fig.width=10, fig.height=10, echo = FALSE, message=FALSE, warning=FALSE}
-coords_rawIL %>% 
+coords_rawIL %>%
   dplyr::filter(
     animal == selected_animal,
-    body_part != "tail") %>%
-  dplyr::group_by(session, frame) %>% 
+    body_part != "tail"
+  ) %>%
+  dplyr::group_by(session, frame) %>%
   dplyr::mutate(
-    dx = diff(X_interp), 
+    dx = diff(X_interp),
     dy = diff(Y_interp),
-    # ldx = lead(dx), 
+    # ldx = lead(dx),
     # ldy = lead(dy),
     hc_d = sqrt(dx^2 + dy^2)
-    ) %>% 
-  ungroup() %>% 
-  dplyr::filter(body_part == "center") %>% 
+  ) %>%
+  ungroup() %>%
+  dplyr::filter(body_part == "center") %>%
   ggplot(
-    mapping = aes(x = rec_time, y = hc_d)) +
+    mapping = aes(x = rec_time, y = hc_d)
+  ) +
   geom_hline(
-    aes(yintercept = quantile(hc_d, na.rm=T)["25%"] - 1.5 * IQR(hc_d, na.rm = T)),
-    col = "gray50", 
-    lty = "dashed") + 
+    aes(yintercept = quantile(hc_d, na.rm = T)["25%"] - 1.5 * IQR(hc_d, na.rm = T)),
+    col = "gray50",
+    lty = "dashed"
+  ) +
   geom_hline(
-    aes(yintercept = quantile(hc_d, na.rm=T)["75%"] + 1.5 * IQR(hc_d, na.rm = T) ), 
-    col = "gray50", 
-    lty = "dashed") +
+    aes(yintercept = quantile(hc_d, na.rm = T)["75%"] + 1.5 * IQR(hc_d, na.rm = T)),
+    col = "gray50",
+    lty = "dashed"
+  ) +
   geom_line(
-    aes(col = stim, group = 1)) +
+    aes(col = stim, group = 1)
+  ) +
   facet_wrap(~session, ncol = 1, scales = "free_y") +
   coord_cartesian(
-    ylim = c(20,130)
-    )+
-  
+    ylim = c(20, 130)
+  ) +
   global_facet_theme
-
-
-  
 ```
