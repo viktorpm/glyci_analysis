@@ -23,6 +23,7 @@ header-includes:
 
 params:
   selected_animal: "GIIFM18b"
+  selected_control: "GIIFM36b"
 
 
 knit: (
@@ -144,6 +145,7 @@ xlim_mm <- c(0, 1280 / scale)
 ylim_mm <- c(0, 720 / scale)
 
 selected_animal <- params$selected_animal
+selected_control <- params$selected_control
 selected_intensities <- c("1 mW", "5 mW", "10 mW")
 control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
 
@@ -448,11 +450,20 @@ n_repeat <- lengths %>%
 ```{r}
 text_layer <- coords %>%
   dplyr::filter(
-    animal == selected_animal,
+    animal == selected_animal, # selected_control
     stim == T
   ) %>%
   group_by(session) %>%
   summarise(int_label = intensity %>% unique())
+
+text_layer_ctrl <- coords %>%
+  dplyr::filter(
+    animal == selected_control,
+    stim == T
+  ) %>%
+  group_by(session) %>%
+  summarise(int_label = intensity %>% unique())
+
 ```
 
 <br> Creating plot colors <br>
@@ -652,15 +663,19 @@ coords %>%
 
 To show the animals trajectory during stimuli the head-center-tail body points were plotted. Colors correspond to the order of stimuli in each session. The black points represent the trajectory when there was no stimulus. For visualization purposes the number of plotted data points are different during the stimulus vs non-stimulus period (2 data points/sec vs 6 data points/sec respectively). For the statistical analysis similar data point rate was used for the two states.
 
-```{r warning=FALSE, fig.width=10, fig.height=10, echo = FALSE}
-coords %>%
+```{r echo=, fig.height=10, fig.width=15, warning=FALSE}
+plt_traject_stim <- coords %>%
   dplyr::filter(
     animal == selected_animal,
+    intensity %in% selected_intensities,
     stim == T,
-    frame %% 15 == 0
+    frame %% 5 == 0
   ) %>%
   ggplot(
-    mapping = aes(x = X_interp / scale, y = Y_interp / scale, label = frame)
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
   ) +
 
   ### drawing positions during no stimulus
@@ -669,6 +684,7 @@ coords %>%
     data = coords %>%
       dplyr::filter(
         animal == selected_animal,
+        intensity %in% selected_intensities,
         body_part == "center",
         stim == F,
         frame %% 5 == 0
@@ -679,21 +695,421 @@ coords %>%
 
   ### drawing positions during stimulus
   ### body parts are connected by lines
-  geom_line(
+  # geom_line(
+  #   aes(group = frame, col = as.character(stim_number)),
+  # ) +
+  geom_path(
     aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
   ) +
-  geom_point(
-    aes(shape = body_part, col = as.character(stim_number)),
-    size = 2
-  ) +
-  xlim(c(0, 1280 / scale)) +
-  ylim(c(0, 720 / scale)) +
-  facet_wrap(~session, ncol = 2, ) +
-  geom_label(data = text_layer, aes(x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5, label = paste0("Intensity: ", int_label))) +
+  # geom_point(
+  #   aes(shape = body_part, col = as.character(stim_number)),
+  #   size = 2
+  # ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  facet_wrap(~session, nrow = 1) +
+  geom_label(
+    data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+    aes(
+      x = Inf, y = -Inf, 
+      hjust = 1.1, vjust = -0.5, 
+      label = paste0("Intensity: ", int_label))) +
   labs(col = "Stimulus number", shape = "Body part") +
-  xlab("X position [mm]") +
-  ylab("Y position [mm]") +
-  global_facet_theme
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+
+
+plt_traject_ctrl <- coords %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity %in% selected_intensities,
+    stim == T,
+    frame %% 5 == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+
+  ### drawing positions during no stimulus
+  ### "coords" was filtered differently compared to the stimulus dataset (number of frames)
+  geom_point(
+    data = coords %>%
+      dplyr::filter(
+        animal == selected_control,
+        intensity %in% selected_intensities,
+        body_part == "center",
+        stim == F,
+        frame %% 5 == 0
+      ),
+    size = 1,
+    alpha = 0.1
+  ) +
+
+  ### drawing positions during stimulus
+  ### body parts are connected by lines
+  # geom_line(
+  #   aes(group = frame, col = as.character(stim_number)),
+  # ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  # geom_point(
+  #   aes(shape = body_part, col = as.character(stim_number)),
+  #   size = 2
+  # ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  facet_wrap(~session, nrow = 1) +
+  geom_label(
+    data = text_layer_ctrl %>% dplyr::filter(int_label %in% selected_intensities), 
+    aes(
+      x = Inf, y = -Inf, 
+      hjust = 1.1, vjust = -0.5, 
+      label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number", shape = "Body part") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+cowplot::plot_grid(plt_traject_stim, plt_traject_ctrl, nrow = 2)
+```
+
+```{r}
+plt_taject_stim_baseline <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    stim == F,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " baseline trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_stim_stim <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    stim == T,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " stimulus trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_ctrl_baseline <- coords %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    stim == F,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " baseline trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_ctrl_stim <- coords %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    stim == T,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " stim trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+#### with facet wrap
+
+plt_taject_stim_wrap <- coords %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+plt_taject_ctrl_wrap <- coords %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale, 
+      y = Y_interp, # / scale, 
+      label = frame)
+  ) +
+  
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm"))
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() + 
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities), 
+  #   aes(
+  #     x = Inf, y = -Inf, 
+  #     hjust = 1.1, vjust = -0.5, 
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  ) 
+
+
+```
+
+```{r}
+cowplot::plot_grid(plt_taject_stim_baseline, plt_taject_stim_stim, plt_taject_ctrl_baseline, plt_taject_ctrl_stim, nrow = 2)
+```
+
+```{r}
+cowplot::plot_grid(plt_taject_stim_wrap, plt_taject_ctrl_wrap, nrow = 2)
 ```
 
 ```{r message=FALSE, fig.width=10, fig.height=10, echo = FALSE, warning=FALSE, include=F}
@@ -1992,7 +2408,6 @@ plt1_angle <- corrected_angles_population %>%
   ) %>%
   dplyr::group_by(animal, intensity) %>%
   fill(ipsicontra, .direction = "up") %>%
-  View()
 # dplyr::filter(
 #   sum_ang[stim_categ == "stim"] > 0) %>%
 ggplot(
@@ -2223,12 +2638,28 @@ mean_sum_d_10mW <- coords_1s_window %>%
   ) %>%
   pull(mean_sum_d)
 
+mean_sum_d_15mW <- coords_1s_window %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0,
+    body_part == "center",
+    intensity %in% c(selected_intensities, "15 mW")
+  ) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(mean_sum_d = mean(sum_d)) %>%
+  dplyr::filter(
+    stim_categ == "before stim",
+    intensity == "15 mW"
+  ) %>%
+  pull(mean_sum_d)
+
 
 coords_1s_window %>%
   dplyr::filter(
     frame %% datapoint_to_plot == 0,
     body_part == "center",
-    intensity %in% selected_intensities
+    intensity %in% c(selected_intensities, "15 mW")
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(sum_d = sum(d, na.rm = T)) %>%
@@ -2700,21 +3131,24 @@ bind_rows(
     sum_d = sum(d, na.rm = T),
     mean_d = mean(d, na.rm = T),
     max_sum_d = sum_d %>% max()
-  ) %>%
+  ) %>% 
   dplyr::mutate(
     max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
     mean_sum_d = case_when(
       intensity == "1 mW" ~ mean_sum_d_1mW,
       intensity == "5 mW" ~ mean_sum_d_5mW,
       intensity == "10 mW" ~ mean_sum_d_10mW,
+      intensity == "15 mW" ~ mean_sum_d_15mW,
     )
   ) %>%
   dplyr::filter(
     animal %!in% control_animals,
-    intensity %in% selected_intensities
+    intensity %in% c(selected_intensities, "15 mW"),
+    #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
+    stim_div_length != 144 
   ) %>%
   ungroup() %>%
-  fill(max_sum_d, .direction = "down") %>%
+  fill(max_sum_d, .direction = "down") %>% 
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_division, "before_stim", "first_part", "last_part"),
@@ -2742,7 +3176,8 @@ bind_rows(
     hide.ns = F
   ) +
   ggpubr::stat_compare_means(
-    method = "wilcox.test", label.y = 55,
+    method = "wilcox.test", 
+    label.y = 55,
     paired = T,
     comparisons = list(c("before_stim", "last_part")),
     method.args = list(alternative = "less"),
