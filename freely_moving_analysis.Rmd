@@ -2438,7 +2438,7 @@ ggplot(
   ) +
   facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(-3, 3)) +
+  expand_limits(y = c(0, 15)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
@@ -2506,7 +2506,7 @@ plt2_angle <- corrected_angles_population %>%
   ) +
   facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 4) +
   global_facet_theme +
-  expand_limits(y = c(-3, 3)) +
+  expand_limits(y = c(0, 15)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Control") +
@@ -2669,6 +2669,64 @@ ggplot(
 cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
 ```
 
+```{r fig.width=15}
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim",
+    # stim_side == "left"
+  ) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>% 
+  dplyr::filter(
+    stim_categ == "stim"
+  ) %>% 
+  
+  ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"),
+    y = sum_ang %>% abs() / 360
+  )
+) +
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_boxplot(alpha = 0) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = F,
+    method.args = list(alternative = "two.sided"),
+    comparisons = list(c("1 mW", "5 mW"), c("1 mW", "10 mW"), c("1 mW", "15 mW")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  
+  global_facet_theme +
+  expand_limits(y = c(0, 15)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
+  ggtitle("Stimulus") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_ang_dose_stim
+  
+
+cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
+```
 
 
 
@@ -3422,7 +3480,7 @@ bind_rows(
   # arrange(animal, session, stim_number, rec_time) %>% View()
   
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW"),
      #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     stim_div_length != 144 
@@ -3490,7 +3548,7 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_intensity_dose_ctrl #plt_intensity_dose_ctrl
+  ) -> plt_intensity_dose_stim #plt_intensity_dose_ctrl
 
 
 cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
@@ -3499,6 +3557,77 @@ cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
 ```
 
 
+```{r fig.width=15}
+ coords %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "stim",
+      body_part == "center"
+      # animal %!in% control_animals,
+      # body_part == "center",
+      # intensity %in% selected_intensities
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>% 
+  dplyr::filter(
+    animal %!in% control_animals,
+    intensity %in% c(selected_intensities, "15 mW") 
+  ) %>% 
+  dplyr::group_by(animal, intensity) %>% 
+  dplyr::summarise(
+    mean_d = mean(d,na.rm = T)
+  ) %>% 
+  ggplot(
+    aes(x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"), y = mean_d)
+  ) + 
+  geom_point(aes(fill = animal), shape = 21, size = 4) +
+  geom_boxplot(alpha = 0) +
+  expand_limits(y = c(0, 60)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = F,
+    comparisons = list(c("1 mW", "5 mW"), c("1 mW", "10 mW"), c("1 mW", "15 mW")),
+    method.args = list(alternative = "two.sided"),
+    vjust = 1.6,
+    hide.ns = F
+  ) +
+  
+  global_facet_theme +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_dose_ctrl
+
+cowplot::plot_grid(plt_dose_stim, plt_dose_ctrl, ncol = 2)
+
+```
 
 
 
