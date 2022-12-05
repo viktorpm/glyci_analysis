@@ -2389,7 +2389,7 @@ plt1_angle <- corrected_angles_population %>%
     stim_categ != "no stim",
     # stim_side == "left"
   ) %>%
-  dplyr::filter(intensity %in% selected_intensities) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(animal, stim_side, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
@@ -2413,7 +2413,7 @@ plt1_angle <- corrected_angles_population %>%
 ggplot(
   mapping = aes(
     x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-    y = mean_ang %>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+    y = sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
   )
 ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -2442,7 +2442,16 @@ ggplot(
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
 
 # facet_grid(~animal, ~intensity)
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
@@ -2455,7 +2464,7 @@ plt2_angle <- corrected_angles_population %>%
     stim_categ != "no stim",
     # stim_side == "right"
   ) %>%
-  dplyr::filter(intensity %in% selected_intensities) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(animal, stim_side, intensity, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
@@ -2472,7 +2481,7 @@ plt2_angle <- corrected_angles_population %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = mean_ang %>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs())# %>% scale()
+      y = sum_ang %>% abs() / 360  # sum_ang %>% abs() # / max(sum_ang %>% abs())# %>% scale()
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -2495,13 +2504,23 @@ plt2_angle <- corrected_angles_population %>%
     hide.ns = F
     # label.y = 3000
   ) +
-  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 3) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 4) +
   global_facet_theme +
   expand_limits(y = c(-3, 3)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Control") +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
 
 
 # facet_grid(~animal, ~intensity)
@@ -2510,6 +2529,148 @@ plt2_angle <- corrected_angles_population %>%
 
 cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
 ```
+
+
+```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
+plt1_angle <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b"),
+    body_part == "head",
+    stim_categ != "no stim",
+    # stim_side == "left"
+  ) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>% 
+
+# dplyr::filter(
+#   sum_ang[stim_categ == "stim"] > 0) %>%
+ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+    y = mean_ang #%>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+  )
+) +
+  geom_point(aes(fill = intensity), shape = 21, size = 4) +
+  geom_line(aes(group = intensity)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less"),
+    comparisons = list(c("before stim", "stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "greater"),
+    comparisons = list(c("stim", "after stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+ # facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  expand_limits(y = c(-1, 1)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
+  ggtitle("Stimulus") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+
+
+plt2_angle <- corrected_angles_population %>%
+  dplyr::filter(
+    animal %in% control_animals,
+    body_part == "head",
+    stim_categ != "no stim",
+    # stim_side == "left"
+  ) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>% 
+
+# dplyr::filter(
+#   sum_ang[stim_categ == "stim"] > 0) %>%
+ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+    y = mean_ang #%>% abs() # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+  )
+) +
+  geom_point(aes(fill = intensity), shape = 21, size = 4) +
+  geom_line(aes(group = intensity)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less"),
+    comparisons = list(c("before stim", "stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "greater"),
+    comparisons = list(c("stim", "after stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+ # facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  expand_limits(y = c(-1, 1)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
+  ggtitle("Control") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) 
+
+
+
+# facet_grid(~animal, ~intensity)
+# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
+
+
+cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
+```
+
+
+
 
 Mean rotation angle before stimulus vs during stimulus
 
@@ -3195,12 +3356,153 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_pop_dist_stim
+  ) -> plt_pop_dist_stim #plt_pop_dist_ctrl
 
 # sum_trav_dist_norm_by_before_mean
 
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
 ```
+
+
+```{r fig.width=15}
+bind_rows(
+  ### before stim 1 sec
+  coords_1s_window %>%
+    dplyr::filter(
+      stim_categ == "before stim",
+      body_part == "center"
+    ) %>%
+    dplyr::mutate(
+      stim_division = "before_stim",
+      stim_div_length = 1
+    ),
+  ### stim devided to first_part (1s) and last part (9s)
+  coords %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "stim",
+      body_part == "center"
+      # animal %!in% control_animals,
+      # body_part == "center",
+      # intensity %in% selected_intensities
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(animal, body_part, session, stim_number) %>%
+    dplyr::mutate(
+      stim_division = ifelse(rec_time <= min(rec_time) + 1, yes = "first_part", no = "last_part"),
+      # stim_div_length = ifelse(rec_time <= min(rec_time) + 1, yes = 1, no = 9)
+    )
+) %>%
+  dplyr::group_by(animal, body_part, session, stim_number, stim_division) %>%
+  dplyr::mutate(stim_div_length = length(stim_division)) %>%
+  ungroup() %>% 
+  # arrange(animal, session, stim_number, rec_time) %>% View()
+  
+  dplyr::filter(
+    animal %in% control_animals,
+    intensity %in% c(selected_intensities, "15 mW"),
+     #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
+    stim_div_length != 144 
+  ) %>% 
+
+  dplyr::group_by(intensity, stim_categ, stim_division, across(stim_div_length)) %>% # stim_number,
+  dplyr::summarise(
+    sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T),
+    max_sum_d = sum_d %>% max()
+  ) %>% 
+  dplyr::mutate(
+    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
+    mean_sum_d = case_when(
+      intensity == "1 mW" ~ mean_sum_d_1mW,
+      intensity == "5 mW" ~ mean_sum_d_5mW,
+      intensity == "10 mW" ~ mean_sum_d_10mW,
+      intensity == "15 mW" ~ mean_sum_d_15mW,
+    )
+  ) %>%
+  ungroup() %>%
+  fill(max_sum_d, .direction = "down") %>%  
+  
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_division, "before_stim", "first_part", "last_part"),
+      y = mean_d # / stim_div_length #/mean_sum_d
+    )
+  ) +
+  geom_point(aes(fill = intensity %>% as.factor()), shape = 21, size = 4) +
+  geom_line(aes(group = intensity)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("before_stim", "first_part")),
+    method.args = list(alternative = "less"),
+    vjust = 1.6,
+    hide.ns = F
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("first_part", "last_part")),
+    method.args = list(alternative = "greater"),
+    vjust = 1.6,
+    hide.ns = F
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test", 
+    label.y = 19,
+    paired = T,
+    comparisons = list(c("before_stim", "last_part")),
+    method.args = list(alternative = "less"),
+    vjust = 1.7,
+    hide.ns = F
+  ) +
+  expand_limits(y = c(0, 20)) +
+  global_facet_theme +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_intensity_dose_ctrl #plt_intensity_dose_ctrl
+
+
+cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
+
+
+```
+
+
+
+
+
+
 
 <br> Traveled distance before stimulus vs during stimulus (starting or stopping signal). If the traveled distance is greater during the stimulus photoactivation initiates movement, if it is smaller it slows down the animal.
 
