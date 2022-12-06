@@ -667,7 +667,7 @@ To show the animals trajectory during stimuli the head-center-tail body points w
 plt_traject_stim <- coords %>%
   dplyr::filter(
     animal == selected_animal,
-    intensity %in% selected_intensities,
+    # intensity %in% selected_intensities,
     stim == T,
     frame %% 5 == 0
   ) %>%
@@ -684,7 +684,7 @@ plt_traject_stim <- coords %>%
     data = coords %>%
       dplyr::filter(
         animal == selected_animal,
-        intensity %in% selected_intensities,
+        # intensity %in% c(selected_intensities, NA),
         body_part == "center",
         stim == F,
         frame %% 5 == 0
@@ -757,7 +757,7 @@ plt_traject_ctrl <- coords %>%
     data = coords %>%
       dplyr::filter(
         animal == selected_control,
-        intensity %in% selected_intensities,
+        intensity %in% c(selected_intensities, NA),
         body_part == "center",
         stim == F,
         frame %% 5 == 0
@@ -829,7 +829,7 @@ plt_taject_stim_baseline <- coords %>%
       label = frame)
   ) +
   geom_path(
-    aes(group = frame),
+    aes(group = frame, col = as.character(stim_number)),
     arrow = grid::arrow(
       ends = "first",
       type = "closed",
@@ -1103,6 +1103,8 @@ plt_taject_ctrl_wrap <- coords %>%
 
 
 ```
+
+Baseline trajectory: only before and after the stimulus, not the whole session
 
 ```{r}
 cowplot::plot_grid(plt_taject_stim_baseline, plt_taject_stim_stim, plt_taject_ctrl_baseline, plt_taject_ctrl_stim, nrow = 2)
@@ -2672,7 +2674,7 @@ cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
 ```{r fig.width=15}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
+    animal %in% c(control_animals, "GIIFM14b"),
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2722,7 +2724,7 @@ corrected_angles_population %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_ang_dose_stim
+  ) -> plt_ang_dose_ctrl
   
 
 cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
@@ -3361,7 +3363,7 @@ bind_rows(
     )
   ) %>%
   dplyr::filter(
-    animal %!in% control_animals,
+    animal %in% control_animals,
     intensity %in% c(selected_intensities, "15 mW"),
     #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     stim_div_length != 144 
@@ -3414,7 +3416,7 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_pop_dist_stim #plt_pop_dist_ctrl
+  ) -> plt_pop_dist_ctrl #plt_pop_dist_ctrl
 
 # sum_trav_dist_norm_by_before_mean
 
@@ -3480,7 +3482,7 @@ bind_rows(
   # arrange(animal, session, stim_number, rec_time) %>% View()
   
   dplyr::filter(
-    animal %!in% control_animals,
+    animal %in% control_animals,
     intensity %in% c(selected_intensities, "15 mW"),
      #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     stim_div_length != 144 
@@ -3548,7 +3550,7 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_intensity_dose_stim #plt_intensity_dose_ctrl
+  ) -> plt_intensity_dose_ctrl #plt_intensity_dose_ctrl
 
 
 cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
@@ -3591,7 +3593,7 @@ cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
       mps = (speed_instant * (1 / time_res)) / 1000
     ) %>% 
   dplyr::filter(
-    animal %!in% control_animals,
+    animal %in% control_animals,
     intensity %in% c(selected_intensities, "15 mW") 
   ) %>% 
   dplyr::group_by(animal, intensity) %>% 
