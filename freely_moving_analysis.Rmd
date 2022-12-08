@@ -322,7 +322,7 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv"
 coords <- coords_raw %>%
   dplyr::filter(
     body_part != "tail",
-    animal != "GIIFM14b",
+    animal %!in% c("GIIFM14b","GIIFM17b"),
   ) %>%
   ### this block calculates distances and speed across frames
   dplyr::group_by(animal, body_part, session) %>%
@@ -2386,7 +2386,7 @@ Mean/sum rotation angle by intensity (stimulus and control)
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
+    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2536,7 +2536,7 @@ cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
+    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2674,7 +2674,7 @@ cowplot::plot_grid(plt1_angle, plt2_angle, ncol = 2)
 ```{r fig.width=15}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %in% c(control_animals, "GIIFM14b"),
+    animal %!in% control_animals,
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2724,7 +2724,7 @@ corrected_angles_population %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_ang_dose_ctrl
+  ) -> plt_ang_dose_stim
   
 
 cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
@@ -3482,7 +3482,7 @@ bind_rows(
   # arrange(animal, session, stim_number, rec_time) %>% View()
   
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW"),
      #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     stim_div_length != 144 
@@ -3550,7 +3550,7 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_intensity_dose_ctrl #plt_intensity_dose_ctrl
+  ) -> plt_intensity_dose_stim #plt_intensity_dose_ctrl
 
 
 cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
@@ -3593,7 +3593,7 @@ cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
       mps = (speed_instant * (1 / time_res)) / 1000
     ) %>% 
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW") 
   ) %>% 
   dplyr::group_by(animal, intensity) %>% 
@@ -3625,7 +3625,7 @@ cowplot::plot_grid(plt_intensity_dose_stim, plt_intensity_dose_ctrl, ncol = 2)
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_dose_ctrl
+  ) -> plt_dose_stim
 
 cowplot::plot_grid(plt_dose_stim, plt_dose_ctrl, ncol = 2)
 
