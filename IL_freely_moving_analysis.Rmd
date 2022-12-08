@@ -1009,15 +1009,15 @@ corrected_anglesIL_population <- coordsIL %>%
     )
   ) %>%
   ### adding ipsi or contra rotation variable
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::mutate(
-    ipsicontra = case_when(
-      sum(signed_angle_corrected, na.rm = T) > 0 & stim_side == "left" & stim_categ == "stim" ~ "ipsi",
-      sum(signed_angle_corrected, na.rm = T) > 0 & stim_side == "right" & stim_categ == "stim" ~ "contra",
-      sum(signed_angle_corrected, na.rm = T) < 0 & stim_side == "left" & stim_categ == "stim" ~ "contra",
-      sum(signed_angle_corrected, na.rm = T) < 0 & stim_side == "right" & stim_categ == "stim" ~ "ipsi",
-    )
-  )
+  # dplyr::group_by(animal, intensity, stim_categ) %>%
+  # dplyr::mutate(
+  #   ipsicontra = case_when(
+  #     sum(signed_angle_corrected, na.rm = T) > 0 & stim_side == "left" & stim_categ == "stim" ~ "ipsi",
+  #     sum(signed_angle_corrected, na.rm = T) > 0 & stim_side == "right" & stim_categ == "stim" ~ "contra",
+  #     sum(signed_angle_corrected, na.rm = T) < 0 & stim_side == "left" & stim_categ == "stim" ~ "contra",
+  #     sum(signed_angle_corrected, na.rm = T) < 0 & stim_side == "right" & stim_categ == "stim" ~ "ipsi",
+  #   )
+  # )
 ```
 
 
@@ -1136,7 +1136,8 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 plt1_angle <- corrected_anglesIL_population %>%
   dplyr::filter(
     !is.na(condition_grp), 
-    str_detect(condition_grp, pattern = "bilat"),
+    !str_detect(condition_grp, pattern = "bilat"),
+    condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf"),
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -1150,16 +1151,16 @@ plt1_angle <- corrected_anglesIL_population %>%
     sd_ang = sd(signed_angle_corrected, na.rm = T),
     sem_ang = sem(signed_angle_corrected)
   ) %>%
-  # dplyr::mutate(
-  #   ipsicontra = case_when(
-  #     sum_ang > 0 & stim_side == "left" & stim_categ == "stim" ~ "ipsi",
-  #     sum_ang > 0 & stim_side == "right" & stim_categ == "stim" ~ "contra",
-  #     sum_ang < 0 & stim_side == "left" & stim_categ == "stim" ~ "contra",
-  #     sum_ang < 0 & stim_side == "right" & stim_categ == "stim" ~ "ipsi",
-  #   )
-  # ) %>%
+  dplyr::mutate(
+    ipsicontra = case_when(
+      sum_ang > 0 & str_detect(stim_side, pattern = "left") & stim_categ == "stim" ~ "ipsi",
+      sum_ang > 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "left")  & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "ipsi"
+    )
+  ) %>% 
   dplyr::group_by(condition_grp, intensity) %>% 
-  # fill(ipsicontra, .direction = "up") %>%
+  fill(ipsicontra, .direction = "up") %>% 
 # dplyr::filter(
 #   sum_ang[stim_categ == "stim"] > 0) %>%
 ggplot(
@@ -1188,22 +1189,22 @@ ggplot(
     hide.ns = F
     # label.y = 3000
   ) +
-  facet_grid( ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
   expand_limits(y = c(0, 15)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
-  ggtitle("Stimulus") 
-  #theme(aspect.ratio = 1) +
-  # theme(
-  #   axis.title.x = element_text(size = 12),
-  #   axis.title.y = element_text(size = 12),
-  #   axis.text = element_text(size = 12),
-  #   panel.grid.major = element_blank(),
-  #   panel.grid.minor = element_blank(),
-  #   panel.background = element_blank(),
-  #   axis.line = element_line(colour = "black")
-  # ) 
+  ggtitle("Stimulus") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
 
 
 plt1_angle
@@ -1355,12 +1356,12 @@ bind_rows(
 ) %>%
   dplyr::group_by(animal, body_part, session, stim_side, stim_duration, stim_number, stim_division) %>%
   dplyr::mutate(stim_div_length = length(stim_division)) %>%
-  ungroup() %>%
+  ungroup() %>% 
   # arrange(animal, session, stim_number, rec_time) %>% View()
 
 
 
-  dplyr::group_by(animal, body_part, intensity, condition_grp, stim_categ , stim_division) %>% # stim_number, , stim_duration
+  dplyr::group_by(condition_grp, intensity, stim_categ , stim_division) %>% # stim_number, , stim_duration
   # dplyr::group_by(animal, body_part, intensity, stim_side) %>% 
   dplyr::summarise(
     sum_d = sum(d, na.rm = T),
@@ -1381,11 +1382,10 @@ bind_rows(
   ) %>%
   ungroup() %>%
   fill(max_sum_d, .direction = "down") %>% 
-  arrange(animal, body_part, condition_grp, intensity) %>% 
+  arrange(condition_grp, intensity) %>% 
   dplyr::filter(
     !is.na(condition_grp), 
-    !str_detect(condition_grp, pattern = "bilat"),
-    condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf")
+    str_detect(condition_grp, pattern = "bilat")
   ) %>% 
   ggplot(
     mapping = aes(
@@ -1424,15 +1424,15 @@ bind_rows(
   ) +
   expand_limits(y = c(0, 60)) +
   global_facet_theme +
-  # theme(aspect.ratio = 1) +
+  theme(aspect.ratio = 1) +
   theme(
-    # axis.title.x = element_text(size = 12),
-    # axis.title.y = element_text(size = 12),
-    # axis.text = element_text(size = 12),
-    # panel.grid.major = element_blank(),
-    # panel.grid.minor = element_blank(),
-    # panel.background = element_blank(),
-    # axis.line = element_line(colour = "black")
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
   ) -> plt_pop_dist_stim #plt_pop_dist_ctrl
 
 # sum_trav_dist_norm_by_before_mean
