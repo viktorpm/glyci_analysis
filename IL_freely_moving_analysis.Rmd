@@ -358,7 +358,12 @@ coordsIL <- coords_rawIL %>%
     #   animal == "GIIFM5" & stim_side %in% c("right IL", "right Pf") ~ "right",
     #   animal == "GIIFM6" & stim_side %in% c("right IL", "right Pf") ~ "right"
     #   )
-  )
+  ### adding categ_length: length of each stimulus category  
+  ) %>% 
+  dplyr::group_by(animal, body_part, session, stim_number, stim_categ) %>% 
+  dplyr::mutate(
+    categ_length = length(stim_categ)
+    )
 
 coordsIL %>%
   dplyr::filter(animal == selected_animal) %>%
@@ -514,6 +519,32 @@ coordsIL %>%
   facet_wrap(~session, ncol = 1, scales = "free_y") +
   coord_cartesian(
     ylim = c(20, 130)
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number != "no stim", stim_categ == "stim") %>%
+      dplyr::group_by(session, stim_number) %>%
+      slice(1),
+    aes(
+      x = rec_time,
+      y = mean(hc_d, na.rm = T),
+      label = stim_duration
+    ),
+    direction = "x",
+    nudge_y = 80
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number != "no stim", stim_categ == "stim") %>%
+      dplyr::group_by(session, stim_number) %>%
+      slice(1),
+    aes(
+      x = rec_time,
+      y = mean(hc_d, na.rm = T),
+      label = categ_length
+    ),
+    direction = "x",
+    nudge_y = -30
   ) +
   global_facet_theme
 ```
@@ -1007,7 +1038,7 @@ corrected_anglesIL_population <- coordsIL %>%
       0,
       signed_angle_corrected
     )
-  ) %>%
+  )
   ### adding ipsi or contra rotation variable
   # dplyr::group_by(animal, intensity, stim_categ) %>%
   # dplyr::mutate(
@@ -1133,14 +1164,94 @@ plt1_angle
 ```{r message=FALSE, fig.height=5, fig.width=15, echo = FALSE}
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
+plt1_angle_categ_length_norm <- corrected_anglesIL_population %>%
+  dplyr::filter(
+    !is.na(condition_grp), 
+    !str_detect(condition_grp, pattern = "bilat"),
+    condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf"),
+    body_part == "head",
+    stim_categ != "no stim"
+  ) %>% 
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(condition_grp, intensity, stim_side, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected/categ_length, na.rm = T),
+    mean_ang = mean(signed_angle_corrected/categ_length, na.rm = T),
+    med_ang = median(signed_angle_corrected/categ_length, na.rm = T),
+    sd_ang = sd(signed_angle_corrected/categ_length, na.rm = T),
+    sem_ang = sem(signed_angle_corrected/categ_length)
+  ) %>%
+  dplyr::mutate(
+    ipsicontra = case_when(
+      sum_ang > 0 & str_detect(stim_side, pattern = "left") & stim_categ == "stim" ~ "ipsi",
+      sum_ang > 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "left")  & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "ipsi"
+    )
+  ) %>% 
+  dplyr::group_by(condition_grp, intensity) %>% 
+  fill(ipsicontra, .direction = "up") %>% 
+# dplyr::filter(
+#   sum_ang[stim_categ == "stim"] > 0) %>%
+ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+    y = sum_ang %>% abs()   # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+  )
+) +
+  geom_point(aes(fill = condition_grp), shape = 21, size = 4) +
+  geom_line(aes(group = condition_grp)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less"),
+    comparisons = list(c("before stim", "stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "greater"),
+    comparisons = list(c("stim", "after stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  expand_limits(y = c(0, .05)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
+  ggtitle("Stimulus") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+
+plt1_angle_categ_length_norm
+
+
+``` 
+
+```{r message=FALSE, fig.height=5, fig.width=15, echo = FALSE}
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
+
 plt1_angle <- corrected_anglesIL_population %>%
   dplyr::filter(
     !is.na(condition_grp), 
     !str_detect(condition_grp, pattern = "bilat"),
     condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf"),
     body_part == "head",
-    stim_categ != "no stim",
-    # stim_side == "left"
+    stim_categ != "no stim"
   ) %>% 
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(condition_grp, intensity, stim_side, stim_categ) %>%
@@ -1166,7 +1277,7 @@ plt1_angle <- corrected_anglesIL_population %>%
 ggplot(
   mapping = aes(
     x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-    y = sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+    y = (sum_ang/360) %>% abs()   # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
   )
 ) +
   geom_point(aes(fill = condition_grp), shape = 21, size = 4) +
@@ -1211,6 +1322,96 @@ plt1_angle
 
 
 ``` 
+
+
+```{r fig.height=10, fig.width=15}
+cowplot::plot_grid(plt1_angle,plt1_angle_categ_length_norm, nrow = 2)
+```
+
+
+
+```{r message=FALSE, fig.height=5, fig.width=15, echo = FALSE}
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
+
+plt1_angle <- corrected_anglesIL_population %>%
+  dplyr::filter(
+    !is.na(condition_grp), 
+    !str_detect(condition_grp, pattern = "bilat"),
+    condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf"),
+    body_part == "head",
+    stim_categ != "no stim",
+    stim_duration == 10
+  ) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(condition_grp, stim_side, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected/categ_length, na.rm = T),
+    mean_ang = mean(signed_angle_corrected/categ_length, na.rm = T),
+    med_ang = median(signed_angle_corrected/categ_length, na.rm = T),
+    sd_ang = sd(signed_angle_corrected/categ_length, na.rm = T),
+    sem_ang = sem(signed_angle_corrected/categ_length)
+  ) %>% 
+  dplyr::mutate(
+    ipsicontra = case_when(
+      sum_ang > 0 & str_detect(stim_side, pattern = "left") & stim_categ == "stim" ~ "ipsi",
+      sum_ang > 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "left")  & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & str_detect(stim_side, pattern = "right") & stim_categ == "stim" ~ "ipsi"
+    )
+  ) %>% 
+  dplyr::group_by(condition_grp) %>% 
+  fill(ipsicontra, .direction = "up") %>% 
+# dplyr::filter(
+#   sum_ang[stim_categ == "stim"] > 0) %>%
+ggplot(
+  mapping = aes(
+    x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
+    y = sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+  )
+) +
+  geom_point(aes(fill = condition_grp), shape = 21, size = 4) +
+  geom_line(aes(group = condition_grp)) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less"),
+    comparisons = list(c("before stim", "stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "greater"),
+    comparisons = list(c("stim", "after stim")),
+    vjust = 1.5,
+    hide.ns = F
+    # label.y = 3000
+  ) +
+  #facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  global_facet_theme +
+  expand_limits(y = c(0, 0.03)) +
+  # xlab("State") +
+  # ylab("Scaled sum angle") +
+  ggtitle("Stimulus") +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+
+plt1_angle
+
+
+``` 
+
 
 
 ## Traveled distance
