@@ -1350,7 +1350,7 @@ plt1_angle <- corrected_anglesIL_population %>%
     med_ang = median(signed_angle_corrected/categ_length, na.rm = T),
     sd_ang = sd(signed_angle_corrected/categ_length, na.rm = T),
     sem_ang = sem(signed_angle_corrected/categ_length)
-  ) %>% 
+  ) %>% # dplyr::group_by(condition_grp, stim_number, stim_categ) %>% summarise(length(stim_number)) %>% View()
   dplyr::mutate(
     ipsicontra = case_when(
       sum_ang > 0 & str_detect(stim_side, pattern = "left") & stim_categ == "stim" ~ "ipsi",
@@ -1360,13 +1360,17 @@ plt1_angle <- corrected_anglesIL_population %>%
     )
   ) %>% 
   dplyr::group_by(condition_grp) %>% 
-  fill(ipsicontra, .direction = "up") %>% 
+  fill(ipsicontra, .direction = "up") %>%
+  ungroup() %>% 
+  dplyr::mutate(
+    sum_ang_ipsiconra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs()))
+  ) %>%
 # dplyr::filter(
 #   sum_ang[stim_categ == "stim"] > 0) %>%
 ggplot(
   mapping = aes(
     x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-    y = sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+    y = sum_ang_ipsiconra/360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
   )
 ) +
   geom_point(aes(fill = condition_grp), shape = 21, size = 4) +
@@ -1391,7 +1395,10 @@ ggplot(
   ) +
   #facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(0, 0.03)) +
+  geom_hline(yintercept = 0, col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = -0.002, label = "ipsilateral", col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = 0.002, label = "contralateral", col = "gray") +
+  expand_limits(y = c(-0.03, 0.03), x = c(0,4)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
@@ -1586,7 +1593,7 @@ bind_rows(
   arrange(condition_grp, intensity) %>% 
   dplyr::filter(
     !is.na(condition_grp), 
-    str_detect(condition_grp, pattern = "bilat")
+    str_detect(condition_grp, pattern = "bilat| right IL left Pf")
   ) %>% 
   ggplot(
     mapping = aes(

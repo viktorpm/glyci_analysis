@@ -2560,38 +2560,62 @@ corrected_angles_population %>%
     )
   ) %>%
   dplyr::group_by(animal) %>%
-  fill(ipsicontra, .direction = "up") %>%
+  fill(ipsicontra, .direction = "up") %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    sum_ang_ipsiconra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs()))
+  ) %>%
 # dplyr::filter(
 #   sum_ang[stim_categ == "stim"] > 0) %>%
 ggplot(
   mapping = aes(
     x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-    y = sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+    y = sum_ang_ipsiconra / 360 #sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
   )
 ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
   ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(ipsicontra == "contra"),
     method = "wilcox.test",
     paired = T,
-    method.args = list(alternative = "less"),
-    comparisons = list(c("before stim", "stim")),
-    vjust = 1.5,
+    # method.args = list(alternative = c("greater")),
+    # ref.group = "stim",
+
+    comparisons = list(c("before stim", "stim"), c("stim", "after stim")),
+    label.y = 30,
     hide.ns = F
     # label.y = 3000
   ) +
   ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(ipsicontra == "ipsi"),
     method = "wilcox.test",
     paired = T,
-    method.args = list(alternative = "greater"),
-    comparisons = list(c("stim", "after stim")),
-    vjust = 1.5,
+    method.args = list(alternative = c("greater")),
+    # ref.group = "stim",
+    comparisons = list(c("before stim", "stim"), c("stim", "after stim")),
+    #vjust = 1.5,
+    label.y = -35,
+    tip.length = -0.03,
     hide.ns = F
     # label.y = 3000
   ) +
+  
+  # ggpubr::stat_compare_means(
+  #   method = "wilcox.test",
+  #   paired = T,
+  #   method.args = list(alternative = "greater"),
+  #   comparisons = list(c("stim", "after stim")),
+  #   vjust = 1.5,
+  #   hide.ns = F
+  #   # label.y = 3000
+  # ) +
   # facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  geom_hline(yintercept = 0, col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = -2, label = "ipsilateral", col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = 2, label = "contralateral", col = "gray") +
   global_facet_theme +
-  expand_limits(y = c(0, 15)) +
+  expand_limits(y = c(-30, 20), x = c(0,4)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
