@@ -123,7 +123,7 @@ lapply(liblist %>% as.list(), require, character.only = TRUE)
 
 library(imputeTS)
 
-scale <- 1.38 ### pixel/mm
+scale <- 1.6 ### pixel/mm
 fps <- 29.5 ### frame rate (calculated from stim lengths in no. frames and known stim length in seconds)
 standard_stim_length <- 10 ### this is the most commonly used stimulus length (in seconds)
 around_stim_length <- as.integer(fps * 5)
