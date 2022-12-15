@@ -1174,6 +1174,8 @@ plt1_angle_categ_length_norm <- corrected_anglesIL_population %>%
   ) %>% 
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(condition_grp, intensity, stim_side, stim_categ) %>%
+  
+  ##### categ_length was created to animal groups not to condition groups!!!!!!!!!!!!!!!!!!! 
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected/categ_length, na.rm = T),
     mean_ang = mean(signed_angle_corrected/categ_length, na.rm = T),
@@ -1343,13 +1345,16 @@ plt1_angle <- corrected_anglesIL_population %>%
     stim_duration == 10
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
-  dplyr::group_by(condition_grp, stim_side, stim_categ) %>%
+  dplyr::group_by(condition_grp, stim_side, stim_categ) %>% 
+  
+  
+  #### categ_length was created to animal groups!!!!!
   dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected/categ_length, na.rm = T),
-    mean_ang = mean(signed_angle_corrected/categ_length, na.rm = T),
-    med_ang = median(signed_angle_corrected/categ_length, na.rm = T),
-    sd_ang = sd(signed_angle_corrected/categ_length, na.rm = T),
-    sem_ang = sem(signed_angle_corrected/categ_length)
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
   ) %>% # dplyr::group_by(condition_grp, stim_number, stim_categ) %>% summarise(length(stim_number)) %>% View()
   dplyr::mutate(
     ipsicontra = case_when(
@@ -1363,14 +1368,15 @@ plt1_angle <- corrected_anglesIL_population %>%
   fill(ipsicontra, .direction = "up") %>%
   ungroup() %>% 
   dplyr::mutate(
-    sum_ang_ipsiconra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs()))
-  ) %>%
+    sum_ang_ipsiconra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs())),
+    mean_ang_ipsiconra = ifelse(ipsicontra == "contra", mean_ang %>% abs(), -(mean_ang %>% abs()))
+  ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","IL-Pf_mean_No_rotation_per_second_all_intensities_ipsicontra.csv"))
 # dplyr::filter(
 #   sum_ang[stim_categ == "stim"] > 0) %>%
 ggplot(
   mapping = aes(
     x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-    y = sum_ang_ipsiconra/360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+    y = (mean_ang_ipsiconra * 29.5)/360  #sum_ang_ipsiconra/360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
   )
 ) +
   geom_point(aes(fill = condition_grp), shape = 21, size = 4) +
@@ -1396,9 +1402,9 @@ ggplot(
   #facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
   geom_hline(yintercept = 0, col = "gray") +
-  annotate(geom = "text", x = 3, hjust = -0.15, y = -0.002, label = "ipsilateral", col = "gray") +
-  annotate(geom = "text", x = 3, hjust = -0.15, y = 0.002, label = "contralateral", col = "gray") +
-  expand_limits(y = c(-0.03, 0.03), x = c(0,4)) +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = -0.02, label = "ipsilateral", col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = 0.02, label = "contralateral", col = "gray") +
+  expand_limits(y = c(-0.2, 0.2), x = c(0,4)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
