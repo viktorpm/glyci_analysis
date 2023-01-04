@@ -1,3 +1,10 @@
+### in case there's a problem with updating packages:
+# https://stackoverflow.com/questions/14382209/r-install-packages-returns-failed-to-create-lock-directory
+
+# The easiest way to avoid this issue is before installing any package run the line below
+# options("install.lock"=FALSE)
+# Then try the install.packages("name_of_package") to install the package. The 00LOCK error would not come.
+
 ### cheks all the used libraries in the project. Removes duplicates 
 library(tidyverse)
 
