@@ -679,7 +679,7 @@ datatable(TO_PLOT,
 
 ### Baseline vs. "before" stimulus activity
 
-Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and sponteneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stiulus compared to baseline.
+Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and spontaneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stimulus compared to baseline.
 
 
 Categorizing cells into week and strong based on the dynamics of inhibition
@@ -808,7 +808,7 @@ psth_tibble %>%
   dplyr::filter(
     reltimes > -(train_length / 4),
     reltimes < train_length + train_length / 2,
-    control == T,
+    control == F, # T
     train_length > 4,
     # inhib_strength == "strong",
   ) %>% # select(cell_id) %>% unique()
@@ -908,7 +908,8 @@ psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinc
 psth_tibble_gap %>%
   dplyr::filter(
     control == F,
-    cell_id %in% c("cell06", "cell07", "cell08", "cell09")
+    cell_id %!in% c("cell06", "cell07", "cell08", "cell09")
+    # cell_id %in% c("cell06", "cell07", "cell08", "cell09")
   ) %>%
   # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
   ggplot(
@@ -2948,6 +2949,35 @@ p_eeg
 # eeg_sum_plot[[5]] # plots only one row
 ```
 
+
+Calculating the number of sync and desync states per recording and across animals
+
+```{r}
+EEG_ds_df %>% 
+  dplyr::filter(
+    clustered == T,
+    !state_length <= 1 / first_peak
+    ) %>% 
+  ### sum per recording
+  dplyr::group_by(ID, eeg_state) %>% 
+  summarise(No_periods = length(state_number %>% unique())) %>% 
+  
+  ### sum across animals
+  dplyr::group_by(eeg_state) %>% 
+  summarise(No_periods_all = sum(No_periods))
+
+# EEG_ds_df %>%
+#   dplyr::filter(
+#     eeg_state == "desync",
+#     !state_length <= 1 / first_peak
+#     ) %>%
+#   dplyr::group_by(ID) %>%
+#   summarise(No_desync_periods = length(state_number %>% unique()))
+
+```
+
+
+
 ### Wavelet
 
 ```{r echo=FALSE, fig.width=15, fig.height=10, message=FALSE, warning=FALSE}
@@ -3044,6 +3074,60 @@ bind_rows(sync_reltimes, desync_reltimes) %>%
 
 Short periods are removed from analysis: (1/first_peak) * 2 \  
 **first_peak** is the dominant frequency on the power spectrum, **1/first_peak** is the length of one cycle. Clusters can only be found in the period of two cycles if we assume that the clusters are linked to the cortical oscillation 
+
+
+```{r}
+  EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)) %>%
+  dplyr::group_by(animal, eeg_state) %>%
+  summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>% 
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less"),
+    hide.ns = F
+    ) +
+  
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray", 
+    size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray", 
+    linetype = "dashed") +
+   geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV115|GII21", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+```
+
 
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
