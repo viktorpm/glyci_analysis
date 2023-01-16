@@ -3076,7 +3076,7 @@ Short periods are removed from analysis: (1/first_peak) * 2 \
 **first_peak** is the dominant frequency on the power spectrum, **1/first_peak** is the length of one cycle. Clusters can only be found in the period of two cycles if we assume that the clusters are linked to the cortical oscillation 
 
 
-```{r fig.width=15, fig.height=7}
+```{r fig.width=15, fig.height=15}
 EEG_ds_df %>%
   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
   dplyr::group_by(animal, eeg_state, state_number) %>%
@@ -3160,6 +3160,54 @@ EEG_ds_df %>%
     method.args = list(alternative = "less"),
     hide.ns = F
   ) +
+  # facet_wrap(~animal) +
+
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) -> plt_clust_rate_state
+
+
+
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)
+  ) %>%
+  # dplyr::group_by(animal, eeg_state) %>%
+  # summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+  ggplot(aes(x = eeg_state, y = No_clusters / sum1)) + # state_length_sum)) +
+  geom_jitter(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3, width = 0.1
+  ) +
+  # geom_line(
+  #   data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+  #   aes(col = animal))+#, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / sum1), # state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = F, vjust = 1.2,
+    method.args = list(alternative = "less"),
+    hide.ns = F
+  ) +
   facet_wrap(~animal) +
 
   ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
@@ -3173,16 +3221,9 @@ EEG_ds_df %>%
     aes(col = animal, group = animal),
     col = "gray",
     linetype = "dashed"
-  ) +
-  geom_label_repel(
-    data = . %>%
-      dplyr::filter(grepl(pattern = "GV115|GII21", animal), eeg_state == "sync"),
-    mapping = aes(label = animal),
-    nudge_x = 0.2,
-    direction = "y",
-    # hjust = 2,
-    segment.size = .2
-  ) -> plt_clust_rate_state
+  )  -> plt_clust_rate_state_wrapped
+
+
 
 #   x = EEG_ds_df %>%
 #   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
@@ -3208,8 +3249,15 @@ EEG_ds_df %>%
 #
 # wilcox.test(x=x, y=y, alternative = "less", paired = T)
 
-cowplot::plot_grid(plt_clust_rate_animal, plt_clust_rate_state)
-
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    plt_clust_rate_animal, 
+    plt_clust_rate_state,
+    ncol = 2),
+  plt_clust_rate_state_wrapped,
+  nrow = 2,
+  rel_heights = c(1,2)
+  ) 
 ```
 
 
