@@ -512,7 +512,12 @@ b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
   bind_rows() %>%
   dplyr::mutate(FR = No_AP / train_length) %>%
   dplyr::group_by(stim_cond, cell_id) %>%
-  dplyr::summarise(MFR = mean(FR))
+  dplyr::mutate(
+    sumAPinTrains = sum(No_AP),
+    sumTrainLengths = sum(train_length)
+    ) %>% 
+  dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
+b_d_a_MFR
 ```
 
 <br>
