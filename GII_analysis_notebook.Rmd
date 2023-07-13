@@ -753,7 +753,7 @@ psth_tibble <- psth_tibble %>%
     before_stim_spikes = length(reltimes[reltimes > -1 & reltimes < 0]),
     during_stim_spikes = length(reltimes[reltimes > 0 & reltimes < 1]),
     stim_onset_ratio = during_stim_spikes / before_stim_spikes,
-    inhib_strength = ifelse(stim_onset_ratio > 0.75, yes = "week", no = "strong")
+    inhib_strength = ifelse(stim_onset_ratio > 0.75, yes = "weak", no = "strong")
   )
 
 psth_tibble <- left_join(psth_tibble, CELL_INFO %>% select(cell_id, pinch, control, gap))
@@ -813,7 +813,7 @@ psth_tibble %>%
   dplyr::filter(
     reltimes > -(train_length / 4),
     reltimes < train_length + train_length / 2,
-    control == F, # T
+    control == T, # F
     train_length > 4,
     # inhib_strength == "strong",
   ) %>% # select(cell_id) %>% unique()
@@ -823,7 +823,7 @@ psth_tibble %>%
   geom_histogram(binwidth = 0.1) +
   geom_vline(xintercept = 0) +
   xlim(-1, 5) +
-  expand_limits(y = c(0, 85)) +
+  expand_limits(y = c(0, 130)) +
   # facet_wrap(~pinch)+
   theme(
     axis.title.x = element_text(size = 12),
@@ -913,7 +913,7 @@ psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinc
 psth_tibble_gap %>%
   dplyr::filter(
     control == F,
-    cell_id %!in% c("cell06", "cell07", "cell08", "cell09")
+    cell_id %in% c("cell06", "cell07", "cell08", "cell09")
     # cell_id %in% c("cell06", "cell07", "cell08", "cell09")
   ) %>%
   # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
@@ -924,7 +924,7 @@ psth_tibble_gap %>%
   geom_vline(xintercept = 0) +
   # geom_vline(xintercept = -0.005) +
   xlim(-0.01, 0.02) +
-  expand_limits(y = c(0, 125)) +
+  expand_limits(y = c(0, 130)) +
   theme(
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
@@ -1092,7 +1092,23 @@ ggplot(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  )
+  ) -> MFR_plot 
+
+MFR_plot
+
+
+# MFR_plot$data %>% 
+#   dplyr::filter(pinch == T) %>% 
+#   dplyr::group_by(stim_cond) %>% 
+#   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
+# 
+# MFR_plot$data %>% 
+#   dplyr::filter(pinch == F) %>% 
+#   dplyr::group_by(stim_cond) %>% 
+#   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
+
+
+
 ```
 
 <br><br>
@@ -1732,6 +1748,8 @@ ggplot(
   geom_hline(yintercept = 0) +
   facet_wrap(~freq)
 ```
+
+
 ```{r}
 STIM_RESULTS %>%
   dplyr::filter(
@@ -2280,6 +2298,14 @@ ggplot(
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   )
+
+### mean, median, sd
+# RESP_PROB %>%
+#   dplyr::group_by(stim_freq) %>%
+#   dplyr::summarise(
+#     mean(resp_prob_range),
+#     median(resp_prob_range),
+#     sd(resp_prob_range))
 ```
 <br><br>
 Number of APs
@@ -2372,6 +2398,14 @@ ggplot(
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   )
+
+# RESP_PROB %>%
+#   dplyr::group_by(stim_freq) %>%
+#   dplyr::summarise(
+#     mean(median_latency),
+#     median(median_latency),
+#     sd(median_latency))
+
 ```
 
 
@@ -3132,6 +3166,15 @@ EEG_ds_df %>%
     direction = "y",
     # hjust = 2,
     segment.size = .2
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
   ) -> plt_clust_rate_animal
 
 EEG_ds_df %>%
@@ -3178,6 +3221,15 @@ EEG_ds_df %>%
     aes(col = animal, group = animal),
     col = "gray",
     linetype = "dashed"
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
   ) -> plt_clust_rate_state
 
 
@@ -3226,7 +3278,16 @@ EEG_ds_df %>%
     aes(col = animal, group = animal),
     col = "gray",
     linetype = "dashed"
-  )  -> plt_clust_rate_state_wrapped
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_clust_rate_state_wrapped
 
 
 
@@ -3264,6 +3325,34 @@ cowplot::plot_grid(
   rel_heights = c(1,2)
   ) 
 ```
+
+
+#### Statistical power
+
+```{r}
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::filter(eeg_state == "desync") %>%
+  dplyr::mutate(rx = No_clusters / state_length_sum) %>%
+  pull(rx) %>% sd()
+  
+  
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::filter(eeg_state == "sync") %>%
+  dplyr::mutate(ry = No_clusters / state_length_sum) %>%
+  pull(ry) %>% sd()
+
+rx <- function(n) rnorm(n, mean = 0.6354203, sd = 0.439563) 
+ry <- function(n) rnorm(n, mean = 1.327837, sd = 0.574624) 
+
+MKpower::sim.power.wilcox.test(nx = 5, rx = rx, ny = 5, ry = ry, alternative = "less")
+MKpower::sim.ssize.wilcox.test(rx = rx, ry = ry, n.min = 5, iter = 1000,  alternative = "less")
+
+
+```
+
+
 
 
 
