@@ -150,7 +150,7 @@ selected_intensities <- c("1 mW", "5 mW", "10 mW")
 control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
 
 `%!in%` <- Negate(`%in%`)
-
+sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
 
 
@@ -2610,6 +2610,23 @@ plt2_angle <- corrected_angles_population %>%
 
 
 cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
+
+# plt1_angle$data %>% 
+#   dplyr::group_by(intensity,stim_categ) %>% 
+#   dplyr::summarise(
+#     mean(((mean_ang * 25)  %>% abs()) /360), 
+#     sd(((mean_ang * 25)  %>% abs()) /360), 
+#     median(((mean_ang * 25)  %>% abs()) /360))
+
+
+# plt2_angle$data %>%
+#   dplyr::group_by(intensity,stim_categ) %>%
+#   dplyr::summarise(
+#     mean(((mean_ang * 25)  %>% abs()) /360),
+#     sd(((mean_ang * 25)  %>% abs()) /360),
+#     median(((mean_ang * 25)  %>% abs()) /360))
+
+
 ```
 
 
@@ -2778,7 +2795,7 @@ corrected_angles_population %>%
 ```{r fig.width=15}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2794,7 +2811,7 @@ corrected_angles_population %>%
   ) %>% 
   dplyr::filter(
     stim_categ == "stim"
-  ) %>% write.csv(file = file.path("output_data","to_publish","Emivel","PnO_dose_intensity_rotation_control.csv"))
+  ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","PnO_dose_intensity_rotation_control.csv"))
   
   ggplot(
   mapping = aes(
@@ -2832,6 +2849,17 @@ corrected_angles_population %>%
   
 
 cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
+
+
+
+# plt_ang_dose_ctrl$data %>% 
+#   dplyr::group_by(intensity) %>%
+#   dplyr::summarise(
+#     mean(((mean_ang * 25) %>% abs()) / 360),
+#     sd(((mean_ang * 25) %>% abs()) / 360),
+#     median(((mean_ang * 25) %>% abs()) / 360)
+#   )
+
 ```
 
 
@@ -3515,7 +3543,7 @@ bind_rows(
     )
   ) %>% 
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW")
     #manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     # stim_div_length_row %!in% c(188 , 12) 
@@ -3570,11 +3598,24 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_pop_dist_ctrl #plt_pop_dist_ctrl
+  ) -> plt_pop_dist_stim #plt_pop_dist_ctrl
 
 # sum_trav_dist_norm_by_before_mean
 
 cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
+
+
+# plt_pop_dist_stim$data %>% 
+#   dplyr::group_by(intensity,stim_division) %>% 
+#   dplyr::summarise(mean(mean_d * 6/scale), sd(mean_d * 6/scale), median(mean_d * 6/scale))
+# 
+# 
+# 
+# plt_pop_dist_ctrl$data %>% 
+#   dplyr::group_by(intensity,stim_division) %>% 
+#   dplyr::summarise(mean(mean_d * 6/scale), sd(mean_d * 6/scale), median(mean_d * 6/scale))
+
+
 ```
 
 
@@ -3618,7 +3659,7 @@ cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
   ) %>%
   
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW") 
   ) %>% 
   dplyr::group_by(animal, intensity) %>%  # dplyr::filter(animal == "GIIFM18b", intensity == "1 mW") %>% pull(d) %>% sum(na.rm = T) / 250
@@ -3653,9 +3694,26 @@ cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_dose_ctrl
+  ) -> plt_dose_stim
 
 cowplot::plot_grid(plt_dose_stim, plt_dose_ctrl, ncol = 2)
+
+
+# plt_dose_stim$data %>% 
+#   dplyr::group_by(intensity) %>% 
+#   dplyr::summarise(
+#     mean(mean_d*6),
+#     sd(mean_d*6),
+#     median(mean_d*6)
+#   )
+# 
+# plt_dose_ctrl$data %>% 
+#   dplyr::group_by(intensity) %>% 
+#   dplyr::summarise(
+#     mean(mean_d*6),
+#     sd(mean_d*6),
+#     median(mean_d*6)
+#   )
 
 ```
 
@@ -3746,11 +3804,12 @@ bind_rows(
     animal %!in% control_animals,
     intensity %in% c(selected_intensities, "15 mW"), 
     stim_categ == "stim"
-  ) %>% View() 
-  dplyr::group_by(animal, intensity) %>% 
-  dplyr::summarise(
-    mean_d = mean(d,na.rm = T)
-  ) %>% 
+  ) 
+# %>% View() 
+#   dplyr::group_by(animal, intensity) %>% 
+#   dplyr::summarise(
+#     mean_d = mean(d,na.rm = T)
+  # ) %>% 
 ```
 
 

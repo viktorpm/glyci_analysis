@@ -1420,7 +1420,14 @@ ggplot(
   )
 
 
-plt1_angle
+plt1_angle$data %>% 
+  dplyr::group_by(stim_categ) %>% 
+  summarise(
+    mean((mean_ang_ipsiconra * 29.5)/360), 
+    sd((mean_ang_ipsiconra * 29.5)/360), 
+    median((mean_ang_ipsiconra * 29.5)/360))
+
+
 
 
 ``` 

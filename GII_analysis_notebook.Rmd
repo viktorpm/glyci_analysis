@@ -512,11 +512,13 @@ b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
   bind_rows() %>%
   dplyr::mutate(FR = No_AP / train_length) %>%
   dplyr::group_by(stim_cond, cell_id) %>%
-  dplyr::mutate(
+  dplyr::summarise(
     sumAPinTrains = sum(No_AP),
-    sumTrainLengths = sum(train_length)
-    ) %>% 
-  dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
+    sumTrainLengths = sum(train_length),
+    MFR = mean(FR),
+    MFR2 = sumAPinTrains/sumTrainLengths
+    )  
+  # dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
 b_d_a_MFR
 ```
 
@@ -600,7 +602,7 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$
 
 ```{r}
 cellranks <- b_d_a_MFR %>%
-  dplyr::group_by(stim_cond) %>%
+  dplyr::group_by(stim_cond) %>% 
   dplyr::mutate(base_MFR = sd_mean_isi$MFR) %>%
   dplyr::mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
   dplyr::filter(stim_cond == "d") %>%
@@ -997,7 +999,19 @@ ggplot(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  )
+  ) -> plt_pinch_nopinch_to_baseline
+
+plt_pinch_nopinch_to_baseline
+
+
+# plt_pinch_nopinch_to_baseline$data %>% 
+#   dplyr::group_by(pinch, stim_cond) %>% 
+#   dplyr::summarise(
+#     mean(MFR),
+#     sd(MFR),
+#     median(MFR)
+#   )
+
 ```
 
 <br><br>
@@ -3324,12 +3338,31 @@ cowplot::plot_grid(
   nrow = 2,
   rel_heights = c(1,2)
   ) 
+
+
+# plt_clust_rate_state_wrapped$data %>% 
+#   dplyr::group_by(animal,eeg_state) %>% 
+#   dplyr::summarise(
+#     mean( No_clusters / sum1),
+#     sd( No_clusters / sum1),
+#     median( No_clusters / sum1)
+#   )
+
 ```
 
 
 #### Statistical power
 
 ```{r}
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::group_by(eeg_state) %>% 
+  dplyr::summarise(
+    mean(No_clusters / state_length_sum), 
+    sd(No_clusters / state_length_sum), 
+    median(No_clusters / state_length_sum))
+
+
 plt_clust_rate_animal$data %>%
   dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
   dplyr::filter(eeg_state == "desync") %>%
@@ -3417,7 +3450,19 @@ EEG_ds_df %>%
     direction = "y",
     # hjust = 2,
     segment.size = .2
+  ) -> plt_sync_desync_MFR
+
+plt_sync_desync_MFR
+
+
+plt_sync_desync_MFR$data %>% 
+  dplyr::group_by(eeg_state) %>% 
+  summarise(
+    mean(No_AP / state_length_sum),
+    sd(No_AP / state_length_sum),
+    median(No_AP / state_length_sum)
   )
+
 ```
 
 
