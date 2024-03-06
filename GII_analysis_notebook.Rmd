@@ -62,7 +62,7 @@ pre { /* Code block - determines code spacing between lines */
 
 
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 library(R.matlab)
 library(tidyverse)
 library(reshape2)
@@ -78,8 +78,9 @@ library(diptest) ### to test distribution uni/multimodality (ISI)
 library(exactRankTests) ### wilcox.test for ties
 library(WaveletComp) ### wavelet
 library(signal)
+library(purrrlyr)
 
-library(STAR)
+#library(STAR)
 library(see) # for half violinplot
 library(gghalves) # for half violinplot
 library(ggh4x) # control panel sizes in facet_grid
@@ -153,7 +154,7 @@ Summary information of the *stimulus* and  *baseline* recording files:
   + starting time of the stimulus trains (*train_start*)
   + ending time of the stimulus trains (*train_end*)
 
-```{r, message=FALSE,echo=FALSE }
+```{r, message=FALSE,echo=FALSE , tidy=TRUE, tidy.opts=list(width.cutoff=50)}
 
 info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
 datatable(info_stim,
