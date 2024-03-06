@@ -1,0 +1,3833 @@
+---
+title: "Frontal cortex-driven glycinergic inhibition of the intralaminar thalamus"
+author: "Viktor Plattner, Emilia Bosz, Laszlo Acsady"
+output:
+  html_document:
+    number_sections: yes
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    keep_tex: true
+  html_notebook:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+spacing: single
+fontsize: 12pt
+always_allow_html: yes
+---
+
+```{=html}
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 14px;
+      font-family: "Arial", Helvetica, sans-serif;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 38px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #4d4e4f;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h2 { /* Header 2 */
+  font-size: 22px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+```
+```{r setup, include=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+library(R.matlab)
+library(tidyverse)
+library(reshape2)
+library(ggrepel)
+library(DT)
+library(ggpubr)
+library(styler)
+library(formatR)
+
+library(bspec) ### power spectrum
+library(WaveletComp) ### wavelet
+library(diptest) ### to test distribution uni/multimodality (ISI)
+library(exactRankTests) ### wilcox.test for ties
+library(WaveletComp) ### wavelet
+library(signal)
+library(purrrlyr)
+
+#library(STAR)
+library(see) # for half violinplot
+library(gghalves) # for half violinplot
+library(ggh4x) # control panel sizes in facet_grid
+
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+
+### global chunk option, throws error in line 461 (no chunk options??)
+# knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 30))
+
+global_facet_theme <- theme(
+  strip.text = element_text(size = 15),
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 15)
+)
+
+
+`%!in%` <- Negate(`%in%`)
+```
+
+<br><br>
+
+# Firing rate of IL neurons during glycinergic fiber activation
+
+In these experiments glycinergic fibers were photactivated while the firing rate of individual IL neurons was recorded. Some of the IL cells had very low baseline activity. In order to increase the firing rate of the IL neurons and to detect the effect of the glycinergic fiber activation a small tail pinch was applied. The firing rate of the recorded IL cells decreased during the glycinergic fiber activation.
+
+## Loading data
+
+Loading AP and stimuli times from *stimulus* and from *baseline* data to **IL_stim_firing** and to **IL_baseline_firing** tables:
+
+```{r, message=FALSE, warning=FALSE, tidy=TRUE}
+IL_stim_firing <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR", "stimulus", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR", "stimulus", "stim_times.csv"))
+)
+IL_stim_firing %>%
+  dplyr::group_by(signal_type) %>%
+  slice(1:5)
+```
+
+```{r, message=FALSE, warning=FALSE}
+IL_baseline_firing <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "IL_MFR", "baseline", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "IL_MFR", "baseline", "stim_times.csv"))
+)
+IL_baseline_firing %>%
+  dplyr::group_by(signal_type) %>%
+  slice(1:5)
+```
+
+<br><br>
+
+## Summary information
+
+Summary information of the *stimulus* and *baseline* recording files:
+
+-   Variables:
+    -   file names (*file_name*)
+    -   number of channels in the raw recording files (*No_ch*)
+    -   number of APs (*No_AP_unit*, *No_AP_unit2*)
+    -   number of stimulus trains (*No_Stim*)
+    -   LFP sampling rate (*samp_rate_lfp*)
+    -   unit sampling rate (*samp_rate_unit*)
+    -   length of the recording (*rec_length*)
+    -   length of the stimulus trains (*No_trains*)
+    -   Are the lengths of the stimulus trains equal in the recording (*train_length_equal*)
+    -   starting time of the stimulus trains (*train_start*)
+    -   ending time of the stimulus trains (*train_end*)
+
+```{r, message=FALSE,echo=FALSE , tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+
+info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
+datatable(info_stim,
+  caption = "Summary table of the stimulus recording files (info_stim)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br>
+
+```{r,message=FALSE,echo=FALSE}
+info_baseline <- read_csv(file.path("data", "IL_MFR", "baseline", "file_info.csv"))
+datatable(info_baseline,
+  caption = "Summary table of the baseline recording files (info_baseline)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br>
+
+**CELL_INFO** table to store the cell categories. It was created manually using the information from the summary excel table (*Glicy_juxta-fm_exp_records_injection_sum.xls*)
+
+-   Variables
+    -   cell identification (*cell_id*). To find the recording file use the summary excel table
+    -   file names (*file_name*)
+    -   spontaneously active cells (*bl_activity*)
+    -   induced firing (*pinch*)
+    -   individually identified neurons (*ident*)
+    -   control cells (*control*)
+
+```{r, echo=FALSE}
+### CELL INFO to store categories (spontaneously active, induced firing, identified)
+CELL_INFO <- info_baseline %>%
+  select(file_name) %>%
+  add_column(cell_id = substr(info_baseline$file_name, 1, 6), .before = "file_name") %>%
+  dplyr::mutate(bl_activity = T) %>%
+  dplyr::mutate(bl_activity = replace(
+    bl_activity,
+    .$cell_id == "cell05" |
+      .$cell_id == "cell10" |
+      .$cell_id == "cell12" |
+      .$cell_id == "cell13" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell15" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell24",
+    F
+  )) %>%
+  dplyr::mutate(pinch = T) %>%
+  dplyr::mutate(pinch = replace(
+    pinch,
+    .$cell_id == "cell01" |
+      .$cell_id == "cell06" |
+      .$cell_id == "cell07" |
+      .$cell_id == "cell08" |
+      .$cell_id == "cell18" |
+      .$cell_id == "cell19" |
+      .$cell_id == "cell20" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24" |
+      .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27" |
+      .$cell_id == "cell28",
+    F
+  )) %>%
+  dplyr::mutate(ident = T) %>%
+  dplyr::mutate(ident = replace(
+    ident,
+    .$cell_id == "cell06" |
+      .$cell_id == "cell07" |
+      .$cell_id == "cell11" |
+      .$cell_id == "cell12" |
+      .$cell_id == "cell13" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell22" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24" |
+      .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27",
+    F
+  )) %>%
+  dplyr::mutate(control = F) %>%
+  dplyr::mutate(control = replace(
+    control,
+    .$cell_id == "cell25" |
+      .$cell_id == "cell26" |
+      .$cell_id == "cell27" |
+      .$cell_id == "cell28" |
+      .$cell_id == "cell29",
+    T
+  )) %>%
+  dplyr::mutate(position = "unknown") %>%
+  dplyr::mutate(position = replace(
+    position,
+    .$cell_id == "cell01" |
+      .$cell_id == "cell02" |
+      .$cell_id == "cell03" |
+      .$cell_id == "cell10" |
+      .$cell_id == "cell11" |
+      .$cell_id == "cell14" |
+      .$cell_id == "cell15",
+    "IL"
+  )) %>%
+  dplyr::mutate(position = replace(
+    position,
+    .$cell_id == "cell20" |
+      .$cell_id == "cell21" |
+      .$cell_id == "cell22",
+    "transient"
+  )) %>%
+  dplyr::mutate(position = replace(
+    position,
+    .$cell_id == "cell08" |
+      .$cell_id == "cell16" |
+      .$cell_id == "cell17" |
+      .$cell_id == "cell23" |
+      .$cell_id == "cell24",
+    "PF"
+  )) %>%
+  dplyr::mutate(
+    gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), yes = "y", no = "n")
+  )
+
+datatable(CELL_INFO,
+  caption = "CELL_INFO table",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+
+# IL_stim_firing$file_name %>% unique() %>% length()
+# info_stim$file_name %>% length()
+```
+
+<br><br>
+
+## Calculations
+
+### Firing rates
+
+```{r, include=FALSE}
+### CALCULATING --------
+
+IL_stim_firing <- left_join(IL_stim_firing,
+  info_stim %>%
+    select(
+      file_name,
+      rec_length,
+      train_starts,
+      train_ends,
+      train_length
+    ),
+  by = "file_name"
+)
+
+### calculating stim start times
+start_times <- IL_stim_firing %>%
+  dplyr::group_by(file_name) %>%
+  dplyr::summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  dplyr::mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::summarise(train_starts = unique(train_starts)) %>%
+  pull(train_starts) %>%
+  strsplit(",") %>%
+  set_names(substr(info_stim$file_name, 1, 6)) %>%
+  lapply(as.numeric)
+
+### calculating stim end times
+end_times <- IL_stim_firing %>%
+  dplyr::group_by(file_name) %>%
+  dplyr::summarise(train_starts = unique(train_starts), train_ends = unique(train_ends)) %>%
+  dplyr::mutate(cell_id = substr(info_stim$file_name, 1, 6)) %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::summarise(train_ends = unique(train_ends)) %>%
+  pull(train_ends) %>%
+  strsplit(",") %>%
+  set_names(substr(info_stim$file_name, 1, 6)) %>%
+  lapply(as.numeric)
+
+
+### Corrected cellList: stims with no controls are removed
+
+check_controls <- melt(start_times) %>%
+  tibble() %>%
+  rename("start_times" = value, "cell_id" = L1) %>%
+  add_column(end_times = melt(end_times) %>%
+    tibble() %>%
+    select(1) %>%
+    pull()) %>%
+  left_join(
+    info_stim %>%
+      select(file_name, train_length) %>%
+      mutate(cell_id = substr(file_name, 1, 6)) %>%
+      select(-file_name)
+  ) %>%
+  group_by(cell_id) %>%
+  mutate(train_length = end_times - start_times) %>%
+  dplyr::group_by(cell_id) %>%
+  mutate(
+    stim_check = "OK",
+    stim_check = replace(stim_check, start_times - train_length < 0, "n"),
+    stim_check = replace(stim_check, (lead(start_times) - train_length) < end_times, "n"),
+    stim_check = replace(stim_check, end_times + train_length > lead(start_times), "n")
+  )
+
+
+start_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), start_times ~ cell_id)
+end_times <- unstack(check_controls %>% dplyr::filter(stim_check == "OK"), end_times ~ cell_id)
+
+# cellList$cell01 <- cellList$cell01[-1, ]
+# cellList$cell15 <- cellList$cell15[-3:-4, ]
+# cellList$cell16 <- cellList$cell16[-3:-4, ]
+# cellList$cell16 <- cellList$cell16[-5:-6, ]
+# cellList$cell17 <- cellList$cell17[-3:-4, ]
+# cellList$cell17 <- cellList$cell17[-5:-6, ]
+# cellList$cell18 <- cellList$cell18[-1, ]
+# cellList$cell19 <- cellList$cell19[-1, ]
+
+cell_list <- substr(info_stim$file_name, 1, 6)
+CELL_INFO$cell_id
+```
+
+```{r, include=FALSE}
+### function to calculate the number of AP b/d/a stim. Arguments: data (IL_stim_firing table with rec_length and stimulus train information)
+BDACalculator <- function(data, list) {
+  cell_list <- list
+
+  train_length <- data %>%
+    dplyr::filter(substr(file_name, 1, 6) == cell_list) %>%
+    select(train_length) %>%
+    pull() %>%
+    `[[`(1)
+
+
+
+  if (
+    (data %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      select(unit_id) %>%
+      unique() %>%
+      pull() %>%
+      length()) == 1
+  ) {
+    ### In case of one unit in the file:
+    AP_times <- data %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP") %>%
+      select(signal_time) %>%
+      pull()
+
+    AP_numbers <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers) <- c("b", "d", "a")
+
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers[train_num, 1] <- length(AP_times[start_times[[cell_list]][train_num] - train_length
+      < AP_times & AP_times < start_times[[cell_list]][train_num]])
+
+      ### during
+      AP_numbers[train_num, 2] <- length(AP_times[AP_times > start_times[[cell_list]][train_num] & AP_times < end_times[[cell_list]][train_num]])
+
+      ### after
+      AP_numbers[train_num, 3] <- length(AP_times[AP_times > end_times[[cell_list]][train_num] &
+        AP_times < end_times[[cell_list]][train_num] + train_length])
+    }
+
+    melt(AP_numbers, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+      as.tibble() %>%
+      add_column(cell_id = cell_list) %>%
+      add_column(train_length = train_length)
+  } else {
+    ### in case of multiple units in the file:
+    AP_times_1 <- data %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 1) %>%
+      select(signal_time) %>%
+      pull()
+
+    AP_numbers_1 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers_1) <- c("b", "d", "a")
+
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers_1[train_num, 1] <- length(AP_times_1[start_times[[cell_list]][train_num] - train_length
+      < AP_times_1 & AP_times_1 < start_times[[cell_list]][train_num]])
+
+      ### during
+      AP_numbers_1[train_num, 2] <- length(AP_times_1[AP_times_1 > start_times[[cell_list]][train_num] &
+        AP_times_1 < end_times[[cell_list]][train_num]])
+
+      ### after
+      AP_numbers_1[train_num, 3] <- length(AP_times_1[AP_times_1 > end_times[[cell_list]][train_num] &
+        AP_times_1 < end_times[[cell_list]][train_num] + train_length])
+    }
+
+
+    AP_times_2 <- data %>%
+      dplyr::filter(substr(file_name, 1, 6) == cell_list, signal_type == "AP", unit_id == 2) %>%
+      select(signal_time) %>%
+      pull()
+
+    AP_numbers_2 <- matrix(0, nrow = length(start_times[[cell_list]]), ncol = 3)
+    colnames(AP_numbers_2) <- c("b", "d", "a")
+
+    for (train_num in 1:length(start_times[[cell_list]])) {
+      ### before
+      AP_numbers_2[train_num, 1] <- length(AP_times_2[start_times[[cell_list]][train_num] - train_length
+      < AP_times_2 & AP_times_2 < start_times[[cell_list]][train_num]])
+
+      ### during
+      AP_numbers_2[train_num, 2] <- length(AP_times_2[AP_times_2 > start_times[[cell_list]][train_num] &
+        AP_times_2 < end_times[[cell_list]][train_num]])
+
+      ### after
+      AP_numbers_2[train_num, 3] <- length(AP_times_2[AP_times_2 > end_times[[cell_list]][train_num] &
+        AP_times_2 < end_times[[cell_list]][train_num] + train_length])
+    }
+
+
+
+    if (cell_list %>% substr(5, 6) %>% as.numeric() %>% nchar() == 1) {
+      new_name <- paste0(
+        "cell0",
+        cell_list %>% substr(5, 6) %>% as.numeric() + 1
+      )
+    }
+
+    if (cell_list %>% substr(5, 6) %>% as.numeric() %>% nchar() == 2) {
+      new_name <- paste0(
+        "cell",
+        cell_list %>% substr(5, 6) %>% as.numeric() + 1
+      )
+    }
+
+    bind_rows(
+      melt(AP_numbers_1, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+        as.tibble() %>%
+        add_column(cell_id = cell_list) %>%
+        add_column(train_length = train_length),
+      melt(AP_numbers_2, varnames = c("train", "stim_cond"), value.name = "No_AP") %>%
+        as.tibble() %>%
+        add_column(cell_id = new_name) %>%
+        add_column(train_length = train_length)
+    )
+  } # else
+} # foo
+```
+
+**b_d_a_MFR**: Calculating the number of APs -using a custom made function (*BDACalculator*)- before during and after the stimulus trains (*b_d_a_MFR*).
+
+```{r}
+b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
+  bind_rows() %>%
+  dplyr::mutate(FR = No_AP / train_length) %>%
+  dplyr::group_by(stim_cond, cell_id) %>%
+  dplyr::summarise(
+    sumAPinTrains = sum(No_AP),
+    sumTrainLengths = sum(train_length),
+    MFR = mean(FR),
+    MFR2 = sumAPinTrains/sumTrainLengths
+    )  
+  # dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
+b_d_a_MFR
+```
+
+<br> **sd_mean_isi**: Calculating the baseline MFR of the recorded IL cells from the *IL_baseline_firing* table using a custom made function (*SDMeanISI*). The results are stored in the *sd_mean_isi* table.
+
+```{r, include=FALSE}
+IL_baseline_firing <- left_join(IL_baseline_firing,
+  info_baseline %>%
+    select(file_name, rec_length),
+  by = "file_name"
+) %>%
+  dplyr::mutate(stim_cond = "baseline")
+
+### function to calculate ISI mean and SD during baseline activity of the cells
+SDMeanISI <- function(f_name) {
+  # mean_isi <- IL_baseline_firing %>%
+  #   dplyr::filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>%
+  #   pull() %>%
+  #   diff() %>%
+  #   mean() * 1000 %>%
+  #   `names<-`(f_name)
+  #
+  # sd_isi <- IL_baseline_firing %>%
+  #   dplyr::filter(file_name == f_name, signal_type == "AP") %>%
+  #   select(signal_time) %>%
+  #   pull() %>%
+  #   diff() %>%
+  #   sd() * 1000 %>%
+  #   `names<-`(f_name)
+  #
+  # return(list(MFR = mean_isi,
+  #             SDFR = sd_isi))
+
+  tmp2 <- IL_baseline_firing %>%
+    dplyr::filter(file_name == f_name, signal_type == "AP") %>%
+    select(signal_time) %>%
+    pull() %>%
+    diff() %>%
+    mean() * 1000 %>%
+      tibble(mean_isi = .)
+  tmp2 %>%
+    dplyr::mutate(sd_isi = IL_baseline_firing %>%
+      dplyr::filter(file_name == f_name, signal_type == "AP") %>%
+      select(signal_time) %>%
+      pull() %>%
+      diff() %>%
+      sd() * 1000) %>%
+    dplyr::mutate(file_name = f_name)
+}
+
+sd_mean_isi <- lapply(info_baseline$file_name, SDMeanISI) %>%
+  bind_rows() %>%
+  as.tibble()
+
+sd_mean_isi <- sd_mean_isi %>%
+  dplyr::mutate(cell_id = substr(sd_mean_isi$file_name, 1, 6)) %>%
+  dplyr::mutate(MFR = 1000 / mean_isi) %>%
+  dplyr::mutate(SD_FR = 1000 / sd_isi) %>%
+  dplyr::mutate(MFR_inc = MFR + SD_FR) %>%
+  dplyr::mutate(MFR_dec = MFR - SD_FR) %>%
+  # dplyr::mutate(MFR_inc = 1000/(mean_isi-sd_isi)) %>%
+  # dplyr::mutate(MFR_dec = 1000/(mean_isi+sd_isi)) %>%
+  dplyr::mutate(stim_cond = "baseline") %>%
+  dplyr::mutate(MFR_dec = replace(MFR_dec, sd_mean_isi$MFR_dec < 0, 0))
+```
+
+<br>
+
+### Ranks (strength of inhibition)
+
+**cellranks**: Calculating ranks based on the activity change from "*baseline*" to "*during stimulus*". If the activity change is negative (decreased MFR) the asigned rank is negative, if it is positive (increased MFR) the assigned rank is positive.
+
+<br>
+
+Calculating the firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to baseline:
+
+<br><br><br>
+
+$$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$ <br>
+
+```{r}
+cellranks <- b_d_a_MFR %>%
+  dplyr::group_by(stim_cond) %>% 
+  dplyr::mutate(base_MFR = sd_mean_isi$MFR) %>%
+  dplyr::mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
+  dplyr::filter(stim_cond == "d") %>%
+  dplyr::mutate(change_rank = ifelse(activity_change > 0,
+    rank(activity_change),
+    -rank(-activity_change)
+  )) %>%
+  ungroup() %>%
+  left_join(
+    CELL_INFO %>%
+      select(cell_id, control, pinch, position),
+    by = "cell_id"
+  )
+cellranks
+```
+
+**cellranks_before_stim**: Calculating ranks based on the activity change from "*before stimulus*" to "*during stimulus*". If the activity change is negative (decreased MFR) the asigned rank is negative, if it is positive (increased MFR) the assigned rank is positive.
+
+<br>
+
+Calculating the firing rate change during stimulus (photoactivation of the glycinergic fibers) compared to before stimulus:
+
+<br><br><br>
+
+$$\mathbf{activity\_change} = \frac{during\_MFR - before\_MFR}{before\_MFR} * 100$$ <br>
+
+```{r}
+cellranks_before_stim <- b_d_a_MFR %>%
+  spread(key = stim_cond, value = MFR) %>%
+  dplyr::mutate(activity_change = ((d - b) / b * 100) %>% round(2)) %>%
+  dplyr::mutate(change_rank = ifelse(activity_change > 0,
+    rank(activity_change),
+    -rank(-activity_change)
+  )) %>%
+  left_join(
+    CELL_INFO %>%
+      select(cell_id, control, pinch, position),
+    by = "cell_id"
+  )
+cellranks_before_stim
+```
+
+<br><br>
+
+### Data to plot
+
+**TO_PLOT**: Combining *b_d_a_MFR* (firing rate of 29 IL neurons b/d/a stim) with *sd_mean_isi* table (baseline firing rate of the same 29 neurons), joining with CELL_INFO containing important information of the cells (baseline activity, identified, pinched, control) and with *cellranks* containing the ranks asigned to each cells based on the changes in MFR during the stimulus compared to baseline.
+
+```{r, message=FALSE, warning=FALSE}
+TO_PLOT <- bind_rows(
+  sd_mean_isi %>%
+    select(MFR, cell_id, stim_cond),
+  b_d_a_MFR
+) %>%
+  left_join(
+    CELL_INFO %>%
+      select(-file_name),
+    by = "cell_id"
+  ) %>%
+  left_join(
+    cellranks %>%
+      select(cell_id, change_rank, activity_change),
+    by = "cell_id"
+  )
+
+datatable(TO_PLOT,
+  caption = "TO_PLOT table",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br><br>
+
+## Plotting
+
+### Baseline vs. "before" stimulus activity
+
+Comparison of baseline and "before" stimulus firing rates in the case of spontaneously active and spontaneously inactive (pinch) neurons. Spontaneously inactive neurons showed significantly higher MFR before stimulus compared to baseline.
+
+Categorizing cells into week and strong based on the dynamics of inhibition
+
+```{r fig.width=15}
+
+filelist <- info_stim$file_name
+trainlength <- info_stim$train_length
+
+CreatePSTH <- function(file.name, train.length, start) {
+  fn <- as.character(file.name)
+  # browser()
+
+  ap <- IL_stim_firing %>%
+    dplyr::filter(
+      file_name == fn,
+      signal_type == "AP"
+    ) %>%
+    pull(signal_time)
+
+
+  stim <- start
+
+  RTM_creator <- function(ap, stim) {
+    ap_vect <- ap %>% as.vector()
+    stim_vect <- stim %>% as.vector()
+
+    mat_AP <- matrix(
+      ap_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect), byrow = T
+    )
+
+    mat_stim <- matrix(
+      stim_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect)
+    )
+
+
+    mat_reltimes <- mat_AP - mat_stim
+    mat_reltimes[mat_reltimes == 0] <- NA
+    return(mat_reltimes)
+  }
+
+  psth_mat <- RTM_creator(ap, stim)
+  psth_tibble <- tibble(
+    train_length = train.length,
+    file = fn,
+    reltimes = psth_mat %>% melt() %>% pull(value)
+  )
+  psth_tibble
+}
+
+
+
+psth_tibble <- Map(CreatePSTH, filelist, trainlength, start_times)
+psth_tibble <- lapply(psth_tibble, as_tibble) %>% bind_rows()
+psth_tibble <- left_join(psth_tibble, info_stim %>% select(file = file_name, No_Trains))
+psth_tibble <- psth_tibble %>%
+  dplyr::mutate(
+    cell_id = substr(file, 1, 6)
+  ) %>%
+  group_by(cell_id) %>%
+  dplyr::mutate(
+    before_stim_spikes = length(reltimes[reltimes > -1 & reltimes < 0]),
+    during_stim_spikes = length(reltimes[reltimes > 0 & reltimes < 1]),
+    stim_onset_ratio = during_stim_spikes / before_stim_spikes,
+    inhib_strength = ifelse(stim_onset_ratio > 0.75, yes = "weak", no = "strong")
+  )
+
+psth_tibble <- left_join(psth_tibble, CELL_INFO %>% select(cell_id, pinch, control, gap))
+
+
+psth_tibble %>%
+  dplyr::filter(
+    reltimes > -(train_length / 4),
+    reltimes < train_length + train_length / 2,
+    # control == F,
+    # train_length != 3.267300,
+    # stim_onset_diff < 5
+  ) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) +
+  geom_histogram(
+    data = . %>%
+      dplyr::filter(control == T),
+    binwidth = 0.164,
+    alpha = 0.3
+  ) +
+  geom_histogram(
+    data = . %>%
+      dplyr::filter(
+        control == F,
+        train_length < 4
+      ),
+    binwidth = 0.164,
+    alpha = 0.3
+  ) +
+  geom_histogram(
+    data = . %>%
+      dplyr::filter(
+        control == F,
+        train_length > 4
+      ),
+    binwidth = 0.164,
+    aes(fill = inhib_strength)
+  ) +
+  geom_vline(xintercept = 0) +
+  geom_vline(aes(xintercept = train_length)) +
+  facet_wrap(file ~ train_length %>% round(), scales = "free_x") +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+```{r}
+psth_tibble %>%
+  dplyr::filter(
+    reltimes > -(train_length / 4),
+    reltimes < train_length + train_length / 2,
+    control == T, # F
+    train_length > 4,
+    # inhib_strength == "strong",
+  ) %>% # select(cell_id) %>% unique()
+  ggplot(
+    aes(x = reltimes)
+  ) +
+  geom_histogram(binwidth = 0.1) +
+  geom_vline(xintercept = 0) +
+  xlim(-1, 5) +
+  expand_limits(y = c(0, 130)) +
+  # facet_wrap(~pinch)+
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+```{r}
+
+
+filelist <- info_stim$file_name
+trainlength <- info_stim$train_length
+
+CreatePSTH <- function(file.name, train.length, start) {
+  fn <- as.character(file.name)
+  # browser()
+
+  ap <- IL_stim_firing %>%
+    dplyr::filter(
+      file_name == fn,
+      signal_type == "AP"
+    ) %>%
+    pull(signal_time)
+
+
+  stim <- IL_stim_firing %>%
+    dplyr::filter(
+      file_name == fn,
+      signal_type == "stim"
+    ) %>%
+    pull(signal_time)
+
+  RTM_creator <- function(ap, stim) {
+    ap_vect <- ap %>% as.vector()
+    stim_vect <- stim %>% as.vector()
+
+    mat_AP <- matrix(
+      ap_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect), byrow = T
+    )
+
+    mat_stim <- matrix(
+      stim_vect,
+      nrow = length(stim_vect),
+      ncol = length(ap_vect)
+    )
+
+
+    mat_reltimes <- mat_AP - mat_stim
+    mat_reltimes[mat_reltimes == 0] <- NA
+    return(mat_reltimes)
+  }
+
+  psth_mat <- RTM_creator(ap, stim)
+  psth_tibble <- tibble(
+    train_length = train.length,
+    file = fn,
+    reltimes = psth_mat %>% melt() %>% pull(value)
+  )
+  psth_tibble
+}
+
+psth_tibble_gap <- Map(CreatePSTH, filelist, trainlength, start_times)
+psth_tibble_gap <- lapply(psth_tibble_gap, as_tibble) %>% bind_rows()
+psth_tibble_gap <- psth_tibble_gap %>% dplyr::filter()
+
+psth_tibble_gap <- left_join(psth_tibble_gap, info_stim %>% select(file = file_name, No_Trains))
+psth_tibble_gap <- psth_tibble_gap %>% dplyr::filter(reltimes > -0.05, reltimes < 0.05)
+
+psth_tibble_gap <- psth_tibble_gap %>%
+  dplyr::mutate(
+    cell_id = substr(file, 1, 6)
+  )
+
+
+psth_tibble_gap <- left_join(psth_tibble_gap, CELL_INFO %>% select(cell_id, pinch, control, gap))
+
+
+
+psth_tibble_gap %>%
+  dplyr::filter(
+    control == F,
+    cell_id %in% c("cell06", "cell07", "cell08", "cell09")
+    # cell_id %in% c("cell06", "cell07", "cell08", "cell09")
+  ) %>%
+  # dplyr::filter(cell_id %in% c("cell06","cell07","cell08","cell09","cell11","cell16")) %>%
+  ggplot(
+    aes(x = reltimes)
+  ) +
+  geom_histogram(binwidth = 0.001) +
+  geom_vline(xintercept = 0) +
+  # geom_vline(xintercept = -0.005) +
+  xlim(-0.01, 0.02) +
+  expand_limits(y = c(0, 130)) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+```{r, fig.width=10, echo = FALSE, warning=FALSE, out.width = "100%"}
+TO_PLOT <- left_join(
+  TO_PLOT,
+  psth_tibble %>% select(cell_id, inhib_strength) %>% dplyr::group_by(cell_id) %>% slice(1)
+)
+
+ggplot(
+  data = TO_PLOT %>%
+    dplyr::filter(
+      control == F,
+      stim_cond == "baseline" | stim_cond == "b"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "baseline", "b"),
+    y = MFR
+  )
+) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    aes(color = inhib_strength),
+    # shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id, col = inhib_strength)
+  ) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  xlab("Recording period") +
+  facet_wrap(vars(pinch)) +
+  ggpubr::stat_compare_means(method = "wilcox.test", paired = T) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "baseline"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = -.9,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_pinch_nopinch_to_baseline
+
+plt_pinch_nopinch_to_baseline
+
+
+# plt_pinch_nopinch_to_baseline$data %>% 
+#   dplyr::group_by(pinch, stim_cond) %>% 
+#   dplyr::summarise(
+#     mean(MFR),
+#     sd(MFR),
+#     median(MFR)
+#   )
+
+```
+
+<br><br>
+
+### MFR before, during and after stimulus
+
+```{r, fig.width=10 ,echo=FALSE, warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    dplyr::filter(
+      control == F,
+      stim_cond == "b" | stim_cond == "d" | stim_cond == "a"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+    y = MFR
+  )
+) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  ggtitle("Pinch", ) +
+  xlab("Recording period") +
+  ylim(0, 35) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    aes(color = inhib_strength),
+    # shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_point(
+    data = . %>% dplyr::filter(gap == "y"),
+    shape = 21,
+    # fill = "#EB8104",
+    color = "black",
+    size = 4,
+    stroke = 1.5
+  ) +
+  geom_line(
+    aes(
+      color = inhib_strength,
+      group = cell_id
+    ),
+    # color = "#EB8104"
+  ) +
+  # geom_label_repel(
+  #   data = TO_PLOT %>%
+  #     dplyr::filter(
+  #       control == F,
+  #       stim_cond == "a"
+  #     ),
+  #   mapping = aes(label = cell_id),
+  #   nudge_x = 0.15,
+  #   direction = "y",
+  #   hjust = -0.5,
+  #   segment.size = .2
+  # ) +
+  # geom_signif(
+  #   comparisons = list(c("b", "d"), c("d","a")),
+  #   map_signif_level = TRUE,
+  #   test = "wilcox.test",
+  #   test.args = c(paired = T),
+  #   color = "gray",
+  # ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("b", "d"))
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("d", "a"))
+  ) +
+  # ggpubr::stat_compare_means(
+  #   method = "wilcox.test",
+  #   paired = F,
+  #   comparisons = list(c("b", "a"))
+  # ) +
+  facet_wrap(~pinch) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> MFR_plot 
+
+MFR_plot
+
+
+# MFR_plot$data %>% 
+#   dplyr::filter(pinch == T) %>% 
+#   dplyr::group_by(stim_cond) %>% 
+#   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
+# 
+# MFR_plot$data %>% 
+#   dplyr::filter(pinch == F) %>% 
+#   dplyr::group_by(stim_cond) %>% 
+#   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
+
+
+
+```
+
+<br><br> Normalized to "before" value <br><br>
+
+```{r, fig.width=10 ,echo=FALSE, warning=FALSE}
+TO_PLOT %>%
+  dplyr::filter(
+    stim_cond != "baseline",
+    control == F
+  ) %>%
+  dplyr::group_by(cell_id) %>%
+  dplyr::mutate(MFR_norm = MFR / MFR[1]) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+      y = MFR_norm
+    )
+  ) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  ggtitle("Pinch", ) +
+  xlab("Recording period") +
+  # ylim(0, 35) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    aes(color = inhib_strength),
+    # shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_point(
+    data = . %>% dplyr::filter(gap == "y"),
+    shape = 21,
+    # fill = "#EB8104",
+    color = "black",
+    size = 4,
+    stroke = 1.5
+  ) +
+  geom_line(
+    aes(
+      color = inhib_strength,
+      group = cell_id
+    )
+    # color = "#EB8104"
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "a"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = 0.15,
+    direction = "y",
+    hjust = -0.5,
+    segment.size = .2
+  ) +
+  # geom_signif(
+  #   comparisons = list(c("b", "d"), c("d","a")),
+  #   map_signif_level = TRUE,
+  #   test = "wilcox.test",
+  #   test.args = c(paired = T),
+  #   color = "gray",
+  # ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("b", "d"))
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("d", "a"))
+  ) +
+  facet_wrap(~pinch) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+<br><br>
+
+```{r, fig.width=10 ,echo=FALSE, warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    dplyr::filter(
+      control == F,
+      stim_cond == "b" | stim_cond == "d" | stim_cond == "a"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "b", "d", "a"),
+    y = MFR
+  )
+) +
+  theme(panel.background = element_rect(fill = 0)) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  ggtitle("Pinch", ) +
+  xlab("Recording period") +
+  ylim(0, 35) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(
+    aes(shape = pinch, col = position),
+    # shape = 21,
+    # col = "#EB8104",
+    # color = "white",
+    size = 4, position = "dodge"
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id, col = position)
+  ) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "a"
+      ),
+    mapping = aes(label = cell_id),
+    nudge_x = 0.15,
+    direction = "y",
+    hjust = -0.5,
+    segment.size = .2
+  ) +
+  # geom_signif(
+  #   comparisons = list(c("b", "d"), c("d","a")),
+  #   map_signif_level = TRUE,
+  #   test = "wilcox.test",
+  #   test.args = c(paired = T),
+  #   color = "gray",
+  # ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("b", "d"))
+  ) +
+  ggpubr::stat_compare_means(
+    method = "wilcox.test",
+    paired = T,
+    comparisons = list(c("d", "a"))
+  )
+```
+
+<br><br>
+
+### Strength of inhibition
+
+Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **baseline**:
+
+```{r, fig.width=10, echo=FALSE,warning=FALSE}
+ggplot(
+  data = cellranks,
+  mapping = aes(x = change_rank, y = activity_change)
+) +
+  geom_point(data = cellranks %>%
+    dplyr::filter(control == F), size = 3) +
+  geom_point(data = cellranks %>%
+    dplyr::filter(control == T), size = 3, col = "magenta") +
+  ### label for negative values
+  geom_text_repel(
+    data = cellranks %>%
+      dplyr::filter(activity_change < 0),
+    aes(label = cell_id),
+    direction = "y",
+    angle = 90,
+    hjust = .5,
+    nudge_y = -2
+  ) +
+
+  ### label for positive values
+  geom_text_repel(
+    data = cellranks %>%
+      dplyr::filter(activity_change > 0),
+    aes(label = cell_id),
+    direction = "x",
+    angle = 0,
+    hjust = .5,
+    nudge_x = -1
+  ) +
+  geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
+  geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
+  annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  ylim(-max(cellranks$activity_change), max(cellranks$activity_change))
+```
+
+<br><br>
+
+Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **before** stimulus:
+
+```{r, fig.width=10, echo=FALSE,warning=FALSE}
+
+ggplot(
+  data = cellranks_before_stim,
+  mapping = aes(x = change_rank, y = activity_change)
+) +
+  geom_point(
+    data = cellranks_before_stim %>%
+      dplyr::filter(control == F), size = 6,
+    aes(
+      col = position,
+      shape = pinch
+    )
+  ) +
+  scale_color_manual(values = c("IL" = "green", "transient" = "blue", "PF" = "red", "unknown" = "black", "control" = "magenta")) +
+  scale_shape_manual(values = c("TRUE" = "+", "FALSE" = "-")) +
+  geom_point(data = cellranks_before_stim %>%
+    dplyr::filter(control == T), size = 3, col = "magenta") +
+  ### label for negative values
+  geom_text_repel(
+    data = cellranks_before_stim %>%
+      dplyr::filter(activity_change < 0),
+    aes(label = cell_id),
+    direction = "y",
+    angle = 90,
+    hjust = .5,
+    nudge_y = -2
+  ) +
+
+  ### label for positive values
+  geom_text_repel(
+    data = cellranks_before_stim %>%
+      dplyr::filter(activity_change > 0),
+    aes(label = cell_id),
+    direction = "x",
+    angle = 0,
+    hjust = .5,
+    nudge_x = -1
+  ) +
+  geom_hline(yintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = 27, y = -17, label = "Baseline activity", col = "gray") +
+  geom_vline(xintercept = 0, col = "grey", lty = "dashed") +
+  annotate("text", x = -2, y = 280, label = "Negative rank: FR decrease", col = "gray", angle = 90) +
+  annotate("text", x = 2, y = 280, label = "Positive rank: FR increase", col = "gray", angle = 90) +
+  theme_minimal() +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  xlab("Ranks") +
+  ylab("Change in firing rate [%]") +
+  ylim(-max(cellranks_before_stim$activity_change), max(cellranks_before_stim$activity_change))
+```
+
+<br><br>
+
+Plotting the change in MFR from "*baseline*" to "*during stimulus*". Coloring based on the strength of the inhibition (*rank*)
+
+```{r, echo=FALSE,warning=FALSE}
+ggplot(
+  data = TO_PLOT %>%
+    dplyr::filter(
+      control == F,
+      stim_cond == "baseline" | stim_cond == "d"
+    ),
+  mapping = aes(
+    x = forcats::fct_relevel(stim_cond, "baseline", "d", "a"),
+    y = MFR
+  )
+) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  geom_point(aes(fill = change_rank),
+    shape = 21,
+    # fill = "#EB8104",
+    # color = "white",
+    size = 4
+  ) +
+  # stroke = 2) +
+  geom_line(
+    aes(group = cell_id, col = change_rank)
+  ) +
+  geom_label_repel(
+    data = TO_PLOT %>%
+      dplyr::filter(
+        control == F,
+        stim_cond == "baseline"
+      ),
+    mapping = aes(label = cell_id, col = change_rank),
+    nudge_x = -.1,
+    direction = "y",
+    hjust = 1,
+    segment.size = .1
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  # theme(
+  #   axis.text = element_text(size = 20),
+  #   text = element_text(size = 20)
+  # ) +
+  xlab("Recording period") +
+  labs(fill = "Rank", col = "Rank")
+```
+
+<br><br><br><br><br><br>
+
+# Activity of PRF glycinergic cells during PFC photoactivation
+
+In these experiments we tested the effect of cortical photo-activation on the firing of PRF glycinergic neurons.
+
+## Loading and transforming (hidden code) data
+
+*"cortical_stim_analysis.csv" is loaded in "STIM_RSULTS" object. "cortical_stim_analysis.csv" is created by the "CreatePSTHTibble" function. It's defined in the "cortical_stim_analysis.R" file. Frequencies have to be changed manually and running it multiple times creates duplicates in the csv! In this notebook the cortical_stim_analysis.csv is only loaded not created.*
+
+```{r, message=FALSE, warning=FALSE}
+source(file.path("supplementary_functions", "CreateRecTibble.R"))
+RECORDINGS <- CreateRecTibble(
+  AP_times = read_csv(file.path("data", "cortical_stim", "AP_times.csv")),
+  stim_times = read_csv(file.path("data", "cortical_stim", "stim_times.csv"))
+)
+
+
+### CAREFUL WITH THIS!! It's generated by the "CreatePSTHTibble" function but the frequencies have to be changed manually, and it can create duplicates! I have to work on that! "CreatePSTHTibble" is defined in "cortical_stim_analysis.R" file. A warning is written there too.
+STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
+# STIM_RESULTS_ALL <- read_csv(file.path("output_data", "cortical_stim_analysis_all_APs.csv"))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+RECORDINGS <- RECORDINGS %>%
+  dplyr::mutate(
+    stim_number = 0,
+    lag_sf = lag(stim_freq),
+    asd = ifelse(lag_sf == stim_freq & !is.na(lag_sf), 0, 1),
+    cum_asd = cumsum(asd)
+  ) %>%
+  dplyr::group_by(file_name, cum_asd) %>%
+  dplyr::mutate(stim_number = row_number()) %>%
+  ungroup() %>%
+  dplyr::mutate(
+    stim_number = replace(stim_number, signal_type == "AP", NA)
+  ) %>%
+  select(-lag_sf, -asd, -cum_asd) %>%
+  dplyr::mutate(stim_freq_categ = stim_freq) %>%
+  dplyr::mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 12 | stim_freq_categ == 8),
+    values = 10
+  )) %>%
+  dplyr::mutate(stim_freq_categ = replace(
+    x = stim_freq_categ,
+    list = (stim_freq_categ == 18),
+    values = 20
+  ))
+
+# RECORDINGS %>%
+#   dplyr::filter(
+#     animal_id %in% c("GV_40", "GV_42", "GV_47"),
+#     signal_type == "stim") %>%
+#   group_by(animal_id, stim_freq_categ) %>%
+#   summarise(length(stim_number))
+```
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+source(file.path("supplementary_functions", "HistStats.R"))
+
+STIM_RESULTS %>%
+  dplyr::group_by(freq) %>%
+  dplyr::summarise(n_times = length(unique(animal_id))) %>%
+  ungroup() %>%
+  as.matrix() %>%
+  unname() -> rep_matrix
+
+### set PSTH range
+PSTH_range <- c(-0.01, 0.04)
+
+
+hist_stats <- STIM_RESULTS %>%
+  dplyr::filter(
+    first_ap_reltimes > PSTH_range[1],
+    first_ap_reltimes < PSTH_range[2]
+  ) %>%
+  dplyr::group_by(freq) %>%
+  do(gp_hist = ggplot(
+    data = .,
+    mapping = aes(x = first_ap_reltimes)
+  ) +
+    xlim(PSTH_range[1], PSTH_range[2]) +
+    geom_histogram(aes(fill = animal_id), binwidth = 0.001) +
+    scale_fill_brewer(
+      palette = "Set3",
+      name = "Animal"
+      # guide = FALSE
+    ) +
+    facet_wrap(~animal_id, ncol = 3) +
+    geom_vline(xintercept = 0) +
+    xlab("Time (s)") +
+    ylab("Count") +
+    ggtitle(paste0(.$freq, " Hz"))) %>%
+  `[[`(2) %>%
+  lapply(. %>% HistStats() %>% as.tibble()) %>%
+  bind_rows() %>%
+  add_column(
+    freq = c(
+      rep(rep_matrix[1, 1], rep_matrix[1, 2]),
+      rep(rep_matrix[2, 1], rep_matrix[2, 2]),
+      rep(rep_matrix[3, 1], rep_matrix[3, 2])
+    ),
+    .after = "animal_id"
+  )
+```
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+RESP_PROB <- left_join(
+  STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2]
+    ) %>%
+    ### APs between 5-20ms after stimulus. This is used to calculate response probability
+    dplyr::mutate(
+      first_ap_reltimes_5_20ms = ifelse(first_ap_reltimes > 0.005 & first_ap_reltimes < 0.02, 1, 0)
+    ) %>%
+    dplyr::group_by(animal_id, freq) %>%
+    dplyr::summarise(
+      No_APs = length(first_ap_reltimes),
+      No_APs_5_20ms = sum(first_ap_reltimes_5_20ms)
+    ) %>%
+    dplyr::rename(stim_freq = freq) %>%
+    dplyr::mutate(stim_freq = replace(stim_freq, stim_freq == 18, 20)) %>%
+    dplyr::mutate(stim_freq = replace(stim_freq, stim_freq == 8, 10)),
+  RECORDINGS %>%
+    dplyr::filter(signal_type == "stim", stim_freq_categ %in% c("1", "10", "20")) %>%
+    dplyr::group_by(animal_id, stim_freq_categ) %>%
+    dplyr::summarise(No_stim = length(signal_time)) %>%
+    dplyr::mutate(stim_freq = as.numeric(stim_freq_categ)) %>%
+    select(-stim_freq_categ)
+) %>%
+  add_column(No_APs_range = hist_stats %>%
+    arrange(animal_id) %>%
+    dplyr::mutate(freq = replace(freq, freq == 18, 20)) %>%
+    dplyr::mutate(freq = replace(freq, freq == 8, 10)) %>%
+    dplyr::rename(stim_freq = freq) %>% pull(range_count_sum)) %>%
+  dplyr::mutate(resp_prob = (No_APs / No_stim) * 100) %>%
+  dplyr::mutate(resp_prob_range = (No_APs_range / No_stim) * 100) %>%
+  dplyr::mutate(resp_prob_5_20ms = (No_APs_5_20ms / No_stim) * 100) %>%
+  add_column(peak_latency = hist_stats %>%
+    arrange(animal_id) %>%
+    pull(peak)) %>%
+  add_column(mean_latency = hist_stats %>%
+    arrange(animal_id) %>%
+    pull(mean)) %>%
+  add_column(median_latency = hist_stats %>%
+    arrange(animal_id) %>%
+    pull(median)) %>%
+  dplyr::mutate(
+    stim_type = ifelse(animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical")
+  )
+```
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+APCount <- function(animal) {
+  tmp_ap <- RECORDINGS %>%
+    dplyr::filter(signal_type == "AP", animal_id == animal) %>%
+    select(signal_time) %>%
+    pull()
+
+  stim_trains <- RECORDINGS %>%
+    dplyr::filter(signal_type == "stim") %>%
+    dplyr::mutate(
+      lag_sfc = lag(stim_freq),
+      tmp_var = ifelse(lag_sfc == stim_freq & !is.na(lag_sfc), 0, 1),
+      cum_tmp_var = cumsum(tmp_var)
+    ) %>%
+    dplyr::group_by(animal_id, stim_freq, cum_tmp_var) %>%
+    dplyr::mutate(train_number = group_indices()) %>%
+    ungroup() %>%
+    select(-lag_sfc, -tmp_var, -cum_tmp_var) %>%
+    dplyr::filter(animal_id == animal) %>%
+    dplyr::group_by(stim_freq_categ, train_number, stim_number) %>%
+    dplyr::summarise(
+      No_APs = length(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05]),
+      AP_times = paste(tmp_ap[tmp_ap > signal_time & tmp_ap < signal_time + 0.05], collapse = ","),
+      range_lower = signal_time,
+      range_upper = signal_time + 0.05
+    ) %>%
+    add_column(animal_id = animal, .before = 1) %>%
+    ungroup()
+  return(stim_trains)
+}
+
+APC <- lapply(RECORDINGS$animal_id %>% unique(), APCount) %>%
+  bind_rows() %>%
+  dplyr::mutate(norm_No_APs_all = No_APs / max(No_APs)) %>%
+  dplyr::group_by(animal_id) %>%
+  dplyr::mutate(norm_No_APs_animal = No_APs / max(No_APs)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    stim_type = ifelse(
+      test = animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical"
+    )
+  )
+```
+
+<br><br><br>
+
+-   List of tibbles used to store data:
+    -   **RECORDINGS** tibble: stores AP and stimulus time stamps, number of stimuli in each train, stimulus frequency categories (eg. 8 10 and 12 Hz belong to 10 Hz category)
+    -   **STIM_RESULTS**: stores the data for PSTHs (CAREFUL WITH THIS!! It's generated by the "CreatePSTHTibble" function but the frequencies have to be changed manually, and it can create duplicates! I have to work on that! If something doesn't look right on PSTHs or response probability plots, check this one first)
+    -   **hist_stats**: stores PSTH statistics calculated from ggplot
+    -   **RESP_PROB**: response probability and latency data calculated from stimulus results and recordings
+    -   **APC**: number of APs after each stimulus in a 50 ms window
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
+datatable(
+  RECORDINGS %>%
+    dplyr::group_by(signal_type, stim_freq) %>%
+    slice(1:3),
+  caption = "RECORDINGS tibble",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
+datatable(STIM_RESULTS,
+  caption = "STIM_RESULTS tibble",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, tidy=TRUE}
+datatable(hist_stats,
+  caption = "PSTH statistics (hist_stats tibble)",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+datatable(RESP_PROB,
+  caption = "Response probabilities",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+datatable(APC,
+  caption = "Number of APs folowing each stimulus",
+  rownames = TRUE,
+  options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
+)
+```
+
+## Plotting
+
+### Distribution of frist APs after cortical activation
+
+Stimuli at 8, 10 and 12 Hz and 18 and 20 Hz were grouped.
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+
+source(file.path("supplementary_functions", "geom_flat_violin.R"))
+# PSTH_range <- c(0, 0.05)
+ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2]
+    ),
+  mapping = aes(y = first_ap_reltimes, x = animal_id)
+) +
+  coord_flip() +
+  gghalves::geom_half_violin(side = "r", trim = T, scale = "width") +
+  # geom_dotplot(binaxis = "y",
+  #              dotsize = 4,
+  #              stackdir = "down",
+  #              binwidth = 0.0002,method = "histodot",binpositions = "all",
+  #              ) +
+  # see::geom_violindot(binwidth = 0.0001,size_dots = 6,) +
+  geom_jitter(position = position_jitter(0), shape = "|") +
+  # geom_boxplot(width = .1, outlier.colour = NA, position = "dodge") +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~freq)
+```
+
+```{r}
+STIM_RESULTS %>%
+  dplyr::filter(
+    first_ap_reltimes > PSTH_range[1],
+    first_ap_reltimes < PSTH_range[2],
+    # freq == 18
+    # animal_id %!in% c("GV_40","GV_42","GV_47" )
+  ) %>%
+  ggplot(aes(x = first_ap_reltimes)) +
+  geom_vline(xintercept = 0, col = "blue") +
+  facet_wrap(~freq) +
+  # facet_grid(animal_id~freq) +
+  geom_histogram(binwidth = 0.001) +
+  geom_text(
+    data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
+    mapping = aes(
+      x = med_lat %>% round(4) + 0.013,
+      y = 180,
+      label = paste0("Median: ", med_lat %>% round(4), "s")
+    )
+  ) +
+  geom_vline(
+    data = . %>% dplyr::group_by(freq) %>% dplyr::summarise(med_lat = median(first_ap_reltimes)),
+    aes(xintercept = med_lat)
+  ) +
+  xlim(PSTH_range[1], PSTH_range[2]) +
+  expand_limits(y = c(0, 180)) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) +
+  xlab("Latency (s)") +
+  ylab("Count")
+
+
+# popPSTH_PnO_1Hz
+```
+
+<br><br><br>
+
+### PSTH \@ 1 Hz cortical activation
+
+```{r echo=FALSE, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
+### main plot
+
+### set PSTH range: see earlier (calculating hist stats chunk)
+
+### select frequency to plot (1, 8, 18)
+freq_to_plot <- 1 %>% as.character()
+
+gp_hist1 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == freq_to_plot,
+      # animal_id %!in% c("GV_40", "GV_42", "GV_47")
+      animal_id == "GII_21"
+    ),
+  mapping = aes(x = first_ap_reltimes)
+) +
+  xlim(PSTH_range[1], PSTH_range[2]) +
+  geom_histogram(
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
+  scale_fill_brewer(
+    palette = "Set3",
+    name = "Animal"
+    # guide = FALSE
+  ) +
+  facet_wrap(~animal_id, ncol = 3) +
+  geom_vline(xintercept = 0) +
+  xlab("Latency (s)") +
+  ylab("Count")
+
+
+
+### lines
+gp_hist1 <- gp_hist1 +
+  ### median
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = median,
+      xend = median,
+      y = y_max + 7,
+      yend = y_max + 18
+    ),
+    size = 1
+  ) +
+
+  ### data range
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = quantile25 - 1.5 * IQR,
+      xend = quantile25,
+      y = y_max + 12.5,
+      yend = y_max + 12.5
+    )
+  ) +
+
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
+  ) +
+
+  ### IQR (box)
+  geom_rect(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
+    color = "red",
+    alpha = 0,
+    inherit.aes = F
+  ) +
+
+  ### mean
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = mean, y = y_max + 4), size = 2
+  ) +
+
+  ### peak
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = peak, y = y_max + 4),
+    shape = 25,
+    size = 2,
+    fill = "red"
+  ) +
+  expand_limits(y = c(0, 75)) +
+
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+# scale_y_continuous(expand=c(0,0))
+```
+
+### PSTH \@ 10 Hz cortical activation
+
+```{r echo=FALSE, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
+### main plot
+
+### set PSTH range: see earlier (calculating hist stats chunk)
+
+### select frequency to plot (1, 8, 18)
+freq_to_plot <- 8 %>% as.character()
+
+gp_hist8 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == freq_to_plot,
+      # animal_id %!in% c("GV_40", "GV_42", "GV_47")
+      animal_id == "GII_21"
+    ),
+  mapping = aes(x = first_ap_reltimes)
+) +
+  xlim(PSTH_range[1], PSTH_range[2]) +
+  geom_histogram(
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
+  scale_fill_brewer(
+    palette = "Set3",
+    name = "Animal"
+    # guide = FALSE
+  ) +
+  facet_wrap(~animal_id, ncol = 3) +
+  geom_vline(xintercept = 0) +
+  xlab("Latency (s)") +
+  ylab("Count")
+
+
+
+### lines
+gp_hist8 <- gp_hist8 +
+  ### median
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = median,
+      xend = median,
+      y = y_max + 7,
+      yend = y_max + 18
+    ),
+    size = 1
+  ) +
+
+  ### data range
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = quantile25 - 1.5 * IQR,
+      xend = quantile25,
+      y = y_max + 12.5,
+      yend = y_max + 12.5
+    )
+  ) +
+
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
+  ) +
+
+  ### IQR (box)
+  geom_rect(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
+    color = "red",
+    alpha = 0,
+    inherit.aes = F
+  ) +
+
+  ### mean
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = mean, y = y_max + 4), size = 2
+  ) +
+
+  ### peak
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = peak, y = y_max + 4),
+    shape = 25,
+    size = 2,
+    fill = "red"
+  ) +
+
+  expand_limits(y = c(0, 75)) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+### PSTH \@ 20 Hz cortical activation
+
+```{r echo=FALSE, fig.width=10, fig.height=8, message=FALSE, warning=FALSE}
+### main plot
+
+### set PSTH range: see earlier (calculating hist stats chunk)
+
+### select frequency to plot (1, 8, 18)
+freq_to_plot <- 18 %>% as.character()
+
+gp_hist18 <- ggplot(
+  data = STIM_RESULTS %>%
+    dplyr::filter(
+      first_ap_reltimes > PSTH_range[1],
+      first_ap_reltimes < PSTH_range[2],
+      freq == freq_to_plot,
+      # animal_id %!in% c("GV_40", "GV_42")
+      animal_id == "GII_21"
+    ),
+  mapping = aes(x = first_ap_reltimes)
+) +
+  xlim(PSTH_range[1], PSTH_range[2]) +
+  geom_histogram(
+    # aes(fill = animal_id),
+    binwidth = 0.001
+  ) +
+  scale_fill_brewer(
+    palette = "Set3",
+    name = "Animal"
+    # guide = FALSE
+  ) +
+  facet_wrap(~animal_id, ncol = 3) +
+  geom_vline(xintercept = 0) +
+  xlab("Latency (s)") +
+  ylab("Count")
+
+
+
+### lines
+gp_hist18 <- gp_hist18 +
+  ### median
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = median,
+      xend = median,
+      y = y_max + 7,
+      yend = y_max + 18
+    ),
+    size = 1
+  ) +
+
+  ### data range
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(
+      x = quantile25 - 1.5 * IQR,
+      xend = quantile25,
+      y = y_max + 12.5,
+      yend = y_max + 12.5
+    )
+  ) +
+
+  geom_segment(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
+  ) +
+
+  ### IQR (box)
+  geom_rect(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
+    color = "red",
+    alpha = 0,
+    inherit.aes = F
+  ) +
+
+  ### mean
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = mean, y = y_max + 4), size = 2
+  ) +
+
+  ### peak
+  geom_point(
+    data = hist_stats %>%
+      dplyr::filter(
+        freq == freq_to_plot,
+        animal_id %!in% c("GV_40", "GV_42"),
+        animal_id == "GII_21"
+      ) %>%
+      dplyr::group_by(animal_id),
+    mapping = aes(x = peak, y = y_max + 4),
+    shape = 25,
+    size = 2,
+    fill = "red"
+  ) +
+
+  expand_limits(y = c(0, 75)) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+```{r}
+cowplot::plot_grid(gp_hist1, gp_hist8, gp_hist18, nrow = 1)
+```
+
+### Response probability and latency
+
+GV_40, GV_42 and GV_47 are electrical stimulations. Might need to be excluded from analysis as well as GII_20 (looks like an outlier).   \* Response probability was calculated two different ways: + as the number of APs in the boxplot range (25th percentile - 1.5\*IQR, 75th percentile + 1.5\*IQR) \* 100 (if the lower range was smaller than 0, values were cut at zero) + between 5-20 ms after the stimulus
+
+<br><br><br>
+
+$$\mathbf{Response\ probability} = \frac{Number\ of\ APs}{Number\ of\ stimuli} * 100$$
+
+<br><br><br>
+
+Response probability <br><br>
+
+```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
+ggplot(
+  data = RESP_PROB, # %>%
+  # dplyr::filter(animal_id %!in% c("GII_20", "GV_40","GV_42","GV_47")),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = resp_prob_range # resp_prob, resp_prob_range, resp_prob_5_20ms
+  )
+) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  geom_point(
+    aes(
+      fill = stim_type
+    ),
+    # fill = "gray",
+    color = "black",
+    size = 3,
+    shape = 21,
+    # position = position_jitter(0.1)
+  ) +
+  # geom_line(aes(group = animal_id)) +
+  xlab("Stimulus frequency") +
+  ylab("Response probability") +
+  geom_signif(
+    comparisons = list(c("1", "10")),
+    # map_signif_level = TRUE,
+    test = "mood.test",
+    color = "gray",
+    y_position = 115
+  ) +
+  geom_signif(
+    comparisons = list(c("10", "20")),
+    # map_signif_level = TRUE,
+    test = "mood.test",
+    # margin_top = .1,
+    y_position = 115,
+    color = "gray"
+  ) +
+  geom_text_repel(
+    aes(label = animal_id),
+    direction = "y",
+    hjust = -.5
+  ) +
+  expand_limits(y = c(35, 130)) +
+  # ylim(35, 110) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+### mean, median, sd
+# RESP_PROB %>%
+#   dplyr::group_by(stim_freq) %>%
+#   dplyr::summarise(
+#     mean(resp_prob_range),
+#     median(resp_prob_range),
+#     sd(resp_prob_range))
+```
+
+<br><br> Number of APs <br><br>
+
+```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
+APC %>%
+  dplyr::filter(
+    stim_freq_categ %in% c("1", "10", "20")
+  ) %>%
+  dplyr::group_by(animal_id, stim_freq_categ) %>%
+  summarise(No_APs = mean(No_APs)) %>%
+  ggplot(
+    aes(x = stim_freq_categ, y = No_APs)
+  ) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  geom_point(
+    aes(
+      # fill = animal_id
+    ),
+    fill = "gray",
+    color = "black",
+    size = 3,
+    shape = 21,
+    # position = position_jitter(0.1)
+  ) +
+  geom_text_repel(
+    aes(label = animal_id),
+    direction = "y",
+    hjust = -.5
+  )
+```
+
+<br><br> Latency <br><br>
+
+```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
+ggplot(
+  data = RESP_PROB, # %>%
+  # dplyr::filter(animal_id %!in% c("GII_20", "GV_40","GV_42","GV_47")),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = median_latency # resp_prob, resp_prob_range, resp_prob_5_20ms
+  )
+) +
+  geom_boxplot(alpha = 0, width = 0.2, lwd = 1, fatten = 1.2) +
+  geom_point(
+    aes(
+      fill = stim_type
+    ),
+    # fill = "gray",
+    color = "black",
+    size = 3,
+    shape = 21,
+    # position = position_jitter(0.1)
+  ) +
+  # geom_line(aes(group = animal_id)) +
+  xlab("Stimulus frequency") +
+  ylab("Medain latency") +
+  # ylim(0,0.025) +
+  geom_signif(
+    comparisons = list(c("1", "10")),
+    # map_signif_level = TRUE,
+    test = "mood.test",
+    color = "gray",
+    y_position = 0.025
+  ) +
+  geom_signif(
+    comparisons = list(c("10", "20")),
+    # map_signif_level = TRUE,
+    test = "mood.test",
+    # margin_top = .1,
+    color = "gray",
+    y_position = 0.025
+  ) +
+  geom_text_repel(
+    aes(label = animal_id),
+    direction = "y",
+    hjust = -.5
+  ) +
+  expand_limits(y = c(0, 0.03)) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+# RESP_PROB %>%
+#   dplyr::group_by(stim_freq) %>%
+#   dplyr::summarise(
+#     mean(median_latency),
+#     median(median_latency),
+#     sd(median_latency))
+
+```
+
+```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
+ggplot(
+  data = RESP_PROB %>%
+    gather(
+      key = "latency_type",
+      value = "latency_value",
+      peak_latency,
+      mean_latency
+    ) %>%
+    dplyr::filter(animal_id != "GII_20"),
+  mapping = aes(
+    x = as.factor(stim_freq),
+    y = latency_value * 1000
+  )
+) +
+  ### data visualization layers
+  geom_point(
+    aes(fill = latency_type),
+    position = position_dodge(0.4),
+    size = 3,
+    color = "black",
+    shape = 21
+  ) +
+  geom_boxplot(
+    aes(color = latency_type),
+    position = position_dodge(0.4),
+    width = 0.3,
+    alpha = 0,
+    lwd = 1,
+    fatten = 1.2
+  ) +
+  ylim(0, 25) +
+  xlab("Stimulus frequency") +
+  ylab("Peak latency") +
+  scale_color_discrete(
+    name = "Latency",
+    breaks = c("mean_latency", "peak_latency"),
+    labels = c("Mean", "Peak"),
+    guide = guide_legend(override.aes = list(color = c(rep(NA, 2))))
+  ) +
+  scale_fill_discrete(
+    name = "Latency",
+    breaks = c("mean_latency", "peak_latency"),
+    labels = c("Mean", "Peak")
+  ) +
+  theme(legend.position = "bottom")
+```
+
+<br><br><br>
+
+### Number of APs after each stimulus in stimulus trains (50 ms window). Normalized by the maximum number of AP followed by a stimulus in each animal.
+
+<br><br><br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.align='center'}
+# Normalized!!!! Check APC
+ggplot(
+  data = APC %>%
+    dplyr::filter(
+      stim_freq_categ %in% c("1", "10", "20"),
+      # !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+      stim_number < 11
+    ) %>%
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
+    ungroup() %>%
+    dplyr::group_by(animal_id) %>%
+    mutate(sumnorm_AP = sum_No_APs / max(sum_No_APs), maxAP = max(sum_No_APs)),
+  mapping = aes(
+    x = stim_number,
+    y = sumnorm_AP,
+    color = as.factor(animal_id),
+    linetype = as.factor(animal_id)
+  )
+) +
+  geom_point(size = 3) +
+  geom_line() +
+  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number == 10),
+    aes(label = animal_id),
+    direction = "y", nudge_x = 1,
+    hjust = 1,
+    # alpha = .7
+  ) +
+  expand_limits(x = 11) +
+  theme(
+    legend.position = "none",
+    # aspect.ratio = 2/7
+  ) +
+
+  # xlim(1,10) +
+  facet_wrap(~stim_freq_categ, ncol = 1) +
+  labs(linetype = "Animals", color = "Animals") +
+  xlab("No. stimulus in train") +
+  ylab("Number of APs")
+
+
+
+APC %>%
+  dplyr::filter(
+    stim_freq_categ %in% c("1", "10", "20"),
+    # !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+    stim_number < 11
+  ) %>%
+  dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+  ### +1 to avoid division by zero!!!
+  summarise(mAP = mean(No_APs) + 1) %>%
+  dplyr::mutate(APchange = mAP / mAP[1]) %>%
+  dplyr::mutate(
+    stim_type = ifelse(
+      test = animal_id %in% c("GV_40", "GV_42", "GV_47"), yes = "electrical", no = "optical"
+    )
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = stim_number,
+      y = APchange
+    )
+  ) +
+  geom_line(
+    aes(group = as.factor(animal_id), color = stim_type)
+  ) +
+  geom_point(
+    aes(group = as.factor(animal_id), color = stim_type),
+    size = 3
+  ) +
+  scale_x_discrete(limits = c(1:10), breaks = c(1:10)) +
+  # scale_y_discrete(limits = c(0:6), breaks = c(0:6)) +
+  facet_wrap(~stim_freq_categ, nrow = 3) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number == 10),
+    aes(
+      color = stim_type,
+      label = animal_id
+    ),
+    direction = "y", nudge_x = 1,
+    hjust = 1,
+    # alpha = .7
+  ) +
+  geom_segment(
+    aes(
+      x = min(stim_number),
+      y = 1,
+      xend = max(stim_number),
+      yend = 1
+    ),
+    size = 1,
+    color = "black",
+    lty = "dashed"
+  ) +
+  expand_limits(x = 11) +
+  theme(legend.position = "none") +
+  guides(color = "none") +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+```
+
+Range of the number of APs in the stimulus train
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+APC %>%
+  dplyr::filter(
+    stim_freq_categ %in% c("1", "10", "20"),
+    # !animal_id %in% c("GV_40", "GV_42", "GV_47"),
+    stim_number < 11
+  ) %>%
+  dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+  dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
+  ungroup() %>%
+  dplyr::group_by(animal_id) %>%
+  summarise(min_AP = min(sum_No_APs), max_AP = max(sum_No_APs))
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE, out.width='70%', fig.align='center'}
+ggplot(
+  data = APC %>%
+    dplyr::filter(stim_freq_categ %in% c("1", "10", "20"), stim_number < 11) %>%
+    dplyr::group_by(animal_id, stim_freq_categ, stim_number) %>%
+    dplyr::summarise(sum_No_APs = sum(No_APs)) %>%
+    ungroup() %>%
+    dplyr::group_by(animal_id) %>%
+    mutate(sumnorm_AP = sum_No_APs / max(sum_No_APs)) %>%
+    dplyr::group_by(stim_freq_categ, stim_number) %>%
+    dplyr::summarise(
+      No_AP_mean = mean(sumnorm_AP),
+      No_AP_sd = sd(sumnorm_AP),
+      SEM = sd(sumnorm_AP) / sqrt(length(sumnorm_AP))
+    ),
+  mapping = aes(
+    x = stim_number,
+    y = No_AP_mean,
+    colour = as.factor(stim_freq_categ),
+    group = as.factor(stim_freq_categ)
+  )
+) +
+  geom_point() +
+  geom_line() +
+  # geom_errorbar(aes(ymin = No_AP_mean - SEM, ymax = No_AP_mean + SEM)) +
+  xlab("No. stimulus in train") +
+  ylab("Mean no. APs accross animals") +
+  labs(color = "Frequency") +
+  ylim(0, 1) +
+  scale_x_discrete(limits = as.character(c(1:10))) +
+  theme(legend.position = "bottom")
+```
+
+<br><br><br><br><br><br>
+
+# Spontaneous desynchronization of the FC slow oscillation
+
+## Loading data
+
+Loading mat files to *file_list* object
+
+Example file: **08_right_PnO_t5_4083_baseline1_wake.mat"**
+
+```{r,  echo=FALSE,warning=FALSE,message=FALSE}
+file_list <- list.files(
+  path = "data",
+  pattern = "*.mat", full.names = F, recursive = F
+)
+```
+
+Content of mat files:
+
+-   AP channel
+    -   **title:** channel name
+    -   **comment:** notes about the channel
+    -   **resolution:** 2.5e-06
+    -   **interval:** time between two data points in sec (5e-05)
+    -   **scale:** scaling factor (y scale), real = (data \* scale) + offset
+    -   **offset:** scale offset
+    -   **units:** unit of the channel (volt)
+    -   **length:** number of APs
+    -   **items:** No. points easch AP is represented by
+    -   **trigger:**
+    -   **traces:**
+    -   **times:** times of the APs (first data point of the waveform)
+    -   **codes:** marker codes of the APs
+    -   **values:** matrix containing the waveforms of the APs (described by a given No. points)
+-   EEG channel
+    -   **title:** channel name
+    -   **comment:**
+    -   **interval:**
+    -   **scale:** scaling factor (y scale), real = (data \* scale) + offset
+    -   **offset:** scale offset
+    -   **units:**
+    -   **start:**
+    -   **length:**
+    -   **values:**
+
+```{r}
+file_to_load <- file_list[[2]]
+filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
+raw.rec <- readMat(file.path("data", file_to_load))
+
+### takes the first AP (first row) and tells the index of point with the max value
+points_to_peak <- which(raw.rec$ap[, , 1]$values[1, ] ==
+  max(raw.rec$ap[, , 1]$values[1, ])) %>%
+  as.numeric()
+
+### time of the peak of the APs after its first point
+raw.rec$ap[, , 1]$interval * points_to_peak
+
+ap <- raw.rec$ap[, , 1]$times %>% as.double()
+ap_peaks <- tibble(peak_times = (ap + c(raw.rec$ap[, , 1]$interval * points_to_peak)))
+```
+
+Loading all data calculated by **SyncDesyncAnalysis** function **SyncDesyncAnalysis** is a function that automatically loads the **.mat** files containing the raw recordings, filters and down samples LFP, finds the AP peak times, calculates ISI and saves everything in data frames. The dataframes are saved in the **sync_desync_tibbles.rds** file
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+all_eeg_df <- readRDS(file = file.path("data", "sync_desync", "sync_desync_tibbles.rds"))
+EEG_ds_df <- purrr::reduce(all_eeg_df, bind_rows)
+```
+
+## Plotting
+
+### ISI to determine clusters
+
+To find AP clusters ISI histograms were generated. The size of the ISI window was equal to one period of the oscillation. Since AP clusters are phase locked to the cortical slow oscillation their occurrence was expected during this period. The maximum value of the histogram was found in the first and second half of the ISI window (max1 and max2 respectively). The cluster threshold (magenta line) was determined as the minimal value between max1 and the value located half way between max1 and max2 (black line).
+
+```{r echo=FALSE, fig.width=10, fig.height= 10, message=FALSE, warning=FALSE}
+
+gg_isi_periods <- lapply(all_eeg_df, function(x) {
+  ### Creating data frame for labels. Otherwise geom_label is very slow
+  ### https://stackoverflow.com/questions/10952832/ggplot2-is-there-a-fix-for-jagged-poor-quality-text-produced-by-geom-text
+  ### https://github.com/tidyverse/ggplot2/issues/2266
+
+  labeles_sync <- x %>%
+    dplyr::filter(eeg_state == "sync") %>%
+    select(clustered) %>%
+    unique()
+  labeles_desync <- x %>%
+    dplyr::filter(eeg_state == "desync") %>%
+    select(clustered) %>%
+    unique()
+
+  ggplot(
+    data = x %>%
+      dplyr::filter(
+        AP == 1,
+        !is.na(eeg_state),
+        state_length >= 1 / first_peak,
+        isi > 0, isi < 1 / first_peak
+      ), ### NAs in eeg_state because moving_sd has NAs at the end
+    mapping = aes(x = isi)
+  ) +
+    geom_histogram(
+      aes(
+        fill = eeg_state,
+        color = eeg_state
+      ),
+      alpha = .3,
+      bins = x$nbins %>% unique()
+    ) +
+    geom_vline(
+      xintercept = x$burst_threshold_isi %>% unique()
+    ) +
+    geom_vline(
+      xintercept = x$burst_threshold_isi3 %>% unique(),
+      col = "magenta"
+    ) +
+    annotate(
+      geom = "text",
+      x = x$burst_threshold_isi %>% unique() - x$burst_threshold_isi %>% unique() / 7,
+      y = Inf,
+      label = paste0("Burst threshold = ", x$burst_threshold_isi %>% unique()),
+      angle = 90,
+      hjust = 1.2
+    ) +
+    geom_label(
+      data = labeles_sync,
+      label = paste0(
+        "Clust: ",
+        labeles_sync$clustered
+      ),
+      x = Inf,
+      y = Inf,
+      hjust = 1.2,
+      vjust = 1,
+      col = "blue"
+    ) +
+    geom_label(
+      data = labeles_desync,
+      label = paste0(
+        "Clust: ",
+        labeles_sync$clustered
+      ),
+      x = Inf,
+      y = Inf,
+      hjust = 1.2,
+      vjust = 2.2,
+      col = "red"
+    ) +
+    labs(caption = x$animal %>% unique())
+})
+
+
+### https://github.com/kassambara/ggpubr/issues/158
+### bug!!! had to open a NULL pdf device
+pdf(NULL)
+p_isi <- ggpubr::ggarrange(plotlist = gg_isi_periods, common.legend = TRUE, legend = "bottom")
+x <- dev.off()
+
+p_isi
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+wavelets <- lapply(all_eeg_df, function(x) {
+  time_window <- c(70, 110)
+  samp_rate_ds <- x$samp_rate_ds %>% unique()
+  first_peak <- x$first_peak %>% unique()
+
+
+  ### calculating wavelet
+  wave <- analyze.wavelet(
+    x %>%
+      dplyr::filter(times > time_window[1], times < time_window[2]),
+    "eeg_values",
+    loess.span = 0,
+    dt = 1 / samp_rate_ds, ### 1/sampling rate (number of intervals/time unit)
+    dj = 1 / samp_rate_ds / 2,
+    # lowerPeriod = ,
+    # upperPeriod = 2,
+    make.pval = T,
+    method = "ARIMA",
+    n.sim = 1
+  )
+
+  ### calculating frequency from period
+  # wave$Freq = c(seq(1,1, length.out = length(wave$Period)))/wave$Period
+
+  powers <- wave$Power
+  freqs <- (1 / wave$Period) # %>% round(2)
+  period <- (wave$Period) %>% round(2)
+
+
+  powers <- powers %>%
+    melt() %>%
+    group_by(Var2) %>%
+    dplyr::mutate(freqs = freqs) %>%
+    ungroup()
+
+  ### distance between freqs: logarithmic!!! in ggplot it only works if I set y scale to log10
+  ### y axis can be the index of each value (in that case I have to reverse y scale and add the freq values manually)
+  # powers$freqs %>%
+  #   unique() %>%
+  #   diff() %>%
+  #   plot()
+
+  ggplot() +
+    ### wavelet
+    geom_raster(
+      data = powers,
+      mapping = aes(
+        x = Var2 / samp_rate_ds + time_window[1],
+        y = freqs, ### Var1: index of values, normal y scale but reversed!!!
+        fill = scale(value)
+      )
+    ) +
+    ### theme and scale settings
+    theme_minimal() +
+    # theme(
+    #   panel.grid.major = element_blank(),
+    #   panel.grid.minor = element_blank(),
+    #   axis.text.y = element_text(margin = margin(t = 0, r = -30, b = 0, l = 20)),
+    #   axis.text.x = element_text(margin = margin(t = -20, r = 0, b = 20, l = 0)),
+    #   panel.background = element_blank(),
+    #   panel.border = element_blank(),
+    #   axis.ticks.length = unit(5, "mm")
+    # ) +
+    xlab("Time (s)") +
+    scale_y_log10() +
+    # scale_y_reverse(
+    #   name = "Frequency (Hz)",
+    #   breaks = c(1, 200, 400, 600),
+    #   labels = c(
+    #     freqs[1],
+    #     freqs[200],
+    #     freqs[400],
+    #     freqs[600]
+    #   )
+    # ) +
+    scale_fill_distiller(palette = "RdGy", name = "Power")
+})
+```
+
+### LFP and APs
+
+```{r echo=FALSE, fig.width=10, fig.height=20, message=FALSE, warning=FALSE}
+plotting_region <- c(70, 110)
+
+# plotting_region <- c(all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)] - 80, all_eeg_df[[4]]$times[length(all_eeg_df[[4]]$times)])
+
+gg_color_hue <- function(n) {
+  hues <- seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+
+### rect_index: to show areas excluded from analysis. Based on the length of a period during which clusters can be expected: (1/first_peak) * 2
+eeg_sum_plot <- lapply(all_eeg_df, function(x) {
+  rect_index <-
+    tibble(
+      state_start = dplyr::filter(
+        x,
+        times > plotting_region[1],
+        times < plotting_region[2],
+        state_length <= 1 / first_peak
+      ) %>%
+        dplyr::select(state_start, state_end) %>% pull(state_start) %>% unique(),
+      state_end = dplyr::filter(
+        x,
+        times > plotting_region[1],
+        times < plotting_region[2],
+        state_length <= 1 / first_peak
+      ) %>%
+        dplyr::select(state_start, state_end) %>% pull(state_end) %>% unique()
+    )
+
+
+
+  p <- ggplot(
+    data = dplyr::filter(
+      x,
+      times > plotting_region[1],
+      times < plotting_region[2],
+      # ID == str_detect(x$ID,pattern = "08")
+    ),
+    mapping = aes(x = times, y = eeg_values)
+  ) +
+    geom_line(aes(color = "gray")) +
+    geom_line(
+      mapping = aes(x = times, y = moving_sd, color = gg_color_hue(2)[1]), size = 1
+    ) +
+    geom_line(
+      mapping = aes(x = times, y = levels + 3, color = gg_color_hue(2)[2]), size = 1
+    ) +
+    geom_segment(
+      mapping = aes(color = "black"),
+      x = plotting_region[1] - 2, xend = plotting_region[2] + 2,
+      y = x$sd_threshold %>% unique(), yend = x$sd_threshold %>% unique(),
+      linetype = "dashed"
+    ) +
+    geom_point(
+      data = . %>% dplyr::filter(!is.na(ap_peak_times)),
+      mapping = aes(x = ap_peak_times, y = 5),
+      shape = "|",
+      size = 4,
+      color = "dark gray"
+    ) +
+    geom_point(
+      data = . %>% dplyr::filter(burst_isi == 1),
+      mapping = aes(x = times, y = burst_isi + 4),
+      color = "black",
+      shape = "|",
+      size = 5
+    ) +
+    ylab("EEG [au]") +
+    xlab("Time") +
+
+    ### creating legend
+    scale_color_identity(
+      name = "Lines",
+      guide = guide_legend(override.aes = list(shape = c(rep(NA, 4)))),
+      breaks = c("gray", gg_color_hue(2)[1], gg_color_hue(2)[2], "black"),
+      labels = c("EEG", "Moving SD", "Levels", "SD threshold")
+    ) +
+    theme_minimal() +
+    labs(caption = x$animal %>% unique())
+
+  if (rect_index %>% nrow() != 0) {
+    p + geom_rect(
+      data = dplyr::filter(rect_index, state_start > plotting_region[1], state_start < plotting_region[2]),
+      inherit.aes = F,
+      mapping = aes(xmin = state_start, xmax = state_end, ymin = -Inf, ymax = +Inf), fill = "pink", alpha = 0.5
+    )
+  } else {
+    p
+  }
+})
+
+pdf(NULL)
+p_eeg <- ggpubr::ggarrange(
+  plotlist = eeg_sum_plot,
+  common.legend = TRUE,
+  legend = "bottom", ncol = 1
+)
+x <- dev.off()
+
+p_eeg
+
+# eeg_sum_plot[[5]] # plots only one row
+```
+
+Calculating the number of sync and desync states per recording and across animals
+
+```{r}
+EEG_ds_df %>% 
+  dplyr::filter(
+    clustered == T,
+    !state_length <= 1 / first_peak
+    ) %>% 
+  ### sum per recording
+  dplyr::group_by(ID, eeg_state) %>% 
+  summarise(No_periods = length(state_number %>% unique())) %>% 
+  
+  ### sum across animals
+  dplyr::group_by(eeg_state) %>% 
+  summarise(No_periods_all = sum(No_periods))
+
+# EEG_ds_df %>%
+#   dplyr::filter(
+#     eeg_state == "desync",
+#     !state_length <= 1 / first_peak
+#     ) %>%
+#   dplyr::group_by(ID) %>%
+#   summarise(No_desync_periods = length(state_number %>% unique()))
+
+```
+
+### Wavelet
+
+```{r echo=FALSE, fig.width=15, fig.height=10, message=FALSE, warning=FALSE}
+cowplot::plot_grid(wavelets[[2]] + scale_y_log10(limits = c(0.7, 1e1)), eeg_sum_plot[[2]], nrow = 2, align = "v")
+```
+
+### Autocorrelogram
+
+```{r fig.height=25, fig.width=10, message=FALSE, warning=FALSE}
+### AUTOCORRELOGRAM ------------------------------------------------------------
+
+### rel_time matrix creator
+RTM_creator <- function(x) {
+  mat_spike <- matrix(x,
+    nrow = length(x),
+    ncol = length(x), byrow = T
+  )
+  mat_reltimes <- mat_spike - t(mat_spike)
+  # mat_reltimes <- data.frame(mat_reltimes)
+  mat_reltimes[mat_reltimes == 0] <- NA
+  return(mat_reltimes)
+}
+
+
+
+sync_reltimes <- lapply(all_eeg_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "sync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "sync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+})
+
+
+desync_reltimes <- lapply(all_eeg_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "desync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "desync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+})
+
+### y axis should be divided by the length of the sync/desync period
+bind_rows(sync_reltimes, desync_reltimes) %>%
+  dplyr::filter(time > -1, time < 1) %>%
+  ggplot(mapping = aes(x = time)) +
+  geom_histogram(bins = 200) +
+  facet_grid(animal ~ eeg_state, scales = "free_y") +
+  ggh4x::force_panelsizes(
+    cols = unit(c(4, 4), "inch"),
+    rows = unit(c(3, 3, 3, 3, 3, 3, 3), "inch"), TRUE
+  ) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+
+
+
+# all_eeg_df[[7]] %>%
+#   dplyr::filter(AP == 1, eeg_state == "sync") %>%
+#   pull(ap_peak_times) %>%
+#   RTM_creator() %>%
+#   reshape2::melt() %>%
+#   dplyr::mutate(eeg_state = "sync") %>%
+#   transmute(time = value, eeg_state = eeg_state) %>%
+#   dplyr::filter(time > -1, time < 1) %>%
+#   ggplot(mapping = aes(x=time)) +
+#   geom_histogram(bins = 150)
+```
+
+### Number of clusters in sync vs desync periods
+
+Short periods are removed from analysis: (1/first_peak) \* 2   **first_peak** is the dominant frequency on the power spectrum, **1/first_peak** is the length of one cycle. Clusters can only be found in the period of two cycles if we assume that the clusters are linked to the cortical oscillation
+
+```{r fig.width=15, fig.height=15}
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    state_length_unique = state_length %>% unique(),
+    ### it doesn't need to be summed, it's just a unique value (or the first one)
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)) %>% 
+  dplyr::group_by(animal, eeg_state) %>%
+  summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>% 
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
+    method = "wilcox.test", 
+    paired = T, 
+    method.args = list(alternative = "less"),
+    hide.ns = F
+    ) +
+  
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray", 
+    size = 3) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray", 
+    linetype = "dashed") +
+   geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV115|GII21", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_clust_rate_animal
+
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)
+  ) %>%
+  # dplyr::group_by(animal, eeg_state) %>%
+  # summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+  ggplot(aes(x = eeg_state, y = No_clusters / sum1)) + # state_length_sum)) +
+  geom_jitter(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3, width = 0.1
+  ) +
+  # geom_line(
+  #   data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+  #   aes(col = animal))+#, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / sum1), # state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = F, vjust = 1.2,
+    method.args = list(alternative = "less"),
+    hide.ns = F
+  ) +
+  # facet_wrap(~animal) +
+
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_clust_rate_state
+
+
+
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_clusters = sum(burst_isi, na.rm = T)
+  ) %>%
+  # dplyr::group_by(animal, eeg_state) %>%
+  # summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+  ggplot(aes(x = eeg_state, y = No_clusters / sum1)) + # state_length_sum)) +
+  geom_jitter(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal), size = 3, width = 0.1
+  ) +
+  # geom_line(
+  #   data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+  #   aes(col = animal))+#, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    aes(x = eeg_state, y = No_clusters / sum1), # state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = F, vjust = 1.2,
+    method.args = list(alternative = "less"),
+    hide.ns = F
+  ) +
+  facet_wrap(~animal) +
+
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
+    aes(col = animal, group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) -> plt_clust_rate_state_wrapped
+
+
+
+#   x = EEG_ds_df %>%
+#   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#   dplyr::group_by(ID, eeg_state, state_number) %>%
+#   dplyr::summarise(
+#     sum1 = sum(state_length %>% unique(), na.rm = T),
+#     No_clusters = sum(burst_isi, na.rm = T)) %>%
+#   dplyr::group_by(ID, eeg_state) %>%
+#   summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+#   dplyr::filter(eeg_state == "desync") %>%
+#   pull(No_clusters)
+#
+# y = EEG_ds_df %>%
+#   dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+#   dplyr::group_by(ID, eeg_state, state_number) %>%
+#   dplyr::summarise(
+#     sum1 = sum(state_length %>% unique(), na.rm = T),
+#     No_clusters = sum(burst_isi, na.rm = T)) %>%
+#   dplyr::group_by(ID, eeg_state) %>%
+#   summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+#   dplyr::filter(eeg_state == "sync") %>%
+#   pull(No_clusters)
+#
+# wilcox.test(x=x, y=y, alternative = "less", paired = T)
+
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    plt_clust_rate_animal, 
+    plt_clust_rate_state,
+    ncol = 2),
+  plt_clust_rate_state_wrapped,
+  nrow = 2,
+  rel_heights = c(1,2)
+  ) 
+
+
+# plt_clust_rate_state_wrapped$data %>% 
+#   dplyr::group_by(animal,eeg_state) %>% 
+#   dplyr::summarise(
+#     mean( No_clusters / sum1),
+#     sd( No_clusters / sum1),
+#     median( No_clusters / sum1)
+#   )
+
+```
+
+#### Statistical power
+
+```{r}
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::group_by(eeg_state) %>% 
+  dplyr::summarise(
+    mean(No_clusters / state_length_sum), 
+    sd(No_clusters / state_length_sum), 
+    median(No_clusters / state_length_sum))
+
+
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::filter(eeg_state == "desync") %>%
+  dplyr::mutate(rx = No_clusters / state_length_sum) %>%
+  pull(rx) %>% sd()
+  
+  
+plt_clust_rate_animal$data %>%
+  dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
+  dplyr::filter(eeg_state == "sync") %>%
+  dplyr::mutate(ry = No_clusters / state_length_sum) %>%
+  pull(ry) %>% sd()
+
+rx <- function(n) rnorm(n, mean = 0.6354203, sd = 0.439563) 
+ry <- function(n) rnorm(n, mean = 1.327837, sd = 0.574624) 
+
+MKpower::sim.power.wilcox.test(nx = 5, rx = rx, ny = 5, ry = ry, alternative = "less")
+MKpower::sim.ssize.wilcox.test(rx = rx, ry = ry, n.min = 5, iter = 1000,  alternative = "less")
+
+
+```
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  # dplyr::mutate(
+  #   No_AP = sum(AP, na.rm = T)) %>%
+  ### !!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+  ### !!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+  ### !!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+  ### !!!!!!!!!! similar state lengths!!!!!!!!!!!!!!!!!!! with unique() not all will be summed
+
+  # EEG_ds_df %>% dplyr::filter(animal == "GII21") %>% group_by(eeg_state, state_number) %>% select(state_length) %>% unique() %>% summarise(sum1=sum(state_length)) %>% group_by(eeg_state) %>% mutate(sum2 = sum(sum1)) %>% View()
+
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_AP = sum(AP, na.rm = T)
+  ) %>%
+  dplyr::group_by(animal, eeg_state) %>%
+  summarise(state_length_sum = sum(sum1), No_AP = sum(No_AP)) %>%
+  ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
+  geom_point(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(col = animal), size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(col = animal, group = animal)
+  ) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(x = eeg_state, y = No_AP / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    comparisons = list(c("desync", "sync")), # , c("sync", "desync")),
+    method = "wilcox.test", paired = T,
+    method.args = list(alternative = "greater")
+  ) +
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV120", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  ) -> plt_sync_desync_MFR
+
+plt_sync_desync_MFR
+
+
+plt_sync_desync_MFR$data %>% 
+  dplyr::group_by(eeg_state) %>% 
+  summarise(
+    mean(No_AP / state_length_sum),
+    sd(No_AP / state_length_sum),
+    median(No_AP / state_length_sum)
+  )
+
+```
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+EEG_ds_df %>%
+  dplyr::filter(!is.na(eeg_state), state_length >= 1 / first_peak) %>%
+  dplyr::group_by(animal, eeg_state, state_number) %>%
+  dplyr::summarise(
+    sum1 = sum(state_length %>% unique(), na.rm = T),
+    No_AP = sum(AP, na.rm = T)
+  ) %>%
+  # dplyr::group_by(animal, eeg_state) %>%
+  # summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
+  ggplot(aes(x = eeg_state, y = No_AP / sum1)) + # state_length_sum)) +
+  geom_jitter(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(col = animal), size = 3, width = 0.1
+  ) +
+  # geom_line(
+  #   data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
+  #   aes(col = animal))+#, group = animal)) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    aes(x = eeg_state, y = No_AP / sum1), # state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(!grepl(pattern = "GV120", animal)),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = F, vjust = 1.2,
+    method.args = list(alternative = "two.sided"),
+    hide.ns = F
+  ) +
+  facet_wrap(~animal) +
+
+  ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
+  geom_point(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(grepl(pattern = "GV120", animal)),
+    aes(col = animal, group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(grepl(pattern = "GV120", animal), eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+
+
+```
+
+<br><br><br><br><br><br>
+
+# Cortical inactivation
+
+insert code here!!! use the **SyncDesyncAnalysis** function. It was written to analyse the spontaneous desynchronization files but it will work on the incativation (cortical spreading depression - CSD) files as well.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+csd_df <- readRDS(file = file.path("data", "sync_desync", "csd_df.rds")) %>%
+  lapply(function(x) {
+    x %>% mutate(levels = 0, eeg_state = "desync")
+  })
+
+
+baseline_df <- readRDS(file = file.path("data", "sync_desync", "baseline_df.rds")) %>%
+  lapply(function(x) {
+    x %>% mutate(levels = 1, eeg_state = "sync")
+  })
+
+tmp_list <- append(csd_df, baseline_df)
+
+CSD_ds_all <- purrr::reduce(tmp_list, bind_rows)
+```
+
+##Plotting
+
+### Number of clusters before and during cortical inactivation
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+left_join(
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(No_clusters = sum(burst_isi, na.rm = T)),
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>%
+  ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
+  geom_point(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    aes(col = animal),
+    size = 3
+  ) +
+  geom_line(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    aes(col = animal, group = animal)
+  ) +
+  geom_boxplot(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    aes(x = eeg_state, y = No_clusters / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>%
+      dplyr::filter(animal != "GV40"),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less")
+  ) +
+  ### adding GV40 as a separate layer (excluded from statistics)
+  geom_point(
+    data = . %>%
+      dplyr::filter(animal == "GV40"),
+    col = "gray",
+    size = 3,
+    alpha = 0.5
+  ) +
+  geom_line(
+    data = . %>%
+      dplyr::filter(animal == "GV40"),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(animal == "GV40", eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+```
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+left_join(
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(No_AP = sum(AP, na.rm = T)),
+  CSD_ds_all %>%
+    dplyr::group_by(animal, eeg_state) %>%
+    dplyr::summarise(state_length_sum = sum(state_length %>% unique(), na.rm = T))
+) %>%
+  ggplot(aes(x = eeg_state, y = No_AP / state_length_sum)) +
+  geom_point(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    aes(col = animal), size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    aes(col = animal, group = animal)
+  ) +
+  geom_boxplot(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    aes(x = eeg_state, y = No_AP / state_length_sum),
+    inherit.aes = F,
+    alpha = 0, width = 0.2, lwd = 1, fatten = 1.2
+  ) +
+  ggpubr::stat_compare_means(
+    data = . %>% dplyr::filter(animal != "GV31"),
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = T,
+    method.args = list(alternative = "less")
+  ) +
+  ### adding GV31 as a separate layer (excluded from statistics)
+  geom_point(
+    data = . %>% dplyr::filter(animal == "GV31"),
+    col = "gray",
+    size = 3
+  ) +
+  geom_line(
+    data = . %>% dplyr::filter(animal == "GV31"),
+    aes(group = animal),
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(animal == "GV31", eeg_state == "sync"),
+    mapping = aes(label = animal),
+    nudge_x = 0.2,
+    direction = "y",
+    # hjust = 2,
+    segment.size = .2
+  )
+```
+
+### Autocorrelogram
+
+```{r fig.height=25, fig.width=10, message=FALSE, warning=FALSE}
+### AUTOCORRELOGRAM ------------------------------------------------------------
+
+baseline_reltimes <- lapply(baseline_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "sync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "sync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+})
+
+
+csd_reltimes <- lapply(csd_df, function(x) {
+  x %>%
+    dplyr::filter(AP == 1, eeg_state == "desync") %>%
+    pull(ap_peak_times) %>%
+    RTM_creator() %>%
+    reshape2::melt() %>%
+    dplyr::mutate(eeg_state = "desync", animal = x$animal %>% unique()) %>%
+    transmute(animal = animal, time = value, eeg_state = eeg_state)
+})
+
+### y axis should be divided by the length of the sync/desync period
+bind_rows(baseline_reltimes, csd_reltimes) %>%
+  dplyr::filter(time > -1, time < 1) %>%
+  ggplot(mapping = aes(x = time)) +
+  geom_histogram(bins = 200) +
+  facet_grid(animal ~ eeg_state, scales = "free_y", labeller = labeller(
+    eeg_state =
+      c(
+        "desync" = "CSD",
+        "sync" = "baseline"
+      )
+  )) +
+  ggh4x::force_panelsizes(
+    cols = unit(c(4, 4), "inch"),
+    rows = unit(c(3, 3, 3, 3, 3), "inch"), TRUE
+  ) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.text.y = element_text(angle = 90),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+
+
+
+
+# all_eeg_df[[7]] %>%
+#   dplyr::filter(AP == 1, eeg_state == "sync") %>%
+#   pull(ap_peak_times) %>%
+#   RTM_creator() %>%
+#   reshape2::melt() %>%
+#   dplyr::mutate(eeg_state = "sync") %>%
+#   transmute(time = value, eeg_state = eeg_state) %>%
+#   dplyr::filter(time > -1, time < 1) %>%
+#   ggplot(mapping = aes(x=time)) +
+#   geom_histogram(bins = 150)
+```
+
+<br><br><br><br><br><br>
+
+# Terminals
+
+## Loading data
+
+```{r message=FALSE, warning=FALSE, tidy=TRUE}
+file_path <- file.path(
+  "data",
+  "Emi_terminals",
+  "terminal_measures.csv"
+)
+TERMINALS <- read.table(file = file_path, sep = ";", header = T, na.string = "na")
+head(TERMINALS)
+```
+
+## Bouton area on different dendritic domains
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(data = TERMINALS, mapping = aes(x = postion, y = b_area)) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "area",
+    draw_quantiles = c(0.5),
+    aes(fill = postion)
+  ) +
+  geom_jitter(position = position_jitter(0.1))
+```
+
+## Area of boutons with *m2* and *unknown* origin
+
+```{r fig.width=10, echo=FALSE, warning=FALSE, message=FALSE}
+TERMINALS %>%
+  dplyr::filter(postion != "non_labeled") %>%
+  ggplot(
+    mapping = aes(x = origin, y = b_area)
+  ) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "count",
+    draw_quantiles = c(0.5)
+    # fill = alpha(0.1),
+    # aes(col = postion)
+  ) +
+  geom_jitter(
+    position = position_jitter(0.1),
+    aes(col = postion)
+  ) +
+  annotate("text",
+    x = 0.7,
+    y = 1,
+    label = paste(
+      "n = ",
+      TERMINALS %>%
+        dplyr::filter(postion != "non_labeled") %>%
+        dplyr::group_by(origin) %>%
+        dplyr::summarise(n = length(b_area)) %>%
+        dplyr::filter(origin == "m2") %>%
+        select(n) %>%
+        as.character()
+    )
+  ) +
+  annotate("text",
+    x = 1.6,
+    y = 1,
+    label = paste(
+      "n = ",
+      TERMINALS %>%
+        dplyr::group_by(origin) %>%
+        dplyr::summarise(n = length(b_area)) %>%
+        dplyr::filter(origin == "unknown") %>%
+        select(n) %>%
+        as.character()
+    )
+  ) +
+  geom_signif(
+    comparisons = list(c("m2", "unknown")),
+    map_signif_level = TRUE,
+    test = "mood.test",
+    margin_top = .1,
+    color = "gray"
+  )
+```
+
+```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
+TERMINALS %>%
+  ggplot(mapping = aes(x = postion, y = d_dendrite)) +
+  geom_half_violin(
+    position = position_nudge(x = -.15),
+    trim = F,
+    side = "l",
+    scale = "area",
+    draw_quantiles = c(0.5),
+    aes(fill = postion)
+  ) +
+  geom_jitter(position = position_jitter(0.1)) +
+  geom_signif(
+    comparisons = list(c("glyt2", "non_labeled")),
+    map_signif_level = TRUE,
+    test = "mood.test",
+    margin_top = .1,
+    color = "gray"
+  )
+```
+
+<br><br><br><br><br><br>
+
+# Methods
+
+## Surgery
+
+Altogether ??? adult male C57Bl/6J BAC GlyT2::eGFP and GlyT2::cre mice (20-30g) were used for the experiments. Surgery, acute recording experiments and implantations were done under ketamine/xylazine anaesthesia. The head of the animal was fixed in a stereotaxic apparatus (David Kopf Instruments, Tujunga, California 91042, Model 900 Small Animal Stereotaxic Instrument). Initially, mice received an intraperitoneal injection of ketamine (111 mg/kg) and xylazine (4.3 mg/kg). For the maintenance of the anaesthesia, intramuscular injection of ketamine/xylazine was given every 30-50 min during the experiments.
+
+## In vivo juxtacellular recording and labeling, local field potential (LFP) recording
+
+Bipolar LFP electrodes (FHC, resistance \~1 MΩ) were placed into the frontal cortex of anaesthetised mice (Bregma 1.7 mm; lateral -0.8 mm). Before recording the signal was fed through a signal pre-processing pipeline: amplification and band-pass filtering from 0.16 Hz to 5 kHz and from 100 Hz to 5 kHz to record the fast multiunit activity (Supertech BioAmp, Supertech, Pécs, Hungary). The signal was digitized at 20 kHz (micro 1401 mkii, CED, Cambridge, UK).
+
+To test the direct monosynaptic connection between the IL and the recorded PRF neurons concentric bipolar stimulating electrodes were inserted into the IL (Bregma -1.5 mm; lateral 2 mm; ventral from cortical surface -3.2 mm, at 20 degrees, electrode separation 0.8mm). PRF single unit activity was recorded by glass microelectrodes (in vivo impedance of 20-40 MΩ) made from borosilicate glass capillaries (1.5 mm outer diameter, 0.75 or 0.86 inner diameter, Sutter Instrument Co., Novato, CA, USA or WPI Inc. Sarasota, Fl, USA) and filled with 0.5 M K+- acetate and 2% neurobiotin (Vector Laboratories, Burlingame, CA, USA). Electrodes were positioned into the PRF (Bregma -4.4 mm; lateral -0.8 to -1 mm; ventral from cortical surface -3.8 to -4.8 mm) using a piezoelectric microdrive (Burleigh 6000 ULN or ISS 8200, EXFO, Quebec City, Quebec, Canada). Neuronal signals were amplified by a DC amplifier (Axoclamp 2B, Axon Instruments/Molecular Devices, Sunnyvale, CA, USA), further amplified and filtered between 0.16 Hz and 5 kHz by a signal conditioner (LinearAmp, Supertech) and recorded by Spike2 5.0 (CED). Juxtacellular labeling of the recorded neurons was done as described previously (Pinault, 1996). Briefly, after recording the activity of the neuron positive current steps (0.5-8 nA) were applied at 2 Hz via the neurobiotin filled recording pipette to induce firing. The neuron was active only during these current steps and took up neurobiotin, which filled the soma and proximal dendrites. In some cases, distal dendritic regions and axons were also labeled.
+
+After the the experiment the animal was perfused and coronal sections (50 μm) were cut from the PRF. The neurons were visualized using Cy3 conjugated streptavidin (1:2,000, Jackson) and GlyT2::eGFP positivity was determined by confocal microscopy. The neurons were then developed using ABC and DAB-Ni, and the sections containing the labeled neurons were dehydrated and embedded in Durcupan. The dendritic trees of the labeled neurons were reconstructed using Neurolucida 5.2 software (MBF Bioscience, Magdeburg, Germany).
+
+## Analysis
+
+All analysis was done in R Statistical Computing Software (R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL <https://www.R-project.org/>). For the use packages see the "Used packeges" section.
+
+### Activity of PRF neurons during PFC photoactivation
+
+### Determining synchronous and desynchronous periods
+
+n=7 recordings from n=? animals\
+Raw LFP signal was filtered, down-sampled and standardized. The power spectral density of each LFP signal was calculated and the dominant frequency was determined. To find the synchronous and desynchronous periods of the cortical LFP signal the standard deviation of the signal amplitude was calculated in overlapping sliding windows. The size of the sliding window was equal to the length of one cycle the overlap was half a cycle. The threshold for synchronous and desynchronous periods was placed half way between the median and the 25th percentile. The number of clusters was calculated in the synchronous and desynchronous periods and was statistically compared using Wilcoxon test.
+
+### Finding AP clusters
+
+To find AP clusters ISI histograms were generated. Number of bins was determined by the Freedman-Diaconis rule for optimal bin-width and the size of the ISI window was equal to one period of the cortical slow oscillation. Since AP clusters are phase locked to the cortical slow oscillation their occurrence was expected during this period. The maximum value of the histogram was found in the first and second half of the ISI window (max1 and max2 respectively). The cluster threshold was determined as the minimal value between max1 and the value located half way between max1 and max2.
+
+Determine if a cell fires in clusters or not:
+
+BurstThresholdDetect function, ISI: size of the ISI window was determined by the LFP oscillation period (clusters are expected during one full cycle). Finding the peaks in the first half and in the second half of the window (max1 and max2 respectively), taking equal distance from both peaks (threshold1). Finding the minimal value between max1 and threshold1. If that value is smaller than max2 the firing pattern was considered clustered.
+
+### Used R packeges:
+
+**tidyverse** "Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, <https://doi.org/10.21105/joss.01686>"
+
+**R.matlab** "Henrik Bengtsson (2018). R.matlab: Read and Write MAT Files and Call MATLAB from Within R. R package version 3.6.2. <https://CRAN.R-project.org/package=R.matlab>"
+
+**reshape** "Hadley Wickham (2007). Reshaping Data with the reshape Package. Journal of Statistical Software, 21(12), 1-20. URL <http://www.jstatsoft.org/v21/i12/>."
+
+**bspec** "Christian Roever (2015). bspec: Bayesian spectral inference. R package version 1.5."
+
+"Roever, C., Meyer, R. and Christensen, N. (2010). Modelling coloured residual noise in gravitational-wave signal processing. Classical and Quantum Gravity, 28(1):015010. See also Arxiv preprint 0804.3853, URL <http://arxiv.org/abs/0804.3853>."
+
+**WaveletComp** "Angi Roesch and Harald Schmidbauer (2018). WaveletComp: Computational Wavelet Analysis. R package version 1.1. <https://CRAN.R-project.org/package=WaveletComp>"
+
+**diptest** "Martin Maechler (2021). diptest: Hartigan's Dip Test Statistic for Unimodality - Corrected. R package version 0.76-0. <https://CRAN.R-project.org/package=diptest>"
+
+**ggsignif** "Ahlmann-Eltze, C., & Patil, I. (2021). ggsignif: R Package for Displaying Significance Brackets for 'ggplot2'. PsyArxiv. <doi:10.31234/osf.io/7awm6>"
+
+**ggrepel** "Kamil Slowikowski (2021). ggrepel: Automatically Position Non-Overlapping Text Labels with 'ggplot2'. R package version 0.9.1. <https://CRAN.R-project.org/package=ggrepel>"
+
+**gghalves** "Frederik Tiedemann (2020). gghalves: Compose Half-Half Plots Using Your Favourite Geoms. R package version 0.1.1. <https://CRAN.R-project.org/package=gghalves>"
+
+"Lüdecke, Patil, Ben-Shachar, Wiernik, Waggoner & Makowski (2020). Visualisation Toolbox for 'easystats' and Extra Geoms, Themes and Color Palettes for 'ggplot2'. CRAN. Available from <https://easystats.github.io/see/>"
+
+**DT** "Yihui Xie, Joe Cheng and Xianying Tan (2021). DT: A Wrapper of the JavaScript Library 'DataTables'. R package version 0.18. <https://CRAN.R-project.org/package=DT>"
+
+**ggpubr** "Alboukadel Kassambara (2020). ggpubr: 'ggplot2' Based Publication Ready Plots. R package version 0.4.0. <https://CRAN.R-project.org/package=ggpubr>"
+
+**styler** "Kirill Müller and Lorenz Walthert (2021). styler: Non-Invasive Pretty Printing of R Code. R package version 1.5.1. <https://CRAN.R-project.org/package=styler>"
+
+**formatR** "Yihui Xie (2021). formatR: Format R Code Automatically. R package version 1.11. <https://CRAN.R-project.org/package=formatR>"
+
+**exactRankTests** "Torsten Hothorn and Kurt Hornik (2021). exactRankTests: Exact Distributions for Rank and Permutation Tests. R package version 0.8-32. <https://CRAN.R-project.org/package=exactRankTests>"
+
+**signal** "signal developers (2013). signal: Signal processing. URL: <http://r-forge.r-project.org/projects/signal/>."
+
+**STAR** "Christophe Pouzat (2012). STAR: Spike Train Analysis with R. R package version 0.3-7. <https://CRAN.R-project.org/package=STAR>"
+
+**seewave** "Sueur J, Aubin T, Simonis C (2008). seewave: a free modular tool for sound analysis and synthesis. Bioacoustics, 18: 213-226"
+
+**mixtools** "Tatiana Benaglia, Didier Chauveau, David R. Hunter, Derek Young (2009). mixtools: An R Package for Analyzing Finite Mixture Models. Journal of Statistical Software, 32(6), 1-29. URL <http://www.jstatsoft.org/v32/i06/>."
+
+**RcppRoll** "Kevin Ushey (2018). RcppRoll: Efficient Rolling / Windowed Operations. R package version 0.3.0. <https://CRAN.R-project.org/package=RcppRoll>"
+
+**gganimate** "Thomas Lin Pedersen and David Robinson (2020). gganimate: A Grammar of Animated Graphics. R package version 1.0.7. <https://CRAN.R-project.org/package=gganimate>"
+
+**transformr** "Thomas Lin Pedersen (2020). transformr: Polygon and Path Transformations. R package version 0.1.3. <https://CRAN.R-project.org/package=transformr>"
+
+**gifski** "Jeroen Ooms (2021). gifski: Highest Quality GIF Encoder. R package version 1.4.3-1. <https://CRAN.R-project.org/package=gifski>"
+
+**matlib** "Michael Friendly, John Fox and Phil Chalmers (2020). matlib: Matrix Functions for Teaching and Learning Linear Algebra and nMultivariate Statistics. R package version 0.9.4. <https://CRAN.R-project.org/package=matlib>"
