@@ -58,7 +58,7 @@ pre { /* Code block - determines code spacing between lines */
 }
 </style>
 ```
-```{r setup, include=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=50)}
+```{r setup, include=FALSE}
 library(R.matlab)
 library(tidyverse)
 library(reshape2)
@@ -76,12 +76,12 @@ library(WaveletComp) ### wavelet
 library(signal)
 library(purrrlyr)
 
-#library(STAR)
+#library(STARS)
 library(see) # for half violinplot
 library(gghalves) # for half violinplot
 library(ggh4x) # control panel sizes in facet_grid
 
-source(file.path("supplementary_functions", "CreateRecTibble.R"))
+source(file.path("..", "supplementary_functions", "CreateRecTibble.R"))
 
 ### global chunk option, throws error in line 461 (no chunk options??)
 # knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 30))
@@ -3726,6 +3726,7 @@ TERMINALS %>%
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 TERMINALS %>%
+  dplyr::filter(postion %!in% c("glyt2_cell", "glyt2_prox")) %>% 
   ggplot(mapping = aes(x = postion, y = d_dendrite)) +
   geom_half_violin(
     position = position_nudge(x = -.15),
