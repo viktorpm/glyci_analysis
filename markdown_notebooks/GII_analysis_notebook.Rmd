@@ -1427,7 +1427,7 @@ In these experiments we tested the effect of cortical photo-activation on the fi
 
 ## Loading and transforming (hidden code) data
 
-*"cortical_stim_analysis.csv" is loaded in "STIM_RSULTS" object. "cortical_stim_analysis.csv" is created by the "CreatePSTHTibble" function. It's defined in the "cortical_stim_analysis.R" file. Frequencies have to be changed manually and running it multiple times creates duplicates in the csv! In this notebook the cortical_stim_analysis.csv is only loaded not created.*
+*"cortical_stim_analysis.csv" is loaded in "STIM_RESULTS" object. "cortical_stim_analysis.csv" is created by the "CreatePSTHTibble" function. It's defined in the "cortical_stim_analysis.R" file. Frequencies have to be changed manually and running it multiple times creates duplicates in the csv! In this notebook the cortical_stim_analysis.csv is only loaded not created.*
 
 ```{r, message=FALSE, warning=FALSE}
 source(file.path("supplementary_functions", "CreateRecTibble.R"))
