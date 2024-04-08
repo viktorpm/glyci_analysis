@@ -3,10 +3,7 @@
 .RData
 .RData*
 .Ruserdata
-data/*
-!data/turning
-!data/cortical_stim
-!data/sync_desync
+data/raw_data
 output_data/
 *.html
 GII_analysis_notebook.nb.html

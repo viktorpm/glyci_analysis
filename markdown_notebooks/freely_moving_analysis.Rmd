@@ -171,6 +171,29 @@ RawDataFilter <- function(df) {
 }
 ```
 
+
+Run this only once to load raw data, clean it from junk and save it again to reduce file size for GitHub. Original raw data is not version controlled. Cleaned data is loaded for further analysis
+
+```{r}
+stims_tmp <- read.csv(file.path("data", "raw_data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
+  as_tibble() %>%
+  ### filter junk data
+  dplyr::filter(
+    stringr::str_detect(animal, pattern = "b")
+  ) %>%
+  write.csv(file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv"), row.names = F)
+  
+  
+coords_raw_tmp <- read.csv(file.path("data", "raw_data", "PnO_stim_rotation", "rotation_all.csv")) %>%
+  as_tibble() %>%
+  ### filter junk data
+  dplyr::filter(
+    stringr::str_detect(animal, pattern = "b")
+  ) %>%
+  write.csv(file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv"), row.names = F)
+```
+
+
 # Loading and orginising data
 
 ## Global constants and scales
@@ -198,15 +221,11 @@ RawDataFilter <- function(df) {
 
 <br>
 
-This sections loads the stimulus times from a csv file
+This sections loads the stimulus times from a csv file. 
 
 ```{r warning=F, message=F, echo=FALSE}
-stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
+stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv")) %>%
   as_tibble() %>%
-  ### filter junk data
-  dplyr::filter(
-    stringr::str_detect(animal, pattern = "b")
-  ) %>%
   mutate(
     intensity = paste0(intensity, " mW"),
     stim_length = end - start
@@ -231,12 +250,8 @@ stims %>%
 This sections loads the stimulus times from a csv file
 
 ```{r message=F, echo = FALSE, warning = FALSE}
-coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all.csv")) %>%
+coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv")) %>%
   as_tibble() %>%
-  ### filter junk data
-  dplyr::filter(
-    stringr::str_detect(animal, pattern = "b")
-  ) %>%
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
       str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control")
