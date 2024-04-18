@@ -172,27 +172,6 @@ RawDataFilter <- function(df) {
 ```
 
 
-Run this only once to load raw data, clean it from junk and save it again to reduce file size for GitHub. Original raw data is not version controlled. Cleaned data is loaded for further analysis
-
-```{r}
-stims_tmp <- read.csv(file.path("data", "raw_data", "PnO_stim_rotation", "rotation_stims.csv")) %>%
-  as_tibble() %>%
-  ### filter junk data
-  dplyr::filter(
-    stringr::str_detect(animal, pattern = "b")
-  ) %>%
-  write.csv(file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv"), row.names = F)
-  
-  
-coords_raw_tmp <- read.csv(file.path("data", "raw_data", "PnO_stim_rotation", "rotation_all.csv")) %>%
-  as_tibble() %>%
-  ### filter junk data
-  dplyr::filter(
-    stringr::str_detect(animal, pattern = "b")
-  ) %>%
-  write.csv(file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv"), row.names = F)
-```
-
 
 # Loading and orginising data
 
@@ -221,7 +200,7 @@ coords_raw_tmp <- read.csv(file.path("data", "raw_data", "PnO_stim_rotation", "r
 
 <br>
 
-This sections loads the stimulus times from a csv file. 
+This sections loads the stimulus times from a csv file. Data was cleaned using the **CleaningData.R** script
 
 ```{r warning=F, message=F, echo=FALSE}
 stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv")) %>%
@@ -2809,7 +2788,7 @@ corrected_angles_population %>%
 ```{r fig.width=15}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% control_animals,
+    animal %in% control_animals,
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2858,7 +2837,7 @@ corrected_angles_population %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_ang_dose_stim
+  ) -> plt_ang_dose_ctrl
 
 
 cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
