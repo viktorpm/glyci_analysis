@@ -76,7 +76,7 @@ library(WaveletComp) ### wavelet
 library(signal)
 library(purrrlyr)
 
-#library(STARS)
+# library(STARS)
 library(see) # for half violinplot
 library(gghalves) # for half violinplot
 library(ggh4x) # control panel sizes in facet_grid
@@ -146,7 +146,6 @@ Summary information of the *stimulus* and *baseline* recording files:
     -   ending time of the stimulus trains (*train_end*)
 
 ```{r, message=FALSE,echo=FALSE , tidy=TRUE, tidy.opts=list(width.cutoff=50)}
-
 info_stim <- read_csv(file.path("data", "IL_MFR", "stimulus", "file_info.csv"))
 datatable(info_stim,
   caption = "Summary table of the stimulus recording files (info_stim)",
@@ -508,9 +507,9 @@ b_d_a_MFR <- lapply(CELL_INFO$cell_id, BDACalculator, data = IL_stim_firing) %>%
     sumAPinTrains = sum(No_AP),
     sumTrainLengths = sum(train_length),
     MFR = mean(FR),
-    MFR2 = sumAPinTrains/sumTrainLengths
-    )  
-  # dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
+    MFR2 = sumAPinTrains / sumTrainLengths
+  )
+# dplyr::summarise(MFR = mean(FR), MFR2 = sumAPinTrains/sumTrainLengths)
 b_d_a_MFR
 ```
 
@@ -594,7 +593,7 @@ $$\mathbf{activity\_change} = \frac{during\_MFR - base\_MFR}{base\_MFR} * 100$$ 
 
 ```{r}
 cellranks <- b_d_a_MFR %>%
-  dplyr::group_by(stim_cond) %>% 
+  dplyr::group_by(stim_cond) %>%
   dplyr::mutate(base_MFR = sd_mean_isi$MFR) %>%
   dplyr::mutate(activity_change = ((MFR - base_MFR) / base_MFR * 100) %>% round(2)) %>%
   dplyr::filter(stim_cond == "d") %>%
@@ -678,7 +677,6 @@ Comparison of baseline and "before" stimulus firing rates in the case of spontan
 Categorizing cells into week and strong based on the dynamics of inhibition
 
 ```{r fig.width=15}
-
 filelist <- info_stim$file_name
 trainlength <- info_stim$train_length
 
@@ -825,8 +823,6 @@ psth_tibble %>%
 ```
 
 ```{r}
-
-
 filelist <- info_stim$file_name
 trainlength <- info_stim$train_length
 
@@ -986,14 +982,13 @@ ggplot(
 plt_pinch_nopinch_to_baseline
 
 
-# plt_pinch_nopinch_to_baseline$data %>% 
-#   dplyr::group_by(pinch, stim_cond) %>% 
+# plt_pinch_nopinch_to_baseline$data %>%
+#   dplyr::group_by(pinch, stim_cond) %>%
 #   dplyr::summarise(
 #     mean(MFR),
 #     sd(MFR),
 #     median(MFR)
 #   )
-
 ```
 
 <br><br>
@@ -1088,23 +1083,20 @@ ggplot(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> MFR_plot 
+  ) -> MFR_plot
 
 MFR_plot
 
 
-# MFR_plot$data %>% 
-#   dplyr::filter(pinch == T) %>% 
-#   dplyr::group_by(stim_cond) %>% 
+# MFR_plot$data %>%
+#   dplyr::filter(pinch == T) %>%
+#   dplyr::group_by(stim_cond) %>%
 #   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
-# 
-# MFR_plot$data %>% 
-#   dplyr::filter(pinch == F) %>% 
-#   dplyr::group_by(stim_cond) %>% 
+#
+# MFR_plot$data %>%
+#   dplyr::filter(pinch == F) %>%
+#   dplyr::group_by(stim_cond) %>%
 #   dplyr::summarise(mean(MFR), sd(MFR), median(MFR))
-
-
-
 ```
 
 <br><br> Normalized to "before" value <br><br>
@@ -1317,7 +1309,6 @@ ggplot(
 Firing rate change **during** stimulus (photoactivation of the glycinergic fibers) compared to **before** stimulus:
 
 ```{r, fig.width=10, echo=FALSE,warning=FALSE}
-
 ggplot(
   data = cellranks_before_stim,
   mapping = aes(x = change_rank, y = activity_change)
@@ -1443,7 +1434,6 @@ STIM_RESULTS <- read_csv(file.path("output_data", "cortical_stim_analysis.csv"))
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-
 RECORDINGS <- RECORDINGS %>%
   dplyr::mutate(
     stim_number = 0,
@@ -1688,7 +1678,6 @@ datatable(APC,
 Stimuli at 8, 10 and 12 Hz and 18 and 20 Hz were grouped.
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
-
 source(file.path("supplementary_functions", "geom_flat_violin.R"))
 # PSTH_range <- c(0, 0.05)
 ggplot(
@@ -2354,7 +2343,6 @@ ggplot(
 #     mean(median_latency),
 #     median(median_latency),
 #     sd(median_latency))
-
 ```
 
 ```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
@@ -2649,7 +2637,6 @@ EEG_ds_df <- purrr::reduce(all_eeg_df, bind_rows)
 To find AP clusters ISI histograms were generated. The size of the ISI window was equal to one period of the oscillation. Since AP clusters are phase locked to the cortical slow oscillation their occurrence was expected during this period. The maximum value of the histogram was found in the first and second half of the ISI window (max1 and max2 respectively). The cluster threshold (magenta line) was determined as the minimal value between max1 and the value located half way between max1 and max2 (black line).
 
 ```{r echo=FALSE, fig.width=10, fig.height= 10, message=FALSE, warning=FALSE}
-
 gg_isi_periods <- lapply(all_eeg_df, function(x) {
   ### Creating data frame for labels. Otherwise geom_label is very slow
   ### https://stackoverflow.com/questions/10952832/ggplot2-is-there-a-fix-for-jagged-poor-quality-text-produced-by-geom-text
@@ -2925,17 +2912,16 @@ p_eeg
 Calculating the number of sync and desync states per recording and across animals
 
 ```{r}
-EEG_ds_df %>% 
+EEG_ds_df %>%
   dplyr::filter(
     clustered == T,
     !state_length <= 1 / first_peak
-    ) %>% 
+  ) %>%
   ### sum per recording
-  dplyr::group_by(ID, eeg_state) %>% 
-  summarise(No_periods = length(state_number %>% unique())) %>% 
-  
+  dplyr::group_by(ID, eeg_state) %>%
+  summarise(No_periods = length(state_number %>% unique())) %>%
   ### sum across animals
-  dplyr::group_by(eeg_state) %>% 
+  dplyr::group_by(eeg_state) %>%
   summarise(No_periods_all = sum(No_periods))
 
 # EEG_ds_df %>%
@@ -2945,7 +2931,6 @@ EEG_ds_df %>%
 #     ) %>%
 #   dplyr::group_by(ID) %>%
 #   summarise(No_desync_periods = length(state_number %>% unique()))
-
 ```
 
 ### Wavelet
@@ -3043,16 +3028,19 @@ EEG_ds_df %>%
     state_length_unique = state_length %>% unique(),
     ### it doesn't need to be summed, it's just a unique value (or the first one)
     sum1 = sum(state_length %>% unique(), na.rm = T),
-    No_clusters = sum(burst_isi, na.rm = T)) %>% 
+    No_clusters = sum(burst_isi, na.rm = T)
+  ) %>%
   dplyr::group_by(animal, eeg_state) %>%
-  summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>% 
+  summarise(state_length_sum = sum(sum1), No_clusters = sum(No_clusters)) %>%
   ggplot(aes(x = eeg_state, y = No_clusters / state_length_sum)) +
   geom_point(
     data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
-    aes(col = animal), size = 3) +
+    aes(col = animal), size = 3
+  ) +
   geom_line(
     data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
-    aes(col = animal, group = animal)) +
+    aes(col = animal, group = animal)
+  ) +
   geom_boxplot(
     data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
     aes(x = eeg_state, y = No_clusters / state_length_sum),
@@ -3061,24 +3049,26 @@ EEG_ds_df %>%
   ) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(!grepl(pattern = "GV115|GII21", animal)),
-    comparisons = list(c("desync", "sync")),# c("sync", "desync")),
-    method = "wilcox.test", 
-    paired = T, 
+    comparisons = list(c("desync", "sync")), # c("sync", "desync")),
+    method = "wilcox.test",
+    paired = T,
     method.args = list(alternative = "less"),
     hide.ns = F
-    ) +
-  
+  ) +
+
   ### GV115 and GII21 on separate layers (not clustered, not included in statistical analysis)
   geom_point(
     data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
-    col = "gray", 
-    size = 3) +
+    col = "gray",
+    size = 3
+  ) +
   geom_line(
     data = . %>% dplyr::filter(grepl(pattern = "GV115|GII21", animal)),
     aes(col = animal, group = animal),
-    col = "gray", 
-    linetype = "dashed") +
-   geom_label_repel(
+    col = "gray",
+    linetype = "dashed"
+  ) +
+  geom_label_repel(
     data = . %>%
       dplyr::filter(grepl(pattern = "GV115|GII21", animal), eeg_state == "sync"),
     mapping = aes(label = animal),
@@ -3237,23 +3227,23 @@ EEG_ds_df %>%
 
 cowplot::plot_grid(
   cowplot::plot_grid(
-    plt_clust_rate_animal, 
+    plt_clust_rate_animal,
     plt_clust_rate_state,
-    ncol = 2),
+    ncol = 2
+  ),
   plt_clust_rate_state_wrapped,
   nrow = 2,
-  rel_heights = c(1,2)
-  ) 
+  rel_heights = c(1, 2)
+)
 
 
-# plt_clust_rate_state_wrapped$data %>% 
-#   dplyr::group_by(animal,eeg_state) %>% 
+# plt_clust_rate_state_wrapped$data %>%
+#   dplyr::group_by(animal,eeg_state) %>%
 #   dplyr::summarise(
 #     mean( No_clusters / sum1),
 #     sd( No_clusters / sum1),
 #     median( No_clusters / sum1)
 #   )
-
 ```
 
 #### Statistical power
@@ -3261,33 +3251,34 @@ cowplot::plot_grid(
 ```{r}
 plt_clust_rate_animal$data %>%
   dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
-  dplyr::group_by(eeg_state) %>% 
+  dplyr::group_by(eeg_state) %>%
   dplyr::summarise(
-    mean(No_clusters / state_length_sum), 
-    sd(No_clusters / state_length_sum), 
-    median(No_clusters / state_length_sum))
+    mean(No_clusters / state_length_sum),
+    sd(No_clusters / state_length_sum),
+    median(No_clusters / state_length_sum)
+  )
 
 
 plt_clust_rate_animal$data %>%
   dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
   dplyr::filter(eeg_state == "desync") %>%
   dplyr::mutate(rx = No_clusters / state_length_sum) %>%
-  pull(rx) %>% sd()
-  
-  
+  pull(rx) %>%
+  sd()
+
+
 plt_clust_rate_animal$data %>%
   dplyr::filter(animal %!in% c("GII21", "GV115")) %>%
   dplyr::filter(eeg_state == "sync") %>%
   dplyr::mutate(ry = No_clusters / state_length_sum) %>%
-  pull(ry) %>% sd()
+  pull(ry) %>%
+  sd()
 
-rx <- function(n) rnorm(n, mean = 0.6354203, sd = 0.439563) 
-ry <- function(n) rnorm(n, mean = 1.327837, sd = 0.574624) 
+rx <- function(n) rnorm(n, mean = 0.6354203, sd = 0.439563)
+ry <- function(n) rnorm(n, mean = 1.327837, sd = 0.574624)
 
 MKpower::sim.power.wilcox.test(nx = 5, rx = rx, ny = 5, ry = ry, alternative = "less")
-MKpower::sim.ssize.wilcox.test(rx = rx, ry = ry, n.min = 5, iter = 1000,  alternative = "less")
-
-
+MKpower::sim.ssize.wilcox.test(rx = rx, ry = ry, n.min = 5, iter = 1000, alternative = "less")
 ```
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
@@ -3354,14 +3345,13 @@ EEG_ds_df %>%
 plt_sync_desync_MFR
 
 
-plt_sync_desync_MFR$data %>% 
-  dplyr::group_by(eeg_state) %>% 
+plt_sync_desync_MFR$data %>%
+  dplyr::group_by(eeg_state) %>%
   summarise(
     mean(No_AP / state_length_sum),
     sd(No_AP / state_length_sum),
     median(No_AP / state_length_sum)
   )
-
 ```
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
@@ -3419,8 +3409,6 @@ EEG_ds_df %>%
     # hjust = 2,
     segment.size = .2
   )
-
-
 ```
 
 <br><br><br><br><br><br>
@@ -3726,7 +3714,7 @@ TERMINALS %>%
 
 ```{r echo=FALSE, fig.width=10, message=FALSE, warning=FALSE}
 TERMINALS %>%
-  dplyr::filter(postion %!in% c("glyt2_cell", "glyt2_prox")) %>% 
+  dplyr::filter(postion %!in% c("glyt2_cell", "glyt2_prox")) %>%
   ggplot(mapping = aes(x = postion, y = d_dendrite)) +
   geom_half_violin(
     position = position_nudge(x = -.15),
