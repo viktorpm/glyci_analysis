@@ -84,8 +84,8 @@ pre { /* Code block - determines code spacing between lines */
 </style>
 ```
 ```{r setup, include=FALSE}
-### cheks all the used libraries in the project. Removes duplicates
-### list of libraries mentioned in the R scripts of the project
+# cheks all the used libraries in the project. Removes duplicates...
+# ...list of libraries mentioned in the R scripts of the project
 library(tidyverse)
 
 liblist <- map(
@@ -96,38 +96,40 @@ liblist <- map(
   unlist() %>%
   substr(
     start = 9,
-    stop = regexpr(text = ., pattern = "\\)") - 1 %>% # regexpr: in case of multiple matches it only takes the first one
+    # regexpr: in case of multiple matches it only takes the first one
+    stop = regexpr(text = ., pattern = "\\)") - 1 %>%
       as.vector()
   ) %>%
   `[`(!duplicated(.))
 
-### list of installed packages
+# list of installed packages
 pkgs <- installed.packages() %>%
   as_tibble() %>%
   pull(1)
 
-### packages that are needed but not installed
+# packages that are needed but not installed
 c(liblist[which(!liblist %in% pkgs)])
 
-### installs uninstalled packages
+# installs uninstalled packages
 install.packages(c(liblist[which(!liblist %in% pkgs)]))
 
-### loads all libraries
+# loads all libraries
 lapply(liblist %>% as.list(), require, character.only = TRUE)
 
 
 
 
-### defining global constants, filters and plot scales
+# defining global constants, filters and plot scales
 
 library(imputeTS)
 
-scale <- 1.6 ### pixel/mm
-fps <- 25 ### frame rate
-standard_stim_length <- 10 ### this is the most commonly used stimulus length (in seconds)
+scale <- 1.6 # pixel/mm
+fps <- 25 # frame rate
+# this is the most commonly used stimulus length (in seconds)
+standard_stim_length <- 10
 around_stim_length <- fps * 8
 
-time_res <- 1 / fps ### time between frames
+time_res <- 1 / fps # time between frames
 ang_threshold <- 90
 mouse_speed_mps <- 3.3
 
@@ -154,12 +156,8 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
 
 
-### custom functions used in the analysis
-
-
-
-### removing junk animals from the data
-
+# custom functions used in the analysis
+# removing junk animals from the data
 RawDataFilter <- function(df) {
   # browser()
   df %>%
@@ -203,7 +201,9 @@ RawDataFilter <- function(df) {
 This sections loads the stimulus times from a csv file. Data was cleaned using the **CleaningData.R** script
 
 ```{r warning=F, message=F, echo=FALSE}
-stims <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv")) %>%
+stims <- read.csv(
+  file.path("data", "PnO_stim_rotation", "rotation_stims_cleaned.csv")
+) %>%
   as_tibble() %>%
   mutate(
     intensity = paste0(intensity, " mW"),
@@ -229,11 +229,14 @@ stims %>%
 This sections loads the stimulus times from a csv file
 
 ```{r message=F, echo = FALSE, warning = FALSE}
-coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv")) %>%
+coords_raw <- read.csv(
+  file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv")
+) %>%
   as_tibble() %>%
   mutate(
     animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
-      str_remove_all(pattern = "\\\\") %>% str_remove(pattern = "fix") %>% str_remove(pattern = "control")
+      str_remove_all(pattern = "\\\\") %>%
+      str_remove(pattern = "fix") %>% str_remove(pattern = "control")
     # ### frame is 0 indexed turning it to 1 indexed to avoid confusion
     # frame = frame + 1
   ) %>%
@@ -282,7 +285,8 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all_clea
       stim == F ~ "no stim"
     ),
 
-    ### shift values to the beginning of the stimulus block to be able to fill missing values in the next step
+    # shift values to the beginning of the stimulus block ...
+    # ... to be able to fill missing values in the next step
     stim_block = ifelse(stim_categ == "no stim", F, T),
     stim_number = lead(stim_number, n = around_stim_length),
     intensity = lead(intensity, n = around_stim_length),
@@ -306,7 +310,10 @@ coords_raw <- read.csv(file.path("data", "PnO_stim_rotation", "rotation_all_clea
     value = "coordinate",
     head, center, tail
   ) %>%
-  tidyr::extract(col = coordinate, into = c("X", "Y"), regex = "([[:alnum:]]+)_([[:alnum:]]+)") %>%
+  tidyr::extract(
+    col = coordinate, into = c("X", "Y"),
+    regex = "([[:alnum:]]+)_([[:alnum:]]+)"
+  ) %>%
   dplyr::mutate(
     X = replace(X, miss == 0, NA),
     Y = replace(Y, miss == 0, NA)
@@ -324,19 +331,22 @@ coords <- coords_raw %>%
     body_part != "tail",
     animal %!in% c("GIIFM14b", "GIIFM17b"),
   ) %>%
-  ### this block calculates distances and speed across frames
+  # this block calculates distances and speed across frames
   dplyr::group_by(animal, body_part, session) %>%
   dplyr::mutate(
 
-    ### interpolating missing values
+    # interpolating missing values
     X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
     Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
 
-    ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers or starts to follow something else
-    ### these points are replaced by 0 (the animal did not change position between those frames)
-    ### outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
+    # sometimes the tracking software looses the point and jumps...
+    # ...back and forth between unrealistic numbers...
+    # ...or starts to follow something else
+    # these points are replaced by 0...
+    # ...(the animal did not change position between those frames)
+    # outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
 
     X_diff = ifelse(
       test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
@@ -367,12 +377,13 @@ coords <- coords_raw %>%
   ) %>%
   ungroup() %>%
   dplyr::group_by(animal, body_part, session) %>%
-  ### adding the number of repeats in each session, (-1 to remove "no stim")
+  # adding the number of repeats in each session, (-1 to remove "no stim")
   dplyr::mutate(
     No_repeats = stim_number %>% unique() %>% length() - 1
   ) %>%
   ungroup() %>%
-  ### adding the number of repeats in each intensity group, (no -1 as "intensity" variable doesn't run through the session)
+  # adding the number of repeats in each intensity group
+  # (no -1 as "intensity" variable doesn't run through the session)
   dplyr::group_by(animal, body_part, intensity) %>%
   dplyr::mutate(
     No_repeats_intensity = stim_number %>% unique() %>% length()
@@ -392,29 +403,44 @@ coords_down_sapmpled <- coords %>%
   dplyr::filter(
     frame %% datapoint_to_plot == 0
   ) %>%
-  ### this block calculates distances and speed across frames
+  # this block calculates distances and speed across frames
   dplyr::group_by(animal, body_part, session) %>%
   dplyr::mutate(
 
-    ### interpolating missing values
+    # interpolating missing values
     X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
     Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
     X_diff = c(diff(X_interp), NA) %>% round(4),
     Y_diff = c(diff(Y_interp), NA) %>% round(4),
 
-    ### sometimes the tracking software looses the point and jumps back and forth between unrealistic numbers or starts to follow something else
-    ### these points are replaced by 0 (the animal did not change position between those frames)
-    ### outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
+    # sometimes the tracking software looses the point and jumps...
+    # ...back and forth between unrealistic numbers...
+    # ...or starts to follow something else
+    # these points are replaced by 0...
+    # ...(the animal did not change position between those frames)
+    # outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
 
     X_diff = ifelse(
-      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
-        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+      test = X_diff < quantile(
+        X_diff,
+        na.rm = T
+      )["25%"] - 3 * IQR(X_diff, na.rm = T) |
+        X_diff > quantile(
+          X_diff,
+          na.rm = T
+        )["75%"] + 3 * IQR(X_diff, na.rm = T),
       yes = 0,
       no = X_diff
     ),
     Y_diff = ifelse(
-      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
-        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+      Y_diff < quantile(
+        Y_diff,
+        na.rm = T
+      )["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+        Y_diff > quantile(
+          Y_diff,
+          na.rm = T
+        )["75%"] + 3 * IQR(Y_diff, na.rm = T),
       yes = 0,
       no = Y_diff
     ),
@@ -444,28 +470,21 @@ lengths <- coords %>%
   group_by(animal, session, stim_number, intensity, quality) %>%
   count(stim_categ) %>%
   spread(stim_categ, n) %>%
-  select(animal, session, stim_number, intensity, quality, `before stim`, stim, `after stim`)
+  select(
+    animal, session, stim_number,
+    intensity, quality, `before stim`,
+    stim, `after stim`
+  )
 
 
 n_repeat <- lengths %>%
   dplyr::group_by(animal, intensity) %>%
   dplyr::filter(intensity %in% selected_intensities) %>%
   summarise(length(stim_number))
-
-
-# full_join(
-#   lengths,
-#   stims %>% spread(timing, frame) %>%
-#     select(animal, session, stim_number, start, end) %>%
-#     mutate(stim_number = stim_number %>% as.character())
-# ) %>% write_csv(file.path("output_data", "stim_lengths.csv"))
-
-
-# lengths %>% dplyr::filter(animal != "GIIFM14b", stim_categ == "after stim") %>% View()
 ```
 
 ```{r include=FALSE}
-### Saving separate csv files
+# Saving separate csv files
 
 # tibble_list <- coords %>%
 #   dplyr::filter(
@@ -476,10 +495,14 @@ n_repeat <- lengths %>%
 #
 #
 # csv_name_list <- lapply(tibble_list, function(x){
-#   paste0(x %>% pull(animal) %>% unique(), "_video_", x %>% pull(video) %>% unique(), ".csv")
+#   paste0(x %>% pull(animal) %>%
+#   unique(), "_video_", x %>% pull(video) %>% unique(), ".csv")
 # }) %>% unlist()
 #
-# mapply(write_csv, x = tibble_list, file = file.path("output_data", "separate_csv", csv_name_list))
+# mapply(
+#   write_csv, x = tibble_list,
+#   file = file.path("output_data", "separate_csv", csv_name_list)
+#   )
 #
 #
 #
@@ -494,7 +517,10 @@ n_repeat <- lengths %>%
 # reshape(timevar = "body_part", direction = "wide") %>% View()
 
 
-# reshape(idvar = "animal", timevar = "body_part", direction = "wide") %>% View()
+# reshape(
+#   idvar = "animal", timevar = "body_part",
+#   direction = "wide"
+#   ) %>% View()
 #
 #
 #
@@ -588,12 +614,20 @@ coords %>%
     mapping = aes(x = rec_time, y = hc_d)
   ) +
   geom_hline(
-    aes(yintercept = quantile(hc_d, na.rm = T)["25%"] - 1.5 * IQR(hc_d, na.rm = T)),
+    aes(
+      yintercept = quantile(
+        hc_d,
+        na.rm = T
+      )["25%"] - 1.5 * IQR(hc_d, na.rm = T)
+    ),
     col = "gray50",
     lty = "dashed"
   ) +
   geom_hline(
-    aes(yintercept = quantile(hc_d, na.rm = T)["75%"] + 1.5 * IQR(hc_d, na.rm = T)),
+    aes(yintercept = quantile(
+      hc_d,
+      na.rm = T
+    )["75%"] + 1.5 * IQR(hc_d, na.rm = T)),
     col = "gray50",
     lty = "dashed"
   ) +
@@ -638,7 +672,11 @@ coords %>%
   ) %>%
   ggplot(mapping = aes(x = hc_d / scale)) +
   geom_histogram() +
-  geom_boxplot(aes(y = 1000), width = 300, outlier.colour = "magenta", col = "blue", alpha = 0.1) +
+  geom_boxplot(
+    aes(y = 1000),
+    width = 300,
+    outlier.colour = "magenta", col = "blue", alpha = 0.1
+  ) +
   facet_grid(session ~ body_part) +
   global_facet_theme
 ```
@@ -712,7 +750,13 @@ coords %>%
   ylim(c(0, 720)) +
   facet_wrap(~session, ncol = 2) +
   scale_color_discrete(name = "Interpolated values") +
-  geom_label(data = text_layer, aes(x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5, label = paste0("Intensity: ", int_label))) +
+  geom_label(
+    data = text_layer,
+    aes(
+      x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5,
+      label = paste0("Intensity: ", int_label)
+    )
+  ) +
   global_facet_theme
 ```
 
@@ -1507,8 +1551,14 @@ Defining line colors
 ```{r}
 line_cols <- gg_color_hue(3)
 
-group_colors <- c("no stim" = "gray30", "before stim" = line_cols[1], "stim" = line_cols[3], "after stim" = line_cols[2])
-group_colors2 <- c("no stim" = "gray30", "right before" = line_cols[1], "stim" = line_cols[3], "right after" = line_cols[2])
+group_colors <- c(
+  "no stim" = "gray30", "before stim" = line_cols[1],
+  "stim" = line_cols[3], "after stim" = line_cols[2]
+)
+group_colors2 <- c(
+  "no stim" = "gray30", "right before" = line_cols[1],
+  "stim" = line_cols[3], "right after" = line_cols[2]
+)
 ```
 
 ### Example session
