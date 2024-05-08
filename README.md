@@ -1,4 +1,4 @@
-This repository contains tha analysis for the Glyci project.
+This repository contains the analysis for the Glyci project.
 
 ### Folder strucutre
   -  `data` :
