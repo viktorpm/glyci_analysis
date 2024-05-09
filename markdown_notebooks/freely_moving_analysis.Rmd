@@ -83,90 +83,66 @@ pre { /* Code block - determines code spacing between lines */
 }
 </style>
 ```
+
 ```{r setup, include=FALSE}
-# cheks all the used libraries in the project. Removes duplicates...
-# ...list of libraries mentioned in the R scripts of the project
+# Load necessary libraries
 library(tidyverse)
 
-liblist <- map(
-  list.files(pattern = ".Rmd|.R"),
-  ~ readLines(con = .x) %>%
-    grep(pattern = "library\\(", x = ., value = T)
-) %>%
-  unlist() %>%
-  substr(
-    start = 9,
-    # regexpr: in case of multiple matches it only takes the first one
-    stop = regexpr(text = ., pattern = "\\)") - 1 %>%
-      as.vector()
-  ) %>%
-  `[`(!duplicated(.))
+# Define custom operators and functions
+`%!in%` <- Negate(`%in%`)
+sem <- function(x) sd(x) / sqrt(length(x)) # Standard error of the mean function
 
-# list of installed packages
-pkgs <- installed.packages() %>%
-  as_tibble() %>%
-  pull(1)
-
-# packages that are needed but not installed
-c(liblist[which(!liblist %in% pkgs)])
-
-# installs uninstalled packages
-install.packages(c(liblist[which(!liblist %in% pkgs)]))
-
-# loads all libraries
-lapply(liblist %>% as.list(), require, character.only = TRUE)
-
-
-
-
-# defining global constants, filters and plot scales
-
+# Check and install required packages
+required_packages <- c("imputeTS")
+missing_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if (length(missing_packages) > 0) {
+  install.packages(missing_packages)
+}
+# Load packages
 library(imputeTS)
 
+# Find and load all necessary libraries
+library_paths <- list.files(pattern = ".Rmd|.R", full.names = TRUE) %>%
+  map(~ readLines(con = .x) %>%
+        grep(pattern = "library\\(", x = ., value = TRUE)) %>%
+  unlist() %>%
+  str_extract(pattern = "(?<=library\\()[^)]+") %>%
+  unique()
+
+library_paths <- library_paths[library_paths != "STARS"]
+
+lapply(library_paths, library, character.only = TRUE)
+
+# Define global constants and settings
 scale <- 1.6 # pixel/mm
 fps <- 25 # frame rate
-# this is the most commonly used stimulus length (in seconds)
-standard_stim_length <- 10
-around_stim_length <- fps * 8
+standard_stim_length <- 10 # Default stimulus length in seconds
+around_stim_length <- fps * 8 # Stimulus length around default
+time_res <- 1 / fps # Time between frames
+ang_threshold <- 90 # Angle threshold
+mouse_speed_mps <- 3.3 # Mouse speed in meters per second
+datapoint_to_plot <- 5 # Data points to plot
+xlim_mm <- c(0, 1280 / scale) # X-axis limits
+ylim_mm <- c(0, 720 / scale) # Y-axis limits
+selected_animal <- params$selected_animal
+selected_control <- params$selected_control
+selected_intensities <- c("1 mW", "5 mW", "10 mW")
+control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
 
-time_res <- 1 / fps # time between frames
-ang_threshold <- 90
-mouse_speed_mps <- 3.3
-
-
-
-datapoint_to_plot <- 5
-
+# Define global theme for ggplot
 global_facet_theme <- theme(
   strip.text = element_text(size = 15),
   axis.text = element_text(size = 12),
   axis.title = element_text(size = 15)
 )
 
-xlim_mm <- c(0, 1280 / scale)
-ylim_mm <- c(0, 720 / scale)
-
-selected_animal <- params$selected_animal
-selected_control <- params$selected_control
-selected_intensities <- c("1 mW", "5 mW", "10 mW")
-control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
-
-`%!in%` <- Negate(`%in%`)
-sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
-
-
-
-# custom functions used in the analysis
-# removing junk animals from the data
+# Custom function: Remove junk animals from the data
 RawDataFilter <- function(df) {
-  # browser()
   df %>%
-    dplyr::filter(
-      stringr::str_detect(animal, pattern = "b")
-    ) %>%
-    as_tibble() %>%
-    return()
+    filter(str_detect(animal, pattern = "b")) %>%
+    as_tibble()
 }
+
 ```
 
 
@@ -2836,9 +2812,14 @@ corrected_angles_population %>%
 
 
 ```{r fig.width=15}
-corrected_angles_population %>%
+generate_angle_dose_plot <- function(include_control){
+  corrected_angles_population %>%
   dplyr::filter(
-    animal %in% control_animals,
+    if (include_control) {
+        animal %in% control_animals
+      } else {
+        animal %!in% control_animals
+      },
     body_part == "head",
     stim_categ != "no stim",
     # stim_side == "left"
@@ -2887,20 +2868,16 @@ corrected_angles_population %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_ang_dose_ctrl
+  ) 
+}
+
+# Generate plots for both control and non-control groups
+plt_ang_dose_ctrl <- generate_angle_dose_plot(TRUE)
+plt_ang_dose_stim <- generate_angle_dose_plot(FALSE)
 
 
 cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
 
-
-
-# plt_ang_dose_ctrl$data %>%
-#   dplyr::group_by(intensity) %>%
-#   dplyr::summarise(
-#     mean(((mean_ang * 25) %>% abs()) / 360),
-#     sd(((mean_ang * 25) %>% abs()) / 360),
-#     median(((mean_ang * 25) %>% abs()) / 360)
-#   )
 ```
 
 
@@ -2908,9 +2885,15 @@ cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
 Mean rotation angle before stimulus vs during stimulus
 
 ```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
-plt_ang_stim <- corrected_angles_population %>%
+
+generate_angle_stim_plot <- function(include_control){
+  corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b"),
+    if (include_control) {
+      animal %in% c(control_animals, "GIIFM14b")
+    }else{
+      animal %!in% c(control_animals, "GIIFM14b")
+    },
     body_part == "head",
     stim_categ != "no stim",
     intensity %in% c(selected_intensities, "15 mW")
@@ -2940,40 +2923,10 @@ plt_ang_stim <- corrected_angles_population %>%
   theme(
     axis.text.x = element_text(angle = 45)
   )
+}
 
-plt_ang_ctrl <- corrected_angles_population %>%
-  dplyr::filter(
-    animal %in% c(control_animals, "GIIFM14b"),
-    body_part == "head",
-    stim_categ != "no stim",
-    intensity %in% c(selected_intensities, "15 mW")
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
-  dplyr::summarise(
-    sum_ang = sum(signed_angle_corrected, na.rm = T),
-    # mean_ang = mean(signed_angle_corrected, na.rm = T),
-    # med_ang = median(signed_angle_corrected, na.rm = T),
-    # sd_ang = sd(signed_angle_corrected, na.rm = T),
-    # sem_ang = sem(signed_angle_corrected)
-  ) %>%
-  tidyr::spread(
-    key = stim_categ, value = sum_ang
-  ) %>%
-  ggplot(
-    mapping = aes(x = `before stim`, y = stim)
-  ) +
-  xlim(-1200, 1200) +
-  ylim(-1200, 1200) +
-  coord_fixed() +
-  geom_vline(xintercept = 0, alpha = .3) +
-  geom_hline(yintercept = 0, alpha = .3) +
-  geom_point(size = 3) +
-  facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
-  global_facet_theme +
-  theme(
-    axis.text.x = element_text(angle = 45)
-  )
-
+plt_ang_ctrl <- generate_angle_stim_plot(TRUE)
+plt_ang_stim <- generate_angle_stim_plot(FALSE)
 
 cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
 ```
@@ -3061,6 +3014,7 @@ coords_1s_window %>%
     mean_sum_d = mean(sum_d),
     sd_sum_d = sd(sum_d)
   )
+
 ```
 
 Sum traveled distance across sessions at different intensities by animals (stimulus and control) <br> 1 second before stimulus, first second of stimulation
@@ -3082,13 +3036,18 @@ norm_ref <- coords_1s_window %>%
   max()
 
 
-plt_pop_dist_stim <- coords_1s_window %>%
+generate_pop_dist_1s_plot <- function(include_control){
+  coords_1s_window %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
     intensity %in% c(selected_intensities),
-    animal %!in% c(control_animals, "GIIFM14b"),
+    if (include_control) {
+      animal %in% c(control_animals, "GIIFM14b")}
+    else{
+      animal %!in% c(control_animals, "GIIFM14b")
+    }
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
@@ -3141,72 +3100,14 @@ plt_pop_dist_stim <- coords_1s_window %>%
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   )
+}
 
+plt_pop_dist_1s_ctrl <- generate_pop_dist_1s_plot(TRUE)
+plt_pop_dist_1s_stim <- generate_pop_dist_1s_plot(FALSE)
 
-
-plt_pop_dist_ctrl <- coords_1s_window %>%
-  dplyr::filter(
-    str_detect(string = animal, pattern = "b"),
-    body_part == "center",
-    stim_categ != "no stim",
-    intensity %in% c(selected_intensities),
-    animal %in% control_animals,
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(
-    sum_d = sum(d, na.rm = T),
-    mean_d = mean(d, na.rm = T),
-    max_sum_d = sum_d %>% max()
-  ) %>%
-  dplyr::mutate(
-    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA),
-    mean_sum_d = case_when(
-      intensity == "1 mW" ~ mean_sum_d_1mW,
-      intensity == "5 mW" ~ mean_sum_d_5mW,
-      intensity == "10 mW" ~ mean_sum_d_10mW,
-    )
-  ) %>%
-  fill(max_sum_d) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = mean_d # /mean_sum_d / norm_ref # max_sum_d # norm_ref #
-    )
-  ) +
-  geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 1) +
-  ggpubr::stat_compare_means(
-    method = "wilcox.test",
-    paired = T,
-    comparisons = list(c("before stim", "stim")),
-    method.args = list(alternative = "less"),
-    vjust = 1.5,
-    hide.ns = F
-  ) +
-  # ggpubr::stat_compare_means(
-  #   method = "wilcox.test",
-  #   paired = T,
-  #   comparisons = list(c("stim", "after stim")),
-  #   method.args = list(alternative = "two.sided"),
-  #   vjust = 1.5,
-  #   hide.ns = F
-  # ) +
-  expand_limits(y = c(0, 50)) +
-  global_facet_theme +
-  theme(aspect.ratio = 1) +
-  theme(
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(size = 12),
-    axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black")
-  )
 
 # sum_trav_dist_norm_by_before_mean
-cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
+cowplot::plot_grid(plt_pop_dist_1s_ctrl, plt_pop_dist_1s_stim, ncol = 2)
 ```
 
 Sum traveled distance across sessions at different intensities by animals (stimulus and control) <br> 8 second before stimulus, first 8 second of stimulation (8 because some "before stim" periods are only 8 seconds long)
@@ -3228,13 +3129,18 @@ norm_ref <- coords_8s_window %>%
   max()
 
 
-plt_pop_dist_stim <- coords_8s_window %>%
+generate_pop_dist_8s_plot <- function(include_control){
+  coords_8s_window %>%
   dplyr::filter(
     str_detect(string = animal, pattern = "b"),
     body_part == "center",
     stim_categ != "no stim",
     intensity %in% c(selected_intensities),
-    animal %!in% c(control_animals, "GIIFM14b"),
+    if (include_control) {
+      animal %in% c(control_animals, "GIIFM14b")}
+    else{
+      animal %!in% c(control_animals, "GIIFM14b")
+    }
   ) %>%
   dplyr::group_by(animal, intensity, stim_categ) %>%
   dplyr::summarise(
@@ -3272,58 +3178,12 @@ plt_pop_dist_stim <- coords_8s_window %>%
   expand_limits(y = c(0, 1)) +
   global_facet_theme +
   theme(aspect.ratio = 1)
+}
 
+plt_pop_dist_8s_ctrl <- generate_pop_dist_8s_plot(TRUE)
+plt_pop_dist_8s_stim <- generate_pop_dist_8s_plot(FALSE)
 
-
-
-plt_pop_dist_ctrl <- coords_8s_window %>%
-  dplyr::filter(
-    str_detect(string = animal, pattern = "b"),
-    body_part == "center",
-    stim_categ != "no stim",
-    intensity %in% c(selected_intensities),
-    animal %in% control_animals,
-  ) %>%
-  dplyr::group_by(animal, intensity, stim_categ) %>%
-  dplyr::summarise(
-    sum_d = sum(d, na.rm = T),
-    max_sum_d = sum_d %>% max()
-  ) %>%
-  dplyr::mutate(
-    max_sum_d = replace(max_sum_d, stim_categ == "stim", NA)
-  ) %>%
-  fill(max_sum_d) %>%
-  ggplot(
-    mapping = aes(
-      x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
-      y = sum_d / norm_ref # max_sum_d # norm_ref #
-    )
-  ) +
-  geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
-  geom_line(aes(group = animal)) +
-  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), ncol = 1) +
-  ggpubr::stat_compare_means(
-    method = "wilcox.test",
-    paired = T,
-    comparisons = list(c("before stim", "stim")),
-    method.args = list(alternative = "less"),
-    vjust = 1.5,
-    hide.ns = F
-  ) +
-  # ggpubr::stat_compare_means(
-  #   method = "wilcox.test",
-  #   paired = T,
-  #   comparisons = list(c("stim", "after stim")),
-  #   method.args = list(alternative = "two.sided"),
-  #   vjust = 1.5,
-  #   hide.ns = F
-  # ) +
-  expand_limits(y = c(0, 1)) +
-  global_facet_theme +
-  theme(aspect.ratio = 1)
-
-
-cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, ncol = 2)
+cowplot::plot_grid(plt_pop_dist_8s_stim, plt_pop_dist_8s_ctrl, ncol = 2)
 ```
 
 ```{r fig.width=18, fig.height=8}
@@ -3426,6 +3286,7 @@ cowplot::plot_grid(
     ggtitle("Control"),
   ncol = 2
 )
+
 ```
 
 ```{r fig.height=25, fig.width=15}
@@ -3458,7 +3319,9 @@ coords_1s_window %>%
 Combining 1 sec before stim and stim division to 1st and last 9 sec tables. In control cases if I normalize with the period length the "last_part" drops. The reason is that the animal moves at a constant rate so dividing the mean traveled distance will decrease the mean.
 
 ```{r fig.width=15}
-bind_rows(
+
+generate_pop_dist_summary_plot <- function(include_control){
+  bind_rows(
   ### before stim 1 sec
   coords_1s_window %>%
     dplyr::filter(
@@ -3475,9 +3338,6 @@ bind_rows(
       frame %% datapoint_to_plot == 0,
       stim_categ == "stim",
       body_part == "center"
-      # animal %!in% control_animals,
-      # body_part == "center",
-      # intensity %in% selected_intensities
     ) %>%
     ### recalculates distances after frames were removed
     dplyr::group_by(animal, body_part, session) %>%
@@ -3512,53 +3372,13 @@ bind_rows(
   dplyr::filter(
     animal != "GIIFM20b" | session != "session_6"
   ) %>%
-  #
-  # dplyr::group_by(animal, session, stim_number, stim_division) %>%
-  # ### length of each stim_division by session
-  # ### length of each stim_division in seconds by session
-  # dplyr::mutate(
-  #   stim_div_length_row = length(stim_division),
-  #   stim_div_length_sec = rec_time[length(rec_time)] - rec_time[1]
-  #   ) %>%
-  # ungroup() %>%
-  # dplyr::group_by(animal, intensity, stim_number, stim_division) %>%
-  # dplyr::mutate(
-  #   stim_div_length_row_intensity = length(stim_division),
-  #   #stim_div_length_sec_intensity
-  #   ) %>%
-  # ungroup() %>%
 
   arrange(animal, session, stim_number, rec_time) %>%
   dplyr::group_by(animal, intensity, stim_categ, stim_division) %>%
   dplyr::mutate(
     stim_div_length_row = length(stim_division)
   ) %>%
-  # ### length of all the stim_division in one session in rows (5 repeats x 6 row before_stim)
-  # dplyr::group_by(animal, session, stim_division) %>% #intensity
-  # dplyr::mutate(
-  #     all_stim_div_length_row=length(frame),
-  #     all_stim_div_length_sec = stim_div_length_sec[1] * No_repeats
-  #   ) %>%
-  # ungroup() %>%
-
-  # dplyr::group_by(animal, intensity, stim_division) %>%
-  # dplyr::mutate(
-  #     all_stim_div_length_row_intensity=length(frame)
-  #   ) %>%
-  # ungroup() %>%
-  #
-  #
-  # dplyr::group_by(
-  #   animal, intensity, stim_categ, stim_division,
-  #   across(stim_div_length_row),
-  #   across(stim_div_length_sec),
-  #   across(all_stim_div_length_row),
-  #   across(all_stim_div_length_sec),
-  #   across(stim_div_length_row_intensity),
-  #   across(all_stim_div_length_row_intensity),
-  #
-  #   ) %>% # stim_number,
-
+ 
   dplyr::group_by(
     animal, intensity, stim_categ, stim_division, across(stim_div_length_row)
   ) %>%
@@ -3577,7 +3397,11 @@ bind_rows(
     )
   ) %>%
   dplyr::filter(
-    animal %!in% control_animals,
+    if (include_control) {
+      animal %in% control_animals}
+    else{
+      animal %!in% control_animals
+    },
     intensity %in% c(selected_intensities, "15 mW")
     # manually removing one line causing problem (in GIIFM20b 15 mW stim was repeated in two sessions, session 6 was not following protocol)
     # stim_div_length_row %!in% c(188 , 12)
@@ -3632,28 +3456,20 @@ bind_rows(
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_pop_dist_stim # plt_pop_dist_ctrl
+  ) 
+}
 
-# sum_trav_dist_norm_by_before_mean
+plt_pop_dist_sum_stim <- generate_pop_dist_summary_plot(FALSE)
+plt_pop_dist_sum_ctrl <- generate_pop_dist_summary_plot(TRUE) 
 
-cowplot::plot_grid(plt_pop_dist_stim, plt_pop_dist_ctrl, nrow = 2)
-
-
-# plt_pop_dist_stim$data %>%
-#   dplyr::group_by(intensity,stim_division) %>%
-#   dplyr::summarise(mean(mean_d * 6/scale), sd(mean_d * 6/scale), median(mean_d * 6/scale))
-#
-#
-#
-# plt_pop_dist_ctrl$data %>%
-#   dplyr::group_by(intensity,stim_division) %>%
-#   dplyr::summarise(mean(mean_d * 6/scale), sd(mean_d * 6/scale), median(mean_d * 6/scale))
+cowplot::plot_grid(plt_pop_dist_sum_stim, plt_pop_dist_sum_ctrl, nrow = 2)
 ```
 
 
 
 ```{r fig.width=15}
-coords %>%
+generate_distance_dose_plot <- function(include_control){
+  coords %>%
   dplyr::filter(
     frame %% datapoint_to_plot == 0,
     stim_categ == "stim",
@@ -3690,7 +3506,11 @@ coords %>%
     animal != "GIIFM20b" | session != "session_6"
   ) %>%
   dplyr::filter(
-    animal %!in% control_animals,
+    if (include_control) {
+      animal %in% control_animals}
+    else{
+      animal %!in% control_animals
+    },
     intensity %in% c(selected_intensities, "15 mW")
   ) %>%
   dplyr::group_by(animal, intensity) %>% # dplyr::filter(animal == "GIIFM18b", intensity == "1 mW") %>% pull(d) %>% sum(na.rm = T) / 250
@@ -3724,26 +3544,14 @@ coords %>%
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
-  ) -> plt_dose_stim
+  )
+}
 
-cowplot::plot_grid(plt_dose_stim, plt_dose_ctrl, ncol = 2)
+plt_distance_dose_ctrl <- generate_distance_dose_plot(TRUE)
+plt_distance_dose_stim <- generate_distance_dose_plot(FALSE)
 
 
-# plt_dose_stim$data %>%
-#   dplyr::group_by(intensity) %>%
-#   dplyr::summarise(
-#     mean(mean_d*6),
-#     sd(mean_d*6),
-#     median(mean_d*6)
-#   )
-#
-# plt_dose_ctrl$data %>%
-#   dplyr::group_by(intensity) %>%
-#   dplyr::summarise(
-#     mean(mean_d*6),
-#     sd(mean_d*6),
-#     median(mean_d*6)
-#   )
+cowplot::plot_grid(plt_distance_dose_stim, plt_distance_dose_ctrl, ncol = 2)
 ```
 
 
