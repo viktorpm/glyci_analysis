@@ -195,17 +195,19 @@ position_cells_PF <- c("cell08", "cell16", "cell17", "cell23", "cell24")
 CELL_INFO <- info_baseline %>%
   select(file_name) %>%
   mutate(cell_id = substr(file_name, 1, 6)) %>%
-  mutate(bl_activity = if_else(cell_id %in% bl_activity_cells, F, T),
-         pinch = if_else(cell_id %in% pinch_cells, F, T),
-         ident = if_else(cell_id %in% ident_cells, F, T),
-         control = if_else(cell_id %in% control_cells, T, F),
-         position = case_when(
-           cell_id %in% position_cells_IL ~ "IL",
-           cell_id %in% position_cells_transient ~ "transient",
-           cell_id %in% position_cells_PF ~ "PF",
-           TRUE ~ "unknown"
-         ),
-         gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), "y", "n")) %>%
+  mutate(
+    bl_activity = if_else(cell_id %in% bl_activity_cells, F, T),
+    pinch = if_else(cell_id %in% pinch_cells, F, T),
+    ident = if_else(cell_id %in% ident_cells, F, T),
+    control = if_else(cell_id %in% control_cells, T, F),
+    position = case_when(
+      cell_id %in% position_cells_IL ~ "IL",
+      cell_id %in% position_cells_transient ~ "transient",
+      cell_id %in% position_cells_PF ~ "PF",
+      TRUE ~ "unknown"
+    ),
+    gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), "y", "n")
+  ) %>%
   arrange(cell_id)
 
 CELL_INFO <- CELL_INFO %>%
@@ -730,39 +732,38 @@ psth_tibble %>%
 ```
 
 ```{r}
-generate_population_psth_plt <- function(include_control){
+generate_population_psth_plt <- function(include_control) {
   psth_tibble %>%
-  dplyr::filter(
-    reltimes > -(train_length / 4),
-    reltimes < train_length + train_length / 2,
-    ifelse(include_control == T, control == T, control == F),
-    train_length > 4,
-    # inhib_strength == "strong",
-  ) %>% # select(cell_id) %>% unique()
-  ggplot(
-    aes(x = reltimes)
-  ) +
-  geom_histogram(binwidth = 0.1) +
-  geom_vline(xintercept = 0) +
-  xlim(-1, 5) +
-  expand_limits(y = c(0, 130)) +
-  # facet_wrap(~pinch)+
-  theme(
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(size = 12),
-    axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black")
-  )
+    dplyr::filter(
+      reltimes > -(train_length / 4),
+      reltimes < train_length + train_length / 2,
+      ifelse(include_control == T, control == T, control == F),
+      train_length > 4,
+      # inhib_strength == "strong",
+    ) %>% # select(cell_id) %>% unique()
+    ggplot(
+      aes(x = reltimes)
+    ) +
+    geom_histogram(binwidth = 0.1) +
+    geom_vline(xintercept = 0) +
+    xlim(-1, 5) +
+    expand_limits(y = c(0, 130)) +
+    # facet_wrap(~pinch)+
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 12),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black")
+    )
 }
 
 pop_psth_ctrl_plt <- generate_population_psth_plt(T)
 pop_psth_plt <- generate_population_psth_plt(F)
 
 cowplot::plot_grid(pop_psth_plt, pop_psth_ctrl_plt, ncol = 2)
-
 ```
 
 ```{r}
