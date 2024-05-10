@@ -177,112 +177,47 @@ datatable(info_baseline,
     -   individually identified neurons (*ident*)
     -   control cells (*control*)
 
-```{r, echo=FALSE}
+
+
+```{r}
+library(stringr)
+
+# Extract cell IDs for each condition
+bl_activity_cells <- c("cell05", "cell10", "cell12", "cell13", "cell14", "cell15", "cell21", "cell24")
+pinch_cells <- c("cell01", "cell06", "cell07", "cell08", "cell18", "cell19", "cell20", "cell21", "cell23", "cell24", "cell25", "cell26", "cell27", "cell28")
+ident_cells <- c("cell06", "cell07", "cell11", "cell12", "cell13", "cell14", "cell21", "cell22", "cell23", "cell24", "cell25", "cell26", "cell27")
+control_cells <- c("cell25", "cell26", "cell27", "cell28", "cell29")
+position_cells_IL <- c("cell01", "cell02", "cell03", "cell10", "cell11", "cell14", "cell15")
+position_cells_transient <- c("cell20", "cell21", "cell22")
+position_cells_PF <- c("cell08", "cell16", "cell17", "cell23", "cell24")
+
 ### CELL INFO to store categories (spontaneously active, induced firing, identified)
 CELL_INFO <- info_baseline %>%
   select(file_name) %>%
-  add_column(cell_id = substr(info_baseline$file_name, 1, 6), .before = "file_name") %>%
-  dplyr::mutate(bl_activity = T) %>%
-  dplyr::mutate(bl_activity = replace(
-    bl_activity,
-    .$cell_id == "cell05" |
-      .$cell_id == "cell10" |
-      .$cell_id == "cell12" |
-      .$cell_id == "cell13" |
-      .$cell_id == "cell14" |
-      .$cell_id == "cell15" |
-      .$cell_id == "cell21" |
-      .$cell_id == "cell24",
-    F
-  )) %>%
-  dplyr::mutate(pinch = T) %>%
-  dplyr::mutate(pinch = replace(
-    pinch,
-    .$cell_id == "cell01" |
-      .$cell_id == "cell06" |
-      .$cell_id == "cell07" |
-      .$cell_id == "cell08" |
-      .$cell_id == "cell18" |
-      .$cell_id == "cell19" |
-      .$cell_id == "cell20" |
-      .$cell_id == "cell21" |
-      .$cell_id == "cell23" |
-      .$cell_id == "cell24" |
-      .$cell_id == "cell25" |
-      .$cell_id == "cell26" |
-      .$cell_id == "cell27" |
-      .$cell_id == "cell28",
-    F
-  )) %>%
-  dplyr::mutate(ident = T) %>%
-  dplyr::mutate(ident = replace(
-    ident,
-    .$cell_id == "cell06" |
-      .$cell_id == "cell07" |
-      .$cell_id == "cell11" |
-      .$cell_id == "cell12" |
-      .$cell_id == "cell13" |
-      .$cell_id == "cell14" |
-      .$cell_id == "cell21" |
-      .$cell_id == "cell22" |
-      .$cell_id == "cell23" |
-      .$cell_id == "cell24" |
-      .$cell_id == "cell25" |
-      .$cell_id == "cell26" |
-      .$cell_id == "cell27",
-    F
-  )) %>%
-  dplyr::mutate(control = F) %>%
-  dplyr::mutate(control = replace(
-    control,
-    .$cell_id == "cell25" |
-      .$cell_id == "cell26" |
-      .$cell_id == "cell27" |
-      .$cell_id == "cell28" |
-      .$cell_id == "cell29",
-    T
-  )) %>%
-  dplyr::mutate(position = "unknown") %>%
-  dplyr::mutate(position = replace(
-    position,
-    .$cell_id == "cell01" |
-      .$cell_id == "cell02" |
-      .$cell_id == "cell03" |
-      .$cell_id == "cell10" |
-      .$cell_id == "cell11" |
-      .$cell_id == "cell14" |
-      .$cell_id == "cell15",
-    "IL"
-  )) %>%
-  dplyr::mutate(position = replace(
-    position,
-    .$cell_id == "cell20" |
-      .$cell_id == "cell21" |
-      .$cell_id == "cell22",
-    "transient"
-  )) %>%
-  dplyr::mutate(position = replace(
-    position,
-    .$cell_id == "cell08" |
-      .$cell_id == "cell16" |
-      .$cell_id == "cell17" |
-      .$cell_id == "cell23" |
-      .$cell_id == "cell24",
-    "PF"
-  )) %>%
-  dplyr::mutate(
-    gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), yes = "y", no = "n")
-  )
+  mutate(cell_id = substr(file_name, 1, 6)) %>%
+  mutate(bl_activity = if_else(cell_id %in% bl_activity_cells, F, T),
+         pinch = if_else(cell_id %in% pinch_cells, F, T),
+         ident = if_else(cell_id %in% ident_cells, F, T),
+         control = if_else(cell_id %in% control_cells, T, F),
+         position = case_when(
+           cell_id %in% position_cells_IL ~ "IL",
+           cell_id %in% position_cells_transient ~ "transient",
+           cell_id %in% position_cells_PF ~ "PF",
+           TRUE ~ "unknown"
+         ),
+         gap = ifelse(cell_id %in% c("cell06", "cell07", "cell08", "cell09"), "y", "n")) %>%
+  arrange(cell_id)
+
+CELL_INFO <- CELL_INFO %>%
+  select(2, 1, everything())
 
 datatable(CELL_INFO,
   caption = "CELL_INFO table",
   rownames = TRUE,
   options = list(pageLength = 50, scrollX = T, scrollY = "500px", dom = "t")
 )
-
-# IL_stim_firing$file_name %>% unique() %>% length()
-# info_stim$file_name %>% length()
 ```
+
 
 <br><br>
 
@@ -795,11 +730,12 @@ psth_tibble %>%
 ```
 
 ```{r}
-psth_tibble %>%
+generate_population_psth_plt <- function(include_control){
+  psth_tibble %>%
   dplyr::filter(
     reltimes > -(train_length / 4),
     reltimes < train_length + train_length / 2,
-    control == T, # F
+    ifelse(include_control == T, control == T, control == F),
     train_length > 4,
     # inhib_strength == "strong",
   ) %>% # select(cell_id) %>% unique()
@@ -820,6 +756,13 @@ psth_tibble %>%
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   )
+}
+
+pop_psth_ctrl_plt <- generate_population_psth_plt(T)
+pop_psth_plt <- generate_population_psth_plt(F)
+
+cowplot::plot_grid(pop_psth_plt, pop_psth_ctrl_plt, ncol = 2)
+
 ```
 
 ```{r}
@@ -2573,7 +2516,7 @@ Example file: **08_right_PnO_t5_4083_baseline1_wake.mat"**
 
 ```{r,  echo=FALSE,warning=FALSE,message=FALSE}
 file_list <- list.files(
-  path = "data",
+  path = file.path("data", "raw_data"),
   pattern = "*.mat", full.names = F, recursive = F
 )
 ```
@@ -2609,7 +2552,7 @@ Content of mat files:
 ```{r}
 file_to_load <- file_list[[2]]
 filename <- as.character(substring(file_to_load, 1, nchar(file_to_load) - 4))
-raw.rec <- readMat(file.path("data", file_to_load))
+raw.rec <- readMat(file.path("data", "raw_data", file_to_load))
 
 ### takes the first AP (first row) and tells the index of point with the max value
 points_to_peak <- which(raw.rec$ap[, , 1]$values[1, ] ==
