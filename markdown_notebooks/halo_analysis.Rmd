@@ -1,0 +1,292 @@
+---
+title: "Freely moving analysis"
+author: "Viktor Plattner"
+output:
+  html_document:
+    number_sections: yes
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    keep_tex: true
+  html_notebook:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+spacing: single
+fontsize: 12pt
+always_allow_html: yes
+header-includes:
+   - \usepackage{animate}
+
+params:
+  selected_animal: "GliciN-FM1"
+  selected_control: "GliciN-FM1"
+
+
+knit: (
+  function (inputFile, encoding) {
+    
+    rmarkdown::render(  
+      input = inputFile,
+      encoding = encoding,
+      output_file = file.path(
+        "notebook_html", 
+        paste0("freely_moving_analysis_", 
+        rmarkdown::yaml_front_matter(inputFile)$params$selected_animal,
+        "_",
+        Sys.Date(),
+         ".html")
+        ),
+      envir = globalenv()
+      )
+    }
+---
+
+```{=html}
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 14px;
+      font-family: "Arial", Helvetica, sans-serif;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 38px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #4d4e4f;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h2 { /* Header 2 */
+  font-size: 22px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Helvetica, sans-serif;
+  color: #2c3a3e;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+```
+
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(tidyverse)
+
+# Define custom operators and functions
+`%!in%` <- Negate(`%in%`)
+sem <- function(x) sd(x) / sqrt(length(x)) # Standard error of the mean function
+
+# Check and install required packages
+required_packages <- c("imputeTS")
+missing_packages <- required_packages[!(required_packages %in% installed.packages()[, "Package"])]
+if (length(missing_packages) > 0) {
+  install.packages(missing_packages)
+}
+# Load packages
+library(imputeTS)
+
+# Find and load all necessary libraries
+library_paths <- list.files(pattern = ".Rmd|.R", full.names = TRUE) %>%
+  map(~ readLines(con = .x) %>%
+    grep(pattern = "library\\(", x = ., value = TRUE)) %>%
+  unlist() %>%
+  str_extract(pattern = "(?<=library\\()[^)]+") %>%
+  unique()
+
+library_paths <- library_paths[library_paths != "STARS"]
+
+lapply(library_paths, library, character.only = TRUE)
+
+# Define global constants and settings
+scale <- 1.6 # pixel/mm
+fps <- 25 # frame rate
+standard_stim_length <- 10 # Default stimulus length in seconds
+around_stim_length <- fps * 8 # Stimulus length around default
+time_res <- 1 / fps # Time between frames
+ang_threshold <- 90 # Angle threshold
+mouse_speed_mps <- 3.3 # Mouse speed in meters per second
+datapoint_to_plot <- 5 # Data points to plot
+xlim_mm <- c(0, 1280 / scale) # X-axis limits
+ylim_mm <- c(0, 720 / scale) # Y-axis limits
+selected_animal <- params$selected_animal
+selected_control <- params$selected_control
+selected_intensities <- c("1 mW", "5 mW", "10 mW")
+control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
+
+# Define global theme for ggplot
+global_facet_theme <- theme(
+  strip.text = element_text(size = 15),
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 15)
+)
+
+# Custom function to remove junk animals from the data
+RawDataFilter <- function(df) {
+  df %>%
+    filter(str_detect(animal, pattern = "b")) %>%
+    as_tibble()
+}
+
+# Custom function to recalculate distance and speed after removing frames 
+RecalculateDistance <- function(df) {
+  df %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    )
+}
+```
+
+
+```{r warning=F, message=F, echo=FALSE}
+stims_halo <- read.csv(
+  file.path("data", "PnO_stim_halo", "pno_halo_stims.csv")
+) %>%
+  as_tibble() %>%
+  mutate(
+    intensity = paste0(intensity, " mW"),
+    stim_length = end - start
+  ) %>%
+  select(-stim_duration) %>%
+  rename("stim_number" = stim.number) %>%
+  gather(key = "timing", value = "frame", start, end)
+# ### to get the proper length later!!!!!!!!!!!!!!!!!!!!!
+# dplyr::mutate(
+#   frame = ifelse(timing == "end", frame + 1, frame)
+# )
+
+stims_halo %>%
+  dplyr::filter(animal == selected_animal) %>%
+  head(100)
+```
+
+
+
+```{r message=F, echo = FALSE, warning = FALSE}
+coords_raw <- read.csv(
+  file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv")
+) %>%
+  as_tibble() %>%
+  mutate(
+    animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
+      str_remove_all(pattern = "\\\\") %>%
+      str_remove(pattern = "fix") %>% str_remove(pattern = "control")
+    # ### frame is 0 indexed turning it to 1 indexed to avoid confusion
+    # frame = frame + 1
+  ) %>%
+  full_join(stims) %>%
+  ### creating unique session IDs
+  group_by(animal) %>%
+  mutate(
+    s2 = lag(session, default = "1"),
+    s3 = ifelse(s2 == session, 0, 1),
+    session = cumsum(s3),
+    session = paste0("session_", session)
+  ) %>%
+  select(-s2, -s3) %>%
+  ungroup() %>%
+  dplyr::group_by(animal, session) %>%
+  dplyr::mutate(
+    stim_number = ifelse(timing == "end", NA, stim_number)
+  ) %>%
+  mutate(grp = cumsum(!is.na(stim_number))) %>%
+  dplyr::group_by(animal, session, grp) %>%
+  fill(timing) %>%
+  mutate(
+    stim_freq = replace(stim_freq, timing == "start", stim_freq[1]),
+    stim_freq = replace(stim_freq, timing == "end", NA),
+    stim_length = replace(stim_length, timing == "start", stim_length[1]),
+    stim_length = replace(stim_length, timing == "end", NA),
+    intensity = replace(intensity, timing == "start", intensity[1]),
+    intensity = replace(intensity, timing == "end", NA),
+    stim_number = replace(stim_number, timing == "start", stim_number[1]),
+    stim_number = replace(stim_number, timing == "end", NA),
+    stim_side = replace(stim_side, timing == "start", stim_side[1]),
+    stim_side = replace(stim_side, timing == "end", NA),
+    quality = replace(quality, timing == "start", quality[1]),
+    quality = replace(quality, timing == "end", NA),
+    stim = F,
+    stim = replace(stim, timing == "start", T)
+  ) %>%
+  ungroup() %>%
+  group_by(animal, session) %>%
+  dplyr::mutate(
+    rec_time = (frame / fps) %>% round(digits = 2),
+    stim_categ = case_when(
+      stim == T ~ "stim",
+      lead(stim, n = around_stim_length) == T ~ "before stim",
+      lag(stim, n = around_stim_length) == T ~ "after stim",
+      stim == F ~ "no stim"
+    ),
+
+    # shift values to the beginning of the stimulus block ...
+    # ... to be able to fill missing values in the next step
+    stim_block = ifelse(stim_categ == "no stim", F, T),
+    stim_number = lead(stim_number, n = around_stim_length),
+    intensity = lead(intensity, n = around_stim_length),
+    stim_freq = lead(stim_freq, n = around_stim_length),
+    stim_side = lead(stim_side, n = around_stim_length),
+    quality = lead(quality, n = around_stim_length)
+  ) %>%
+  ungroup() %>%
+  group_by(animal, session, stim_block) %>%
+  fill(stim_number) %>%
+  fill(intensity) %>%
+  fill(stim_freq) %>%
+  fill(stim_side) %>%
+  fill(quality) %>%
+  # length of the stimulus
+  unite(col = "head", head1, head2, sep = "_") %>%
+  unite(col = "center", center1, center2, sep = "_") %>%
+  unite(col = "tail", tail1, tail2, sep = "_") %>%
+  gather(
+    key = "body_part",
+    value = "coordinate",
+    head, center, tail
+  ) %>%
+  tidyr::extract(
+    col = coordinate, into = c("X", "Y"),
+    regex = "([[:alnum:]]+)_([[:alnum:]]+)"
+  ) %>%
+  dplyr::mutate(
+    X = replace(X, miss == 0, NA),
+    Y = replace(Y, miss == 0, NA)
+  ) %>%
+  dplyr::mutate(
+    stim_number = replace(stim_number, is.na(stim_number), "no stim")
+  )
+```
