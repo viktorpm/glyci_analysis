@@ -22,8 +22,8 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GliciN-FM1"
-  selected_control: "GliciN-FM1"
+  selected_animal: "FM1"
+  selected_control: "FM1"
 
 
 knit: (
@@ -179,36 +179,26 @@ stims_halo <- read.csv(
   as_tibble() %>%
   mutate(
     intensity = paste0(intensity, " mW"),
-    stim_length = end - start
+    stim_length = end - start,
+    animal = animal %>% str_sub(-3,-1)
   ) %>%
   select(-stim_duration) %>%
   rename("stim_number" = stim.number) %>%
   gather(key = "timing", value = "frame", start, end)
-# ### to get the proper length later!!!!!!!!!!!!!!!!!!!!!
-# dplyr::mutate(
-#   frame = ifelse(timing == "end", frame + 1, frame)
-# )
 
-stims_halo %>%
-  dplyr::filter(animal == selected_animal) %>%
-  head(100)
 ```
 
 
 
 ```{r message=F, echo = FALSE, warning = FALSE}
-coords_raw <- read.csv(
-  file.path("data", "PnO_stim_rotation", "rotation_all_cleaned.csv")
+coords_raw_halo <- read.csv(
+  file.path("data", "PnO_stim_halo", "pno_halo.csv")
 ) %>%
   as_tibble() %>%
   mutate(
-    animal = gsub(pattern = ".*rotation", replacement = "", animal) %>%
-      str_remove_all(pattern = "\\\\") %>%
-      str_remove(pattern = "fix") %>% str_remove(pattern = "control")
-    # ### frame is 0 indexed turning it to 1 indexed to avoid confusion
-    # frame = frame + 1
+    animal = session %>% substr(1, 3) %>% str_to_upper(),
   ) %>%
-  full_join(stims) %>%
+  full_join(stims_halo) %>%
   ### creating unique session IDs
   group_by(animal) %>%
   mutate(
@@ -289,4 +279,592 @@ coords_raw <- read.csv(
   dplyr::mutate(
     stim_number = replace(stim_number, is.na(stim_number), "no stim")
   )
+```
+
+
+```{r}
+coords_halo <- coords_raw_halo %>%
+  dplyr::filter(
+    body_part != "tail",
+  ) %>%
+  # this block calculates distances and speed across frames
+  dplyr::group_by(animal, body_part, session) %>%
+  dplyr::mutate(
+
+    # interpolating missing values
+    X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
+    Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+
+    # sometimes the tracking software looses the point and jumps...
+    # ...back and forth between unrealistic numbers...
+    # ...or starts to follow something else
+    # these points are replaced by 0...
+    # ...(the animal did not change position between those frames)
+    # outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
+
+    X_diff = ifelse(
+      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+      yes = 0,
+      no = X_diff
+    ),
+    Y_diff = ifelse(
+      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+      yes = 0,
+      no = Y_diff
+    ),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000,
+    sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
+  ) %>%
+  group_by(animal, session, body_part, sec_counter) %>%
+  dplyr::mutate(speed_sec = sum(d_mm, na.rm = T)) %>%
+  ungroup() %>%
+  # removing "bad" quality stimuli (repeats)
+  dplyr::filter(
+    quality != "bad" | is.na(quality),
+    stim_number %in% c("1", "2", "3", "4", "5", "no stim")
+  ) %>%
+  ungroup() %>%
+  dplyr::group_by(animal, body_part, session) %>%
+  # adding the number of repeats in each session, (-1 to remove "no stim")
+  dplyr::mutate(
+    No_repeats = stim_number %>% unique() %>% length() - 1
+  ) %>%
+  ungroup() %>%
+  # adding the number of repeats in each intensity group
+  # (no -1 as "intensity" variable doesn't run through the session)
+  dplyr::group_by(animal, body_part, intensity) %>%
+  dplyr::mutate(
+    No_repeats_intensity = stim_number %>% unique() %>% length()
+  )
+
+
+
+coords_halo %>%
+  dplyr::filter(animal == selected_animal) %>%
+  dplyr::group_by(session, body_part) %>%
+  slice(1:5)
+```
+
+
+
+```{r}
+coords_halo_down_sapmpled <- coords_halo %>%
+  dplyr::filter(
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  # this block calculates distances and speed across frames
+  dplyr::group_by(animal, body_part, session) %>%
+  dplyr::mutate(
+
+    # interpolating missing values
+    X_interp = imputeTS::na_interpolation(X %>% as.integer()) %>% round(),
+    Y_interp = imputeTS::na_interpolation(Y %>% as.integer()) %>% round(),
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+
+    # sometimes the tracking software looses the point and jumps...
+    # ...back and forth between unrealistic numbers...
+    # ...or starts to follow something else
+    # these points are replaced by 0...
+    # ...(the animal did not change position between those frames)
+    # outliers are defined as Q1 - 3*IQR, Q3 + 3*IQR
+
+    X_diff = ifelse(
+      test = X_diff < quantile(
+        X_diff,
+        na.rm = T
+      )["25%"] - 3 * IQR(X_diff, na.rm = T) |
+        X_diff > quantile(
+          X_diff,
+          na.rm = T
+        )["75%"] + 3 * IQR(X_diff, na.rm = T),
+      yes = 0,
+      no = X_diff
+    ),
+    Y_diff = ifelse(
+      Y_diff < quantile(
+        Y_diff,
+        na.rm = T
+      )["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+        Y_diff > quantile(
+          Y_diff,
+          na.rm = T
+        )["75%"] + 3 * IQR(Y_diff, na.rm = T),
+      yes = 0,
+      no = Y_diff
+    ),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000,
+    sec_counter = cumsum(ifelse(rec_time %% 1 == 0, 1, 0))
+  )
+
+coords_halo_down_sapmpled %>%
+  dplyr::filter(animal == selected_animal) %>%
+  dplyr::group_by(session, body_part) %>%
+  slice(1:5)
+```
+
+
+```{r message=F, warning=F, echo=F, include=F}
+lengths <- coords_halo %>%
+  dplyr::filter(
+    body_part == "head",
+    stim_categ != "no stim",
+  ) %>%
+  group_by(animal, session, stim_number, intensity, quality) %>%
+  count(stim_categ) %>%
+  spread(stim_categ, n) %>%
+  select(
+    animal, session, stim_number,
+    intensity, quality, `before stim`,
+    stim, `after stim`
+  )
+
+
+n_repeat <- lengths %>%
+  dplyr::group_by(animal, intensity) %>%
+  dplyr::filter(intensity %in% selected_intensities) %>%
+  summarise(length(stim_number))
+```
+
+
+
+```{r}
+text_layer <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal, # selected_control
+    stim == T
+  ) %>%
+  group_by(session) %>%
+  summarise(int_label = intensity %>% unique())
+
+text_layer_ctrl <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_control,
+    stim == T
+  ) %>%
+  group_by(session) %>%
+  summarise(int_label = intensity %>% unique())
+```
+
+<br> Creating plot colors <br>
+
+```{r}
+gg_color_hue <- function(n) {
+  hues <- seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+n <- 6
+cols <- gg_color_hue(n)
+```
+
+
+```{r warning=FALSE, fig.width=15, fig.height=10, echo = FALSE}
+plt_xpos <- coords_halo %>%
+  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
+  ggplot(mapping = aes(x = rec_time, y = X_interp %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("X position") +
+  facet_wrap(~session, ncol = 1) +
+  ggtitle(paste0("X position: ", selected_animal))
+
+
+
+plt_ypos <- coords_halo %>%
+  dplyr::filter(animal == selected_animal, body_part != "tail") %>%
+  ggplot(mapping = aes(x = rec_time, y = Y %>% as.integer())) +
+  geom_line(aes(col = body_part)) +
+  theme(legend.position = "none") +
+  ylab("Y position") +
+  facet_wrap(~session, ncol = 1) +
+  ggtitle(paste0("Y position: ", selected_animal))
+
+cowplot::plot_grid(plt_xpos, plt_ypos, ncol = 2)
+```
+
+
+
+```{r fig.width=10, fig.height=10, echo = FALSE, message=FALSE, warning=FALSE}
+coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part != "tail"
+  ) %>%
+  dplyr::group_by(session, frame) %>%
+  dplyr::mutate(
+    dx = diff(X_interp),
+    dy = diff(Y_interp),
+    # ldx = lead(dx),
+    # ldy = lead(dy),
+    hc_d = sqrt(dx^2 + dy^2)
+  ) %>%
+  ungroup() %>%
+  dplyr::filter(body_part == "center") %>%
+  ggplot(
+    mapping = aes(x = rec_time, y = hc_d)
+  ) +
+  geom_hline(
+    aes(
+      yintercept = quantile(
+        hc_d,
+        na.rm = T
+      )["25%"] - 1.5 * IQR(hc_d, na.rm = T)
+    ),
+    col = "gray50",
+    lty = "dashed"
+  ) +
+  geom_hline(
+    aes(yintercept = quantile(
+      hc_d,
+      na.rm = T
+    )["75%"] + 1.5 * IQR(hc_d, na.rm = T)),
+    col = "gray50",
+    lty = "dashed"
+  ) +
+  geom_line(
+    aes(col = stim, group = 1)
+  ) +
+  geom_label_repel(
+    data = . %>%
+      dplyr::filter(stim_number != "no stim", stim_categ == "stim") %>%
+      dplyr::group_by(session, stim_number) %>%
+      slice(1),
+    aes(
+      x = rec_time,
+      y = mean(hc_d, na.rm = T),
+      label = quality
+    ),
+    direction = "x",
+    nudge_x = 1
+  ) +
+  facet_wrap(~session, ncol = 1, scales = "free_y") +
+  coord_cartesian(
+    ylim = c(20, 130)
+  ) +
+  global_facet_theme
+```
+
+
+```{r echo=, fig.height=10, fig.width=15, warning=FALSE}
+plt_traject_stim <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    # intensity %in% selected_intensities,
+    stim == T,
+    frame %% 5 == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+
+  ### drawing positions during no stimulus
+  ### "coords_halo" was filtered differently compared to the stimulus dataset (number of frames)
+  geom_point(
+    data = coords_halo %>%
+      dplyr::filter(
+        animal == selected_animal,
+        # intensity %in% c(selected_intensities, NA),
+        body_part == "center",
+        stim == F,
+        frame %% 5 == 0
+      ),
+    size = 1,
+    alpha = 0.1
+  ) +
+
+  ### drawing positions during stimulus
+  ### body parts are connected by lines
+  # geom_line(
+  #   aes(group = frame, col = as.character(stim_number)),
+  # ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  # geom_point(
+  #   aes(shape = body_part, col = as.character(stim_number)),
+  #   size = 2
+  # ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  facet_wrap(~session, nrow = 1) +
+  geom_label(
+    data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+    aes(
+      x = Inf, y = -Inf,
+      hjust = 1.1, vjust = -0.5,
+      label = paste0("Intensity: ", int_label)
+    )
+  ) +
+  labs(col = "Stimulus number", shape = "Body part") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+
+
+plt_traject_ctrl <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity %in% selected_intensities,
+    stim == T,
+    frame %% 5 == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+
+  ### drawing positions during no stimulus
+  ### "coords_halo" was filtered differently compared to the stimulus dataset (number of frames)
+  geom_point(
+    data = coords_halo %>%
+      dplyr::filter(
+        animal == selected_control,
+        intensity %in% c(selected_intensities, NA),
+        body_part == "center",
+        stim == F,
+        frame %% 5 == 0
+      ),
+    size = 1,
+    alpha = 0.1
+  ) +
+
+  ### drawing positions during stimulus
+  ### body parts are connected by lines
+  # geom_line(
+  #   aes(group = frame, col = as.character(stim_number)),
+  # ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  # geom_point(
+  #   aes(shape = body_part, col = as.character(stim_number)),
+  #   size = 2
+  # ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  facet_wrap(~session, nrow = 1) +
+  geom_label(
+    data = text_layer_ctrl %>% dplyr::filter(int_label %in% selected_intensities),
+    aes(
+      x = Inf, y = -Inf,
+      hjust = 1.1, vjust = -0.5,
+      label = paste0("Intensity: ", int_label)
+    )
+  ) +
+  labs(col = "Stimulus number", shape = "Body part") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+cowplot::plot_grid(plt_traject_stim, plt_traject_ctrl, nrow = 2)
+```
+
+
+
+## Recalculating distances between tracked points after leaving out frames
+
+```{r fig.width=10, fig.asp=1, echo = FALSE}
+plt_xlim <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    # frame %% datapoint_to_plot == 0
+  ) %>%
+  dplyr::slice(1:11) %>%
+  pull(X_interp) %>%
+  range() + c(-1, 1)
+
+plt_ylim <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    # frame %% datapoint_to_plot == 0
+  ) %>%
+  dplyr::slice(1:11) %>%
+  pull(Y_interp) %>%
+  range() + c(-1, 1)
+
+
+plt1_path <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    session == "session_1"
+  ) %>%
+  dplyr::slice(1:6) %>%
+  dplyr::arrange(frame) %>% ### to be used with geom_path
+  ggplot(
+    mapping = aes(x = X_interp, y = Y_interp)
+  ) +
+  geom_text(
+    aes(
+      color = frame %>% as.factor(),
+      label = frame
+    ),
+    size = 6
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[1], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[1]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[2], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[2]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_path(col = "gray", linetype = "dashed") +
+  geom_label_repel(
+    data = . %>% dplyr::slice(1:5),
+    aes(
+      x = X_interp + X_diff / 2,
+      y = Y_interp + Y_diff / 2,
+      label = d %>% round(4)
+    ),
+    direction = "x",
+    nudge_x = -.7
+  ) +
+  theme(legend.position = "none") +
+  xlim(plt_xlim) +
+  ylim(plt_ylim) +
+  coord_fixed(ratio = 1)
+
+
+plt2_path <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    body_part == "center",
+    session == "session_1",
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ### recalculates distances after frames were removed
+  dplyr::group_by(session) %>%
+  dplyr::mutate(
+    X_diff = c(diff(X_interp), NA) %>% round(4),
+    Y_diff = c(diff(Y_interp), NA) %>% round(4),
+    X_diff = ifelse(
+      test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+        X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+      yes = 0,
+      no = X_diff
+    ),
+    Y_diff = ifelse(
+      Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+        Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+      yes = 0,
+      no = Y_diff
+    ),
+    d = sqrt(X_diff^2 + Y_diff^2),
+    d_mm = d / scale,
+    speed_instant = d_mm / time_res,
+    mmps = speed_instant * (1 / time_res),
+    mps = (speed_instant * (1 / time_res)) / 1000
+  ) %>%
+  dplyr::slice(1:2) %>%
+  dplyr::arrange(frame) %>% ### to be used with geom_path
+  ggplot(
+    mapping = aes(x = X_interp, y = Y_interp)
+  ) +
+  geom_text(
+    aes(
+      color = frame %>% as.factor(),
+      label = frame
+    ),
+    size = 6
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[1], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[1]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_segment(
+    aes(
+      x = X_interp[2], xend = X_interp[2],
+      y = Y_interp[1], yend = Y_interp[2]
+    ),
+    linetype = "dashed", col = "red"
+  ) +
+  geom_path(col = "gray", linetype = "dashed") +
+  geom_label_repel(
+    data = . %>% dplyr::slice(1:1),
+    aes(
+      x = X_interp + X_diff / 2,
+      y = Y_interp + Y_diff / 2,
+      label = d %>% round(4)
+    ),
+    direction = "x",
+    nudge_x = -.7
+  ) +
+  theme(legend.position = "none") +
+  xlim(plt_xlim) +
+  ylim(plt_ylim) +
+  coord_fixed(ratio = 1)
+
+library(cowplot)
+
+cowplot::plot_grid(plt1_path, plt2_path, ncol = 2)
 ```
