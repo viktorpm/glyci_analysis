@@ -717,6 +717,308 @@ plt_traject_ctrl <- coords_halo %>%
 cowplot::plot_grid(plt_traject_stim, plt_traject_ctrl, nrow = 2)
 ```
 
+```{r}
+plt_taject_stim_baseline <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    stim == F,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " baseline trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_stim_stim <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    stim == T,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " stimulus trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_ctrl_baseline <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    stim == F,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " baseline trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+plt_taject_ctrl_stim <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    stim == T,
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame, col = as.character(stim_number)),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " stim trajectory")) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+
+#### with facet wrap
+
+plt_taject_stim_wrap <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "5 mW",
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+
+plt_taject_ctrl_wrap <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_control,
+    intensity == "5 mW",
+    frame %% datapoint_to_plot == 0
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  ylim(c(0, 720)) + # / scale)) +
+  coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_control, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+```
+
+Baseline trajectory: only before and after the stimulus, not the whole session
+
+```{r fig.width=15}
+cowplot::plot_grid(plt_taject_stim_baseline, plt_taject_stim_stim, plt_taject_ctrl_baseline, plt_taject_ctrl_stim, nrow = 1)
+```
+
 
 
 ## Recalculating distances between tracked points after leaving out frames
