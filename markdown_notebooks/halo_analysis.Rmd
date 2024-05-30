@@ -128,7 +128,7 @@ ylim_mm <- c(0, 720 / scale) # Y-axis limits
 selected_animal <- params$selected_animal
 selected_control <- params$selected_control
 selected_intensities <- c("1 mW", "5 mW", "10 mW")
-control_animals <- c("FM1")
+control_animals <- c("")
 
 # Define global theme for ggplot
 global_facet_theme <- theme(
@@ -1650,8 +1650,6 @@ corrected_angles %>%
 ```{r message=FALSE, warning=FALSE, echo = FALSE}
 corrected_angles_population <- coords_halo %>%
   dplyr::filter(
-    ### remove session 6, 15 mW: not according to protocol
-    animal != "GIIFM20b" | session != "session_6",
     body_part != "tail"
   ) %>%
   dplyr::group_by(animal, session, frame) %>%
@@ -1723,7 +1721,8 @@ corrected_angles_population %>%
     body_part == "center",
     stim_number != "no stim",
     intensity %in% selected_intensities,
-    stim_categ != "after stim"
+    stim_categ != "after stim",
+    stim_side == "right"
   ) %>%
   dplyr::group_by(animal, intensity, stim_number) %>%
   dplyr::summarise(
@@ -1731,36 +1730,23 @@ corrected_angles_population %>%
     cumang = cumsum(signed_angle_corrected) %>% scale(),
     across(stim_categ)
   ) %>%
-  # dplyr::group_by(align_time) %>%
-  # summarise(cumang = mean(signed_angle_corrected) )%>%
   ggplot(aes(x = align_time, y = cumang)) +
   geom_line(aes(group = stim_number, col = stim_categ)) +
   facet_grid(animal ~ intensity, scales = "free_x")
-#
-# corrected_angles_population %>%
-#   dplyr::filter(
-#     animal %!in% c(control_animals),
-#     body_part == "center",
-#     stim_number != "no stim",
-#     intensity %in% selected_intensities,
-#     stim_categ != "after stim"
-#   ) %>%
-#   dplyr::group_by(animal, intensity, stim_number, stim_categ) %>%
-#   dplyr::filter(first(stim_categ == "stim")) %>%
+
 ```
 
 Mean/sum rotation angle by session
 
-```{r message=FALSE, fig.height=5, fig.width=20, echo = FALSE}
+```{r message=FALSE, fig.height=8, fig.width=10, echo = FALSE}
 sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
 corrected_angles_population %>%
   dplyr::filter(
     body_part == "head",
-    stim_categ != "no stim",
-    # animal == "GIIFM19b"
+    stim_categ != "no stim"
   ) %>%
-  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::group_by(animal, stim_side, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
@@ -1776,7 +1762,7 @@ corrected_angles_population %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~session, nrow = 1) +
+  facet_wrap(~stim_side, nrow = 1) +
   expand_limits(y = c(0, 15)) +
   global_facet_theme +
   xlab("State") +
@@ -1790,12 +1776,11 @@ sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
 
 corrected_angles_population %>%
   dplyr::filter(
-    animal %in% control_animals,
+    animal %!in% control_animals,
     body_part == "head",
-    stim_categ != "no stim"
-    # str_detect(string = session, pattern = "1|2|3|4|5"), # session filter
+    stim_categ != "no stim",
   ) %>%
-  dplyr::group_by(animal, session, stim_categ) %>%
+  dplyr::group_by(animal, stim_categ, stim_side) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
     mean_ang = mean(signed_angle_corrected, na.rm = T),
@@ -1811,7 +1796,7 @@ corrected_angles_population %>%
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
-  facet_wrap(~session) +
+  facet_wrap(~stim_side) +
   global_facet_theme +
   xlab("State") +
   ylab("Scaled sum angle")
@@ -1822,11 +1807,9 @@ Mean/sum rotation angle by intensity (stimulus and control)
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
   dplyr::filter(
-    # animal == "GIIFM19b",
-    animal %!in% c(control_animals),
     body_part == "head",
     stim_categ != "no stim",
-    # stim_side == "left"
+    stim_side == "left"
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(animal, stim_side, intensity, stim_categ) %>%
@@ -1848,9 +1831,7 @@ plt1_angle <- corrected_angles_population %>%
     )
   ) %>%
   dplyr::group_by(animal, intensity) %>%
-  fill(ipsicontra, .direction = "up") %>% # write.csv(file = file.path("output_data","to_publish","Emivel","PnO_mean_No_rotation_per_second_stim.csv"))
-  # dplyr::filter(
-  #   sum_ang[stim_categ == "stim"] > 0) %>%
+  fill(ipsicontra, .direction = "up") %>% 
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
@@ -1883,7 +1864,7 @@ plt1_angle <- corrected_angles_population %>%
   expand_limits(y = c(0, 4 * 25 / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
-  ggtitle("Stimulus") +
+  ggtitle("Left side stimulus") +
   theme(aspect.ratio = 1) +
   theme(
     axis.title.x = element_text(size = 12),
@@ -1895,16 +1876,12 @@ plt1_angle <- corrected_angles_population %>%
     axis.line = element_line(colour = "black")
   )
 
-# facet_grid(~animal, ~intensity)
-# geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
-
 
 plt2_angle <- corrected_angles_population %>%
   dplyr::filter(
-    animal %in% control_animals,
     body_part == "head",
     stim_categ != "no stim",
-    # stim_side == "right"
+    stim_side == "right"
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(animal, stim_side, intensity, stim_categ) %>%
@@ -1954,7 +1931,7 @@ plt2_angle <- corrected_angles_population %>%
   expand_limits(y = c(0, 4 * 25 / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
-  ggtitle("Control") +
+  ggtitle("Right side stimulus") +
   theme(aspect.ratio = 1) +
   theme(
     axis.title.x = element_text(size = 12),
@@ -1977,9 +1954,10 @@ cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
 ```{r}
 corrected_angles_population %>%
   dplyr::filter(
-    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
+    animal %!in% c(control_animals),
     body_part == "head",
     stim_categ != "no stim",
+    stim_side == "left"
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
   dplyr::group_by(animal, stim_side, stim_categ) %>%
@@ -2038,17 +2016,16 @@ corrected_angles_population %>%
 
 
 ```{r fig.width=15}
-generate_angle_dose_plot <- function(include_control) {
+generate_angle_dose_plot <- function(stimside) {
   corrected_angles_population %>%
     dplyr::filter(
-      if (include_control) {
-        animal %in% control_animals
-      } else {
-        animal %!in% control_animals
-      },
       body_part == "head",
       stim_categ != "no stim",
-      # stim_side == "left"
+      if (stimside == "right") {
+        stim_side == stimside
+      } else {
+        stim_side == "left"
+      }
     ) %>%
     dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
     dplyr::group_by(animal, intensity, stim_categ) %>%
@@ -2098,11 +2075,11 @@ generate_angle_dose_plot <- function(include_control) {
 }
 
 # Generate plots for both control and non-control groups
-plt_ang_dose_ctrl <- generate_angle_dose_plot(TRUE)
-plt_ang_dose_stim <- generate_angle_dose_plot(FALSE)
+plt_ang_dose_right <- generate_angle_dose_plot(stimside = "right")
+plt_ang_dose_left <- generate_angle_dose_plot(stimside = "left")
 
 
-cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
+cowplot::plot_grid(plt_ang_dose_right, plt_ang_dose_left, ncol = 2)
 ```
 
 
@@ -2110,17 +2087,17 @@ cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
 Mean rotation angle before stimulus vs during stimulus
 
 ```{r message=FALSE, warning=FALSE, fig.width=17, fig.height=15, out.width="100%", echo = FALSE}
-generate_angle_stim_plot <- function(include_control) {
+generate_angle_stim_plot <- function(stimside) {
   corrected_angles_population %>%
     dplyr::filter(
-      if (include_control) {
-        animal %in% c(control_animals, "GIIFM14b")
-      } else {
-        animal %!in% c(control_animals, "GIIFM14b")
-      },
       body_part == "head",
       stim_categ != "no stim",
-      intensity %in% c(selected_intensities, "15 mW")
+      intensity %in% c(selected_intensities, "15 mW"),
+      if (stimside == "right") {
+        stim_side == stimside
+      } else {
+        stim_side == "left"
+      }
     ) %>%
     dplyr::group_by(animal, intensity, stim_categ, stim_number) %>%
     dplyr::summarise(
@@ -2149,10 +2126,10 @@ generate_angle_stim_plot <- function(include_control) {
     )
 }
 
-plt_ang_ctrl <- generate_angle_stim_plot(TRUE)
-plt_ang_stim <- generate_angle_stim_plot(FALSE)
+plt_ang_right <- generate_angle_stim_plot(stimside = "right")
+plt_ang_left <- generate_angle_stim_plot(stimside = "left")
 
-cowplot::plot_grid(plt_ang_stim, plt_ang_ctrl, ncol = 2)
+cowplot::plot_grid(plt_ang_right, plt_ang_left, ncol = 2)
 ```
 
 
