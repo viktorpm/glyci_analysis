@@ -85,90 +85,27 @@ pre { /* Code block - determines code spacing between lines */
 
 
 ```{r setup, include=FALSE}
-### cheks all the used libraries in the project. Removes duplicates
-### list of libraries mentioned in the R scripts of the project
-library(tidyverse)
-
-liblist <- map(
-  list.files(pattern = ".Rmd|.R"),
-  ~ readLines(con = .x) %>%
-    grep(pattern = "library\\(", x = ., value = T)
-) %>%
-  unlist() %>%
-  substr(
-    start = 9,
-    stop = regexpr(text = ., pattern = "\\)") - 1 %>% # regexpr: in case of multiple matches it only takes the first one
-      as.vector()
-  ) %>%
-  `[`(!duplicated(.))
-
-### list of installed packages
-pkgs <- installed.packages() %>%
-  as_tibble() %>%
-  pull(1)
-
-### packages that are needed but not installed
-c(liblist[which(!liblist %in% pkgs)])
-
-### installs uninstalled packages
-install.packages(c(liblist[which(!liblist %in% pkgs)]))
-
-### loads all libraries
-lapply(liblist %>% as.list(), require, character.only = TRUE)
-
-
-
-
-### defining global constants, filters and plot scales
-
-library(imputeTS)
+source(file.path("..","supplementary_functions","md_analysis_setup_script.R"))
+# Brief explanation of the sourced script:
+# - Loads `tidyverse` for data manipulation and visualization.
+# - Defines custom operators/functions for enhanced R capabilities.
+# - Dynamically loads additional libraries based on patterns in `.Rmd`/.R` files.
+# - Sets a global theme for ggplot objects.
+# - Includes custom functions for data filtering and recalculating distances/speeds.
 
 scale <- 1.6 ### pixel/mm
 fps <- 29.5 ### frame rate (calculated from stim lengths in no. frames and known stim length in seconds)
 standard_stim_length <- 10 ### this is the most commonly used stimulus length (in seconds)
 around_stim_length <- as.integer(fps * 5)
-
 time_res <- 1 / fps ### time between frames
 ang_threshold <- 90
 mouse_speed_mps <- 3.3
-
-
-
 datapoint_to_plot <- 5
-
-global_facet_theme <- theme(
-  strip.text = element_text(size = 15),
-  axis.text = element_text(size = 12),
-  axis.title = element_text(size = 15)
-)
-
 xlim_mm <- c(0, 1280 / scale)
 ylim_mm <- c(0, 720 / scale)
-
 selected_animal <- params$selected_animal
 selected_intensities <- c("1 mW", "5 mW", "10 mW")
 control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
-
-`%!in%` <- Negate(`%in%`)
-
-
-
-
-### custom functions used in the analysis
-
-
-
-### removing junk animals from the data
-
-RawDataFilter <- function(df) {
-  # browser()
-  df %>%
-    dplyr::filter(
-      stringr::str_detect(animal, pattern = "b")
-    ) %>%
-    as_tibble() %>%
-    return()
-}
 ```
 
 
