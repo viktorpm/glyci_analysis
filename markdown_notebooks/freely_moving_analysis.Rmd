@@ -119,7 +119,7 @@ control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
 
 <br> These are defined in the "setup" chunk <br>
 
--   **scale**: 1.38 (pixels/mm) <br>
+-   **scale**: `r scale`` (pixels/mm) <br>
 -   **fps**: `r fps` (frame rate) <br>
 -   **time_res**: 1/**fps** = `r 1/fps` (time between frames) <br>
 -   **xlim_mm**, **ylim_mm**: pixels converted to mm (`r paste0(xlim_mm, ":", ylim_mm)`)
@@ -3415,7 +3415,12 @@ generate_pop_dist_summary_plot <- function(include_control) {
       panel.grid.minor = element_blank(),
       panel.background = element_blank(),
       axis.line = element_line(colour = "black")
-    )
+    ) +
+    if (include_control) {
+      ggtitle("Control")
+    } else {
+      ggtitle("Stimulus")
+    }
 }
 
 plt_pop_dist_sum_stim <- generate_pop_dist_summary_plot(FALSE)
@@ -3503,7 +3508,12 @@ generate_distance_dose_plot <- function(include_control) {
       panel.grid.minor = element_blank(),
       panel.background = element_blank(),
       axis.line = element_line(colour = "black")
-    )
+    ) +
+    if (include_control) {
+      ggtitle("Control")
+    } else {
+      ggtitle("Stimulus")
+    }
 }
 
 plt_distance_dose_ctrl <- generate_distance_dose_plot(TRUE)
