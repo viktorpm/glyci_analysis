@@ -93,6 +93,7 @@ source(file.path("..", "supplementary_functions", "md_analysis_setup_script.R"))
 # - Sets a global theme for ggplot objects.
 # - Includes custom functions for data filtering and recalculating distances/speeds.
 
+# Define global constants and settings
 scale <- 1.6 ### pixel/mm
 fps <- 29.5 ### frame rate (calculated from stim lengths in no. frames and known stim length in seconds)
 standard_stim_length <- 10 ### this is the most commonly used stimulus length (in seconds)
