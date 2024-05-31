@@ -108,7 +108,7 @@ selected_animal <- params$selected_animal
 selected_control <- params$selected_control
 selected_intensities <- c("1 mW", "5 mW", "10 mW")
 control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
-
+title = "Pno stimulus freely moving analysis"
 ```
 
 
@@ -2598,7 +2598,11 @@ plt2_angle <- corrected_angles_population %>%
 # geom_errorbar(aes(ymin = mean_ang - sem_ang, ymax = mean_ang + sem_ang, col = animal), width=.1)
 
 
-cowplot::plot_grid(plt1_angle, plt2_angle, nrow = 2)
+cowplot::plot_grid(
+  plt1_angle, plt2_angle, 
+  nrow = 2,
+  labels = paste0(title, ", ", "mean rotation angle by intensity")
+  )
 
 # plt1_angle$data %>%
 #   dplyr::group_by(intensity,stim_categ) %>%
@@ -2834,7 +2838,12 @@ generate_angle_dose_plot <- function(include_control) {
       panel.grid.minor = element_blank(),
       panel.background = element_blank(),
       axis.line = element_line(colour = "black")
-    )
+    ) +
+    if (include_control) {
+      ggtitle("Control")
+    } else {
+      ggtitle("Stimulus")
+    }
 }
 
 # Generate plots for both control and non-control groups
@@ -2842,7 +2851,11 @@ plt_ang_dose_ctrl <- generate_angle_dose_plot(TRUE)
 plt_ang_dose_stim <- generate_angle_dose_plot(FALSE)
 
 
-cowplot::plot_grid(plt_ang_dose_stim, plt_ang_dose_ctrl, ncol = 2)
+cowplot::plot_grid(
+  plt_ang_dose_stim, plt_ang_dose_ctrl, 
+  ncol = 2,
+  labels = paste0(title, ", ", "mean rotation angle dose dependency")
+  )
 ```
 
 
@@ -3426,7 +3439,11 @@ generate_pop_dist_summary_plot <- function(include_control) {
 plt_pop_dist_sum_stim <- generate_pop_dist_summary_plot(FALSE)
 plt_pop_dist_sum_ctrl <- generate_pop_dist_summary_plot(TRUE)
 
-cowplot::plot_grid(plt_pop_dist_sum_stim, plt_pop_dist_sum_ctrl, nrow = 2)
+cowplot::plot_grid(
+  plt_pop_dist_sum_stim, plt_pop_dist_sum_ctrl,
+  nrow = 2,
+  labels = paste0(title, ", ", "traveled distance")
+  )
 ```
 
 
@@ -3520,7 +3537,11 @@ plt_distance_dose_ctrl <- generate_distance_dose_plot(TRUE)
 plt_distance_dose_stim <- generate_distance_dose_plot(FALSE)
 
 
-cowplot::plot_grid(plt_distance_dose_stim, plt_distance_dose_ctrl, ncol = 2)
+cowplot::plot_grid(
+  plt_distance_dose_stim, plt_distance_dose_ctrl, 
+  ncol = 2,
+  labels = paste0(title, ", ", "traveled distance dose dependency") 
+  )
 ```
 
 
