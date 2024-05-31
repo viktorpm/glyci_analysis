@@ -1154,7 +1154,7 @@ plt1_angle_categ_length_norm <- corrected_anglesIL_population %>%
   ) +
   facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(0, .01)) +
+  expand_limits(y = c(0, 4 * 25 / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
@@ -1234,7 +1234,7 @@ plt1_angle <- corrected_anglesIL_population %>%
   ) +
   facet_grid(ipsicontra ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(0, 0.3)) +
+  expand_limits(y = c(0, 4 * 25 / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   ggtitle("Stimulus") +
@@ -1571,7 +1571,7 @@ plt_pop_dist_stim <- bind_rows(
     vjust = 1.7,
     hide.ns = F
   ) +
-  expand_limits(y = c(0, 40 *6)) +
+  expand_limits(y = c(0, 40 * 6)) +
   global_facet_theme +
   theme(aspect.ratio = 1) +
   theme(
