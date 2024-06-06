@@ -2019,16 +2019,7 @@ plt1_angle <- corrected_angles_population %>%
     all_stim_categ_length_row = length(signed_angle_corrected),
     mean_ang_manual = sum_ang / all_stim_categ_length_row
   ) %>%
-  dplyr::mutate(
-    ipsicontra = case_when(
-      sum_ang > 0 & stim_side == "left" & stim_categ == "stim" ~ "ipsi",
-      sum_ang > 0 & stim_side == "right" & stim_categ == "stim" ~ "contra",
-      sum_ang < 0 & stim_side == "left" & stim_categ == "stim" ~ "contra",
-      sum_ang < 0 & stim_side == "right" & stim_categ == "stim" ~ "ipsi",
-    )
-  ) %>%
   dplyr::group_by(animal, intensity) %>%
-  fill(ipsicontra, .direction = "up") %>% 
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
