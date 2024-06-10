@@ -1837,7 +1837,7 @@ coords_1s_window <- bind_rows(
     ) %>%
     dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
     # dplyr::top_n(6),
-    dplyr::slice(head(row_number(), 6)),
+    dplyr::slice(head(row_number(), 6))
   
 ) %>% arrange(animal, body_part, session, stim_number, stim_categ)
 
@@ -1848,8 +1848,8 @@ coords_1s_window %>%
     intensity %in% selected_intensities
   ) %>%
   select(session, animal, frame, rec_time, stim_categ, d, stim_number, intensity, body_part, X_diff, Y_diff) %>%
-  arrange(rec_time) %>% 
-  head(50) %>% 
+  arrange(animal, body_part, session, stim_number, rec_time) %>%
+  head(800) 
 ```
 
 ```{r message=F, warning=F, echo=F}
@@ -1916,7 +1916,39 @@ coords_8s_window <- bind_rows(
       mps = (speed_instant * (1 / time_res)) / 1000
     ) %>%
     dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
-    dplyr::slice(1:41)
+    dplyr::slice(1:41),
+  ### after stim
+  coords %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "after stim"
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>%
+    dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
+    # dplyr::top_n(41),
+    dplyr::slice(head(row_number(), 41)),
 ) %>% arrange(animal, body_part, session, stim_number, stim_categ)
 
 
@@ -1926,6 +1958,7 @@ coords_8s_window %>%
     intensity %in% selected_intensities
   ) %>%
   select(session, animal, frame, rec_time, stim_categ, d, stim_number, intensity, body_part, X_diff, Y_diff) %>%
+  arrange(rec_time) %>% View() 
   head(200)
 ```
 
@@ -3137,13 +3170,6 @@ generate_pop_dist_8s_plot <- function(include_control) {
       vjust = 1.5,
       hide.ns = F
     ) +
-    # ggpubr::stat_compare_means(
-    #   method = "wilcox.test",
-    #   paired = T,
-    #   comparisons = list(c("stim", "after stim")),
-    #   vjust = 1.5,
-    #   hide.ns = F
-    # ) +
     expand_limits(y = c(0, 1)) +
     global_facet_theme +
     theme(aspect.ratio = 1)
@@ -3283,6 +3309,67 @@ coords_1s_window %>%
   ) +
   global_facet_theme
 ```
+
+
+```{r fig.width=15}
+generate_pop_dist_bda_summary_plot <- function(include_control) {
+  coords_1s_window %>%
+  dplyr::filter(body_part == "center") %>% 
+  dplyr::group_by(animal, intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T)
+  ) %>%
+  dplyr::filter(
+    if (include_control) {
+      animal %in% control_animals
+    } else {
+      animal %!in% control_animals
+    },
+    intensity %in% c(selected_intensities, "15 mW")
+  ) %>%
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
+      y = mean_d * 6 / scale
+    )
+  ) +
+  geom_point(aes(fill = animal %>% as.factor()), shape = 21, size = 4) +
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 1) +
+  # facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  geom_line(aes(group = animal)) +
+  expand_limits(y = c(0, 40 * 6)) +
+  global_facet_theme +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) +
+  if (include_control) {
+    ggtitle("Control")
+  } else {
+    ggtitle("Stimulus")
+  }
+}
+
+plt_pop_dist_bda_sum_stim <- generate_pop_dist_bda_summary_plot(FALSE)
+plt_pop_dist_bda_sum_ctrl <- generate_pop_dist_bda_summary_plot(TRUE)
+
+cowplot::plot_grid(
+  plt_pop_dist_bda_sum_stim, plt_pop_dist_bda_sum_ctrl,
+  nrow = 2,
+  labels = paste0(title, ", " , "traveled distance before, during and after stimulus (in 1 sec long windows)"),
+  label_size = 11
+  )
+
+```
+
+
 
 Combining 1 sec before stim and stim division to 1st and last 9 sec tables. In control cases if I normalize with the period length the "last_part" drops. The reason is that the animal moves at a constant rate so dividing the mean traveled distance will decrease the mean.
 
@@ -3435,7 +3522,8 @@ plt_pop_dist_sum_ctrl <- generate_pop_dist_summary_plot(TRUE)
 cowplot::plot_grid(
   plt_pop_dist_sum_stim, plt_pop_dist_sum_ctrl,
   nrow = 2,
-  labels = paste0(title, ", ", "traveled distance")
+  labels = paste0(title, ", ", "traveled distance"),
+  label_size = 11
   )
 ```
 
