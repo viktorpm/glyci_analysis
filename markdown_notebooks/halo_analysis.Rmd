@@ -2055,6 +2055,61 @@ cowplot::plot_grid(
 )
 ```
 
+```{r fig.width=10}
+  corrected_angles_population %>%
+    dplyr::filter(
+      body_part == "head",
+      stim_categ != "no stim"
+    ) %>%
+    dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+    dplyr::group_by(animal_grp, intensity, stim_categ) %>%
+    dplyr::summarise(
+      sum_ang = sum(signed_angle_corrected, na.rm = T),
+      mean_ang = mean(signed_angle_corrected, na.rm = T),
+      med_ang = median(signed_angle_corrected, na.rm = T),
+      sd_ang = sd(signed_angle_corrected, na.rm = T),
+      sem_ang = sem(signed_angle_corrected)
+    ) %>%
+    dplyr::filter(
+      stim_categ == "stim"
+    ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","PnO_dose_intensity_rotation_control.csv"))
+
+    ggplot(
+      mapping = aes(
+        x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"),
+        y = ((mean_ang * 25) %>% abs()) / 360
+      )
+    ) +
+    geom_point(aes(fill = animal_grp), shape = 21, size = 4) +
+    geom_boxplot(alpha = 0) +
+    ggpubr::stat_compare_means(
+      method = "wilcox.test",
+      paired = F,
+      method.args = list(alternative = "two.sided"),
+      comparisons = list(c("1 mW", "5 mW"), c("1 mW", "10 mW"), c("1 mW", "15 mW")),
+      vjust = 1.5,
+      hide.ns = F
+      # label.y = 3000
+    ) +
+    global_facet_theme +
+    expand_limits(y = c(0, 0.2)) +
+    # xlab("State") +
+    # ylab("Scaled sum angle") +
+    # ggtitle("Stimulus") +
+    theme(aspect.ratio = 1) +
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 12),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black")
+    ) +
+  ggtitle(paste0(title, ", ", "mean rotation angle dose dependency"))
+
+```
+
 
 
 Mean rotation angle before stimulus vs during stimulus
@@ -2562,6 +2617,74 @@ cowplot::plot_grid(
   )
 ```
 
+```{r fig.width=10}
+  coords_halo %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "stim",
+      body_part == "center"
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal_grp, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>%
+   
+    dplyr::filter(
+      intensity %in% c(selected_intensities, "15 mW")
+    ) %>%
+    dplyr::group_by(animal_grp, intensity) %>% # dplyr::filter(animal == "GIIFM18b", intensity == "1 mW") %>% pull(d) %>% sum(na.rm = T) / 250
+    # dplyr::mutate(nrows=length(intensity)) %>%
+    dplyr::summarise(
+      mean_d = mean(d, na.rm = T),
+      sum_d_norm = sum(d, na.rm = T) / 250,
+      nrows = length(intensity)
+    ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","dose_intensity_diff_trav_dist.csv"))
+    ggplot(
+      aes(x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"), y = mean_d * 6)
+    ) +
+    geom_point(aes(fill = animal_grp), shape = 21, size = 4) +
+    geom_boxplot(alpha = 0) +
+    expand_limits(y = c(0, 60 * 6)) +
+    ggpubr::stat_compare_means(
+      method = "wilcox.test",
+      paired = F,
+      comparisons = list(c("1 mW", "5 mW"), c("1 mW", "10 mW"), c("1 mW", "15 mW")),
+      method.args = list(alternative = "two.sided"),
+      vjust = 1.6,
+      hide.ns = F
+    ) +
+    global_facet_theme +
+    theme(aspect.ratio = 1) +
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 12),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black")
+    ) +
+  ggtitle(paste0(title, ", " , "traveled distance dose dependency"))
+```
 
 ```{r fig.width=15}
 bind_rows(
