@@ -1732,7 +1732,7 @@ coords %>%
 
 ## Sum traveled distance by individual stimuli within session (1s before and during the stimulus)
 
-Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the last second of "before stimulus" category and through first second of the stimulus. Traveled distance "after stimulus" is not included. <br>
+Plotting traveled distance during individual stimuli (4 to 6 repeats) within sessions. Traveled distance is summed through the last second of "before stimulus" category and through first second of the stimulus. Traveled distance "after stimulus" is also included. <br>
 
 The same data is shown on the plots with different groupings: <br>
 
@@ -1805,7 +1805,40 @@ coords_1s_window <- bind_rows(
       mps = (speed_instant * (1 / time_res)) / 1000
     ) %>%
     dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
-    dplyr::slice(1:6)
+    dplyr::slice(1:6),
+  ### after stim
+  coords %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "after stim"
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>%
+    dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
+    # dplyr::top_n(6),
+    dplyr::slice(head(row_number(), 6)),
+  
 ) %>% arrange(animal, body_part, session, stim_number, stim_categ)
 
 
@@ -1815,7 +1848,8 @@ coords_1s_window %>%
     intensity %in% selected_intensities
   ) %>%
   select(session, animal, frame, rec_time, stim_categ, d, stim_number, intensity, body_part, X_diff, Y_diff) %>%
-  head(50)
+  arrange(rec_time) %>% 
+  head(50) %>% 
 ```
 
 ```{r message=F, warning=F, echo=F}
