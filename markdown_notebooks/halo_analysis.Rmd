@@ -1780,7 +1780,7 @@ corrected_angles_population %>%
 
 Mean/sum rotation angle by intensity (stimulus and control)
 
-```{r message=FALSE, fig.width=15, echo = FALSE}
+```{r message=FALSE, fig.width=15, fig.height=5, echo = FALSE}
 plt1_angle <- corrected_angles_population %>%
   dplyr::filter(
     body_part == "head",
@@ -1831,7 +1831,6 @@ plt1_angle <- corrected_angles_population %>%
   expand_limits(y = c(0, 4 * 25 / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
-  ggtitle("Left side stimulus") +
   theme(aspect.ratio = 1) +
   theme(
     axis.title.x = element_text(size = 12),
@@ -1910,10 +1909,8 @@ plt1_angle <- corrected_angles_population %>%
 #     axis.line = element_line(colour = "black")
 #   )
 
-cowplot::plot_grid(
-  plt1_angle, # plt2_angle,
-  nrow = 2,
-  labels = paste0(title, ", ", "mean rotation angle by intensity")  )
+plt1_angle +
+  ggtitle(paste0(title, ", ", "mean rotation angle by intensity"))
 
 ```
 
