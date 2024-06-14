@@ -798,7 +798,39 @@ coordsIL_1s_window <- bind_rows(
       mps = (speed_instant * (1 / time_res)) / 1000
     ) %>%
     dplyr::group_by(animal, body_part, session, stim_categ, stim_number) %>%
-    dplyr::slice(1:6)
+    dplyr::slice(1:6),
+  ### after stim
+  coordsIL %>%
+    dplyr::filter(
+      frame %% datapoint_to_plot == 0,
+      stim_categ == "after stim"
+    ) %>%
+    ### recalculates distances after frames were removed
+    dplyr::group_by(animal, body_part, session) %>%
+    dplyr::mutate(
+      X_diff = c(diff(X_interp), NA) %>% round(4),
+      Y_diff = c(diff(Y_interp), NA) %>% round(4),
+      X_diff = ifelse(
+        test = X_diff < quantile(X_diff, na.rm = T)["25%"] - 3 * IQR(X_diff, na.rm = T) |
+          X_diff > quantile(X_diff, na.rm = T)["75%"] + 3 * IQR(X_diff, na.rm = T),
+        yes = 0,
+        no = X_diff
+      ),
+      Y_diff = ifelse(
+        Y_diff < quantile(Y_diff, na.rm = T)["25%"] - 3 * IQR(Y_diff, na.rm = T) |
+          Y_diff > quantile(Y_diff, na.rm = T)["75%"] + 3 * IQR(Y_diff, na.rm = T),
+        yes = 0,
+        no = Y_diff
+      ),
+      d = sqrt(X_diff^2 + Y_diff^2),
+      d_mm = d / scale,
+      speed_instant = d_mm / time_res,
+      mmps = speed_instant * (1 / time_res),
+      mps = (speed_instant * (1 / time_res)) / 1000
+    ) %>%
+    dplyr::group_by(animal, body_part, intensity, stim_categ, stim_number) %>%
+    # dplyr::top_n(6),
+    dplyr::slice(head(row_number(), 6)),
 ) %>% arrange(animal, body_part, session, rec_time) # , stim_number, stim_categ, rec_time)
 
 
@@ -807,7 +839,7 @@ coordsIL_1s_window %>%
     animal == selected_animal,
     intensity %in% selected_intensities
   ) %>%
-  select(animal, session, frame, rec_time, stim_categ, d, stim_number, intensity, body_part, X_diff, Y_diff) %>%
+  select(animal, session, condition_grp,frame, rec_time, stim_categ, d, stim_number, intensity, body_part, X_diff, Y_diff) %>%
   dplyr::group_by(animal, session, stim_categ) %>%
   slice(1:6)
 ```
@@ -1225,19 +1257,17 @@ cowplot::plot_grid(
 
 
 ```{r message=FALSE, fig.height=5, fig.width=15, echo = FALSE}
-sem <- function(x) sd(x) / sqrt(length(x)) # Create own function
-
 plt1_angle <- corrected_anglesIL_population %>%
   dplyr::filter(
     !is.na(condition_grp),
     !str_detect(condition_grp, pattern = "bilat"),
     condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf"),
-    body_part == "head",
+    body_part == "center",
     stim_categ != "no stim",
     stim_duration == 10
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
-  dplyr::group_by(condition_grp, stim_side, stim_categ) %>%
+  dplyr::group_by(condition_grp, stim_side, stim_categ) %>% 
   #### categ_length was created to animal groups!!!!!
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
@@ -1309,14 +1339,14 @@ plt1_angle <- corrected_anglesIL_population %>%
     axis.line = element_line(colour = "black")
   )
 
-
-plt1_angle$data %>%
-  dplyr::group_by(stim_categ) %>%
-  summarise(
-    mean((mean_ang_ipsiconra * 29.5) / 360),
-    sd((mean_ang_ipsiconra * 29.5) / 360),
-    median((mean_ang_ipsiconra * 29.5) / 360)
-  )
+plt1_angle
+# plt1_angle$data %>%
+#   dplyr::group_by(stim_categ) %>%
+#   summarise(
+#     mean((mean_ang_ipsiconra * 29.5) / 360),
+#     sd((mean_ang_ipsiconra * 29.5) / 360),
+#     median((mean_ang_ipsiconra * 29.5) / 360)
+#   )
 ``` 
 
 
@@ -1407,6 +1437,51 @@ coordsIL_1s_window %>%
 ```
 
 
+```{r fig.width=15, fig.height=5}
+  coordsIL_1s_window %>%
+  dplyr::filter(body_part == "center") %>% 
+  dplyr::group_by(condition_grp, intensity, stim_categ) %>%
+  dplyr::summarise(
+    sum_d = sum(d, na.rm = T),
+    mean_d = mean(d, na.rm = T)
+  ) %>%
+  dplyr::filter(
+    intensity %in% c(selected_intensities, "15 mW"),
+    !is.na(condition_grp),
+    str_detect(condition_grp, pattern = "bilat| right IL left Pf")
+  ) %>%
+  
+  ggplot(
+    mapping = aes(
+      x = forcats::fct_relevel(stim_categ, "before stim", "stim"),
+      y = mean_d * 6 / scale
+    )
+  ) +
+  geom_point(aes(fill = condition_grp %>% as.factor()), shape = 21, size = 4)+
+  
+  facet_wrap(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique())), nrow = 1) +
+  # facet_grid(animal ~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
+  geom_line(aes(group = condition_grp)) +
+  expand_limits(y = c(0, 40 * 6)) +
+  global_facet_theme +
+  theme(aspect.ratio = 1) +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) +
+  ggtitle(paste0(title, ", ", "traveled distance before, during and after stimulus (in 1 sec long windows)"))
+
+ 
+
+
+
+```
+
 
 
 
@@ -1416,21 +1491,21 @@ plt_pop_dist_stim <- bind_rows(
   coordsIL_1s_window %>%
     dplyr::filter(
       stim_categ == "before stim",
-      body_part == "center"
+      body_part == "center",
+      stim_duration == 10
     ) %>%
     dplyr::mutate(
       stim_division = "before_stim",
       stim_div_length = 1
     ),
+  
   ### stim devided to first_part (1s) and last part (9s)
   coordsIL %>%
     dplyr::filter(
       frame %% datapoint_to_plot == 0,
       stim_categ == "stim",
-      body_part == "center"
-      # animal %!in% control_animals,
-      # body_part == "center",
-      # intensity %in% selected_intensities
+      body_part == "center",
+      stim_duration == 10
     ) %>%
     ### recalculates distances after frames were removed
     dplyr::group_by(animal, body_part, session) %>%
@@ -1459,18 +1534,12 @@ plt_pop_dist_stim <- bind_rows(
     dplyr::group_by(animal, body_part, session, stim_side, stim_duration, stim_number) %>%
     dplyr::mutate(
       stim_division = ifelse(rec_time <= min(rec_time) + 1, yes = "first_part", no = "last_part"),
-      # stim_div_length = ifelse(rec_time <= min(rec_time) + 1, yes = 1, no = 9)
     )
 ) %>%
   dplyr::group_by(animal, body_part, session, stim_side, stim_duration, stim_number, stim_division) %>%
   dplyr::mutate(stim_div_length = length(stim_division)) %>%
   ungroup() %>%
-  # arrange(animal, session, stim_number, rec_time) %>% View()
-
-
-
   dplyr::group_by(condition_grp, intensity, stim_categ, stim_division) %>% # stim_number, , stim_duration
-  # dplyr::group_by(animal, body_part, intensity, stim_side) %>%
   dplyr::summarise(
     sum_d = sum(d, na.rm = T),
     mean_d = mean(d, na.rm = T),
@@ -1493,7 +1562,9 @@ plt_pop_dist_stim <- bind_rows(
   arrange(condition_grp, intensity) %>%
   dplyr::filter(
     !is.na(condition_grp),
-    str_detect(condition_grp, pattern = "bilat| right IL left Pf")
+    !str_detect(condition_grp, pattern = "bilat"),
+    condition_grp %!in% c("GIIFM6 right IL left Pf", "GIIFM6 right IL right Pf")
+    #str_detect(condition_grp, pattern = "bilat| right IL left Pf")
   ) %>%
   ggplot(
     mapping = aes(
