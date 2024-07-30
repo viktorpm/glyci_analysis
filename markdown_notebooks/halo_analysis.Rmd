@@ -19,7 +19,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "FM1"
+  selected_animal: "FM9"
   selected_animal_grp: "FM1_right"
 
 
@@ -701,6 +701,56 @@ Baseline trajectory: only before and after the stimulus, not the whole session
 cowplot::plot_grid(plt_taject_stim_baseline, plt_taject_stim_stim, nrow = 1)
 ```
 
+```{r}
+plt_taject_stim_wrap <- coords_halo %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "10 mW",
+    frame %% datapoint_to_plot == 0,
+    animal_grp == "FM9_left"
+  ) %>% 
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  xlim(c(0, 1280)) + # / scale)) +
+  #ylim(c(0, 720)) + # / scale)) +
+  #coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+```
 
 
 ## Recalculating distances between tracked points after leaving out frames
@@ -1926,6 +1976,8 @@ corrected_angles_population %>%
     stim_categ != "no stim",
   ) %>%
   dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  # dplyr::filter(intensity == "10 mW") %>%
+  
   dplyr::group_by(animal_grp, stim_side, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
