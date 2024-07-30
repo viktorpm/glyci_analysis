@@ -19,7 +19,7 @@ header-includes:
    - \usepackage{animate}
 
 params:
-  selected_animal: "GIIFM5"
+  selected_animal: "GIIFM6"
 
 
 knit: (
@@ -61,8 +61,12 @@ time_res <- 1 / fps ### time between frames
 ang_threshold <- 90
 mouse_speed_mps <- 3.3
 datapoint_to_plot <- 5
+
+### !!!!!!!!!! check it. loks like the images are in portrai orientation !!!!!!
 xlim_mm <- c(0, 1280 / scale)
 ylim_mm <- c(0, 720 / scale)
+
+
 selected_animal <- params$selected_animal
 selected_intensities <- c("1 mW", "5 mW", "10 mW")
 control_animals <- c("GIIFM34b", "GIIFM35b", "GIIFM36b", "GIIFM37b")
@@ -552,6 +556,58 @@ plt_taject_stim_stim <- coordsIL %>%
 cowplot::plot_grid(plt_taject_stim_baseline, plt_taject_stim_stim, nrow = 2)
 ```
 
+```{r}
+plt_taject_stim_wrap <- coordsIL %>%
+  dplyr::filter(
+    animal == selected_animal,
+    intensity == "10 mW",
+    frame %% datapoint_to_plot == 0,
+    condition_grp == "GIIFM6 left Pf",
+    session == "video25coords.dat.19fix.bak"
+  ) %>% 
+  ggplot(
+    mapping = aes(
+      x = X_interp, # / scale,
+      y = Y_interp, # / scale,
+      label = frame
+    )
+  ) +
+  geom_path(
+    aes(group = frame),
+    arrow = grid::arrow(
+      ends = "first",
+      type = "closed",
+      angle = 10,
+      length = unit(3, "mm")
+    )
+  ) +
+  #### ORIENTATION AND DIMENSIONS!!!
+  xlim(c(0, 1118)) + # / scale)) +
+  ylim(c(0, 976)) + # / scale)) +
+  #coord_fixed() +
+  # geom_label(
+  #   data = text_layer %>% dplyr::filter(int_label %in% selected_intensities),
+  #   aes(
+  #     x = Inf, y = -Inf,
+  #     hjust = 1.1, vjust = -0.5,
+  #     label = paste0("Intensity: ", int_label))) +
+  labs(col = "Stimulus number") +
+  xlab("X position [pixel]") +
+  ylab("Y position [pixel]") +
+  ggtitle(paste0(selected_animal, " trajectory")) +
+  facet_wrap(~stim) +
+  global_facet_theme +
+  theme(
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "none"
+  )
+```
 
 
 
