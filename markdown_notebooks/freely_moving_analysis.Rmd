@@ -2648,7 +2648,7 @@ cowplot::plot_grid(
 
 
 
-```{r eval=FALSE, echo=FALSE, include=FALSE}
+```{r }
 corrected_angles_population %>%
   dplyr::filter(
     animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
@@ -2656,7 +2656,8 @@ corrected_angles_population %>%
     stim_categ != "no stim",
     # stim_side == "left"
   ) %>%
-  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>% 
+  # dplyr::filter(intensity == "10 mW") %>% 
   dplyr::group_by(animal, stim_side, stim_categ) %>%
   dplyr::summarise(
     sum_ang = sum(signed_angle_corrected, na.rm = T),
@@ -2677,60 +2678,51 @@ corrected_angles_population %>%
   fill(ipsicontra, .direction = "up") %>%
   ungroup() %>%
   dplyr::mutate(
-    sum_ang_ipsicontra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs()))
+    sum_ang_ipsicontra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs())),
+    mean_ang_ipsicontra = ifelse(ipsicontra == "contra", mean_ang %>% abs(), -(mean_ang %>% abs()))
   ) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = sum_ang_ipsicontra / 360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+      #y = sum_ang_ipsicontra / 360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+      y = (mean_ang_ipsicontra * 25) / 360
     )
   ) +
   geom_point(aes(fill = animal), shape = 21, size = 4) +
   geom_line(aes(group = animal)) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(ipsicontra == "contra"),
-    method = "kruskal.test",
+    method = "wilcox.test",
     paired = T,
     # method.args = list(alternative = c("greater")),
-    # ref.group = "stim",
+    ref.group = "stim",
 
     comparisons = list(c("before stim", "stim"), c("stim", "after stim")),
-    label.y = 30,
+    label.y = 0.20,
     hide.ns = F
     # label.y = 3000
   ) +
   ggpubr::stat_compare_means(
     data = . %>% dplyr::filter(ipsicontra == "ipsi"),
-    method = "kruskal.test",
+    method = "wilcox.test",
     paired = T,
-    # method.args = list(alternative = c("greater")),
-    # ref.group = "stim",
+    #method.args = list(alternative = c("less")),
+    ref.group = "stim",
     comparisons = list(c("before stim", "stim"), c("stim", "after stim")),
     # vjust = 1.5,
-    label.y = -35,
+    label.y = -0.2,
     tip.length = -0.03,
     hide.ns = F
     # label.y = 3000
   ) +
 
-  # ggpubr::stat_compare_means(
-  #   method = "wilcox.test",
-  #   paired = T,
-  #   method.args = list(alternative = "greater"),
-  #   comparisons = list(c("stim", "after stim")),
-  #   vjust = 1.5,
-  #   hide.ns = F
-  #   # label.y = 3000
-  # ) +
-  # facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   geom_hline(yintercept = 0, col = "gray") +
-  annotate(geom = "text", x = 3, hjust = -0.15, y = -2, label = "ipsilateral", col = "gray") +
-  annotate(geom = "text", x = 3, hjust = -0.15, y = 2, label = "contralateral", col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = -0.02, label = "ipsilateral", col = "gray") +
+  annotate(geom = "text", x = 3, hjust = -0.15, y = 0.02, label = "contralateral", col = "gray") +
   global_facet_theme +
-  expand_limits(y = c(-30, 20), x = c(0, 4)) +
-  # xlab("State") +
-  # ylab("Scaled sum angle") +
-  ggtitle("Stimulus") +
+  #expand_limits(y = c(-30, 20), x = c(0, 4)) +
+  expand_limits(y = c(-0.2, 0.2), x = c(0, 4)) +
+    ggtitle("Stimulus") +
   theme(aspect.ratio = 1) +
   theme(
     axis.title.x = element_text(size = 12),
@@ -2801,6 +2793,43 @@ corrected_angles_population %>%
     panel.background = element_blank(),
     axis.line = element_line(colour = "black")
   )
+
+
+corrected_angles_population %>%
+  dplyr::filter(
+    animal %!in% c(control_animals, "GIIFM14b", "GIIFM17b"),
+    body_part == "head",
+    stim_categ != "no stim",
+  ) %>%
+  dplyr::filter(intensity %in% c(selected_intensities, "15 mW")) %>%
+  dplyr::group_by(animal, stim_side, stim_categ) %>%
+  dplyr::summarise(
+    sum_ang = sum(signed_angle_corrected, na.rm = T),
+    mean_ang = mean(signed_angle_corrected, na.rm = T),
+    med_ang = median(signed_angle_corrected, na.rm = T),
+    sd_ang = sd(signed_angle_corrected, na.rm = T),
+    sem_ang = sem(signed_angle_corrected)
+  ) %>%
+  dplyr::mutate(
+    ipsicontra = case_when(
+      sum_ang > 0 & stim_side == "left" & stim_categ == "stim" ~ "ipsi",
+      sum_ang > 0 & stim_side == "right" & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & stim_side == "left" & stim_categ == "stim" ~ "contra",
+      sum_ang < 0 & stim_side == "right" & stim_categ == "stim" ~ "ipsi",
+    )
+  ) %>%
+  dplyr::group_by(animal) %>%
+  fill(ipsicontra, .direction = "up") %>%
+  ungroup() %>%
+  dplyr::mutate(
+    sum_ang_ipsicontra = ifelse(ipsicontra == "contra", sum_ang %>% abs(), -(sum_ang %>% abs())),
+    mean_ang_ipsicontra = ifelse(ipsicontra == "contra", mean_ang %>% abs(), -(mean_ang %>% abs()))
+  ) %>% 
+  dplyr::group_by(stim_categ,ipsicontra) %>% 
+  dplyr::summarise(
+    mean = mean((mean_ang_ipsicontra * 25) / 360)
+  )
+
 ```
 
 
