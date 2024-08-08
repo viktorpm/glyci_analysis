@@ -1847,8 +1847,8 @@ plt1_angle <- corrected_angles_population %>%
     sem_ang = sem(signed_angle_corrected),
     all_stim_categ_length_row = length(signed_angle_corrected),
     mean_ang_manual = sum_ang / all_stim_categ_length_row
-  ) %>%
-  dplyr::group_by(animal_grp, intensity) %>%
+  ) %>% #write.csv(file = file.path("output_data","to_publish","Emivel","Halo_rotation.csv"))
+  #dplyr::group_by(animal_grp, intensity) %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
@@ -2121,7 +2121,7 @@ cowplot::plot_grid(
     ) %>%
     dplyr::filter(
       stim_categ == "stim"
-    ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","PnO_dose_intensity_rotation_control.csv"))
+    ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","Halo_dose_intensity_rotation.csv"))
 
     ggplot(
       mapping = aes(
@@ -2522,7 +2522,7 @@ cowplot::plot_grid(
       intensity %in% c(selected_intensities, "15 mW")
     ) %>%
     ungroup() %>%
-    fill(max_sum_d, .direction = "down") %>%
+    fill(max_sum_d, .direction = "down") %>% #write.csv(file = file.path("output_data","to_publish","Emivel","Halo_traveled_distance.csv"))
     ggplot(
       mapping = aes(
         x = forcats::fct_relevel(stim_division, "before_stim", "first_part", "last_part"),
@@ -2706,7 +2706,7 @@ cowplot::plot_grid(
       mean_d = mean(d, na.rm = T),
       sum_d_norm = sum(d, na.rm = T) / 250,
       nrows = length(intensity)
-    ) %>% # write.csv(file = file.path("output_data","to_publish","Emivel","dose_intensity_diff_trav_dist.csv"))
+    ) %>% #write.csv(file = file.path("output_data","to_publish","Emivel","Halo_dose_intensity_diff_trav_dist.csv"))
     ggplot(
       aes(x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"), y = mean_d * 6)
     ) +
