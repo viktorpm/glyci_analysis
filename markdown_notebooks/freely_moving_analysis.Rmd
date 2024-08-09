@@ -3488,7 +3488,7 @@ generate_pop_dist_summary_plot <- function(include_control) {
       # stim_div_length_row %!in% c(188 , 12)
     ) %>%
     ungroup() %>%
-    fill(max_sum_d, .direction = "down") %>% # write.csv(file = file.path("output_data","traveled_distance_source.csv"))
+    fill(max_sum_d, .direction = "down") %>%  # write.csv(file = file.path("output_data", "to_publish", "Emivel", "Pno_traveled_distance_initiation_control.csv"))
     ### plotting
     ggplot(
       mapping = aes(
