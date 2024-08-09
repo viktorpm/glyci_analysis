@@ -54,13 +54,13 @@ source(file.path("..","supplementary_functions","md_analysis_setup_script.R"))
 
 # Define global constants and settings
 scale <- 4 # pixel/mm
-fps <- 25 # frame rate
+fps <- 30 # frame rate
 standard_stim_length <- 10 # Default stimulus length in seconds
 around_stim_length <- fps * 8 # Stimulus length around default
 time_res <- 1 / fps # Time between frames
 ang_threshold <- 90 # Angle threshold
 mouse_speed_mps <- 3.3 # Mouse speed in meters per second
-datapoint_to_plot <- 5 # Data points to plot
+datapoint_to_plot <- 6 # Data points to plot
 xlim_mm <- c(0, 1280 / scale) # X-axis limits
 ylim_mm <- c(0, 720 / scale) # Y-axis limits
 selected_animal <- params$selected_animal
@@ -1853,7 +1853,7 @@ plt1_angle <- corrected_angles_population %>%
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
       # * 25: number of frames in a second. To get the mean rotation angle per second. /360: mean portion of one full circle per second
-      y = ((mean_ang * 25) %>% abs()) / 360 # %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+      y = ((mean_ang * fps) %>% abs()) / 360 # %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
     )
   ) +
   geom_point(aes(fill = animal_grp), shape = 21, size = 4) +
@@ -1878,7 +1878,7 @@ plt1_angle <- corrected_angles_population %>%
   ) +
   facet_grid(~ factor(intensity, levels = gtools::mixedsort(intensity %>% unique()))) +
   global_facet_theme +
-  expand_limits(y = c(0, 4 * 25 / 360)) +
+  expand_limits(y = c(0, 4 * fps / 360)) +
   # xlab("State") +
   # ylab("Scaled sum angle") +
   theme(aspect.ratio = 1) +
@@ -2004,7 +2004,7 @@ corrected_angles_population %>%
   ggplot(
     mapping = aes(
       x = forcats::fct_relevel(stim_categ, "before stim", "stim", "after stim"),
-      y = (mean_ang_ipsicontra * 25) / 360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
+      y = (mean_ang_ipsicontra * fps) / 360 # sum_ang %>% abs() /360  # sum_ang %>% abs() # / max(sum_ang %>% abs()) # %>% scale()
     )
   ) +
   geom_point(aes(fill = animal_grp), shape = 21, size = 4) +
@@ -2061,7 +2061,7 @@ generate_angle_dose_plot <- function(stimside) {
     ggplot(
       mapping = aes(
         x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"),
-        y = ((mean_ang * 25) %>% abs()) / 360
+        y = ((mean_ang * fps) %>% abs()) / 360
       )
     ) +
     geom_point(aes(fill = animal), shape = 21, size = 4) +
@@ -2126,7 +2126,7 @@ cowplot::plot_grid(
     ggplot(
       mapping = aes(
         x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"),
-        y = ((mean_ang * 25) %>% abs()) / 360
+        y = ((mean_ang * fps) %>% abs()) / 360
       )
     ) +
     geom_point(aes(fill = animal_grp), shape = 21, size = 4) +
@@ -2706,7 +2706,7 @@ cowplot::plot_grid(
       mean_d = mean(d, na.rm = T),
       sum_d_norm = sum(d, na.rm = T) / 250,
       nrows = length(intensity)
-    ) %>% #write.csv(file = file.path("output_data","to_publish","Emivel","Halo_dose_intensity_diff_trav_dist.csv"))
+    ) %>% #write.csv(file = file.path("output_data","to_publish","Emivel","Halo_dose_intensity_trav_dist.csv"))
     ggplot(
       aes(x = forcats::fct_relevel(intensity, "1 mW", "5 mW", "10 mW", "15 mW"), y = mean_d * 6)
     ) +
