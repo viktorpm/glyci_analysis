@@ -1691,432 +1691,134 @@ STIM_RESULTS %>%
 
 <br><br><br>
 
-### PSTH \@ 1 Hz cortical activation
-
-```{r echo=FALSE, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
-### main plot
-
-### set PSTH range: see earlier (calculating hist stats chunk)
-
-### select frequency to plot (1, 8, 18)
-freq_to_plot <- 1 %>% as.character()
-
-gp_hist1 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == freq_to_plot,
-      # animal_id %!in% c("GV_40", "GV_42", "GV_47")
-      animal_id == "GII_21"
-    ),
-  mapping = aes(x = first_ap_reltimes)
-) +
-  xlim(PSTH_range[1], PSTH_range[2]) +
-  geom_histogram(
-    # aes(fill = animal_id),
-    binwidth = 0.001
-  ) +
-  scale_fill_brewer(
-    palette = "Set3",
-    name = "Animal"
-    # guide = FALSE
-  ) +
-  facet_wrap(~animal_id, ncol = 3) +
-  geom_vline(xintercept = 0) +
-  xlab("Latency (s)") +
-  ylab("Count")
-
-
-
-### lines
-gp_hist1 <- gp_hist1 +
-  ### median
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = median,
-      xend = median,
-      y = y_max + 7,
-      yend = y_max + 18
-    ),
-    size = 1
-  ) +
-
-  ### data range
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = quantile25 - 1.5 * IQR,
-      xend = quantile25,
-      y = y_max + 12.5,
-      yend = y_max + 12.5
-    )
-  ) +
-
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
-  ) +
-
-  ### IQR (box)
-  geom_rect(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
-    color = "red",
-    alpha = 0,
-    inherit.aes = F
-  ) +
-
-  ### mean
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = mean, y = y_max + 4), size = 2
-  ) +
-
-  ### peak
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = peak, y = y_max + 4),
-    shape = 25,
-    size = 2,
-    fill = "red"
-  ) +
-  expand_limits(y = c(0, 75)) +
-
-  theme(
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(size = 12),
-    axis.text = element_text(size = 12),
-    axis.text.y = element_text(angle = 90),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black")
-  )
-# scale_y_continuous(expand=c(0,0))
-```
-
-### PSTH \@ 10 Hz cortical activation
-
-```{r echo=FALSE, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
-### main plot
-
-### set PSTH range: see earlier (calculating hist stats chunk)
-
-### select frequency to plot (1, 8, 18)
-freq_to_plot <- 8 %>% as.character()
-
-gp_hist8 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == freq_to_plot,
-      # animal_id %!in% c("GV_40", "GV_42", "GV_47")
-      animal_id == "GII_21"
-    ),
-  mapping = aes(x = first_ap_reltimes)
-) +
-  xlim(PSTH_range[1], PSTH_range[2]) +
-  geom_histogram(
-    # aes(fill = animal_id),
-    binwidth = 0.001
-  ) +
-  scale_fill_brewer(
-    palette = "Set3",
-    name = "Animal"
-    # guide = FALSE
-  ) +
-  facet_wrap(~animal_id, ncol = 3) +
-  geom_vline(xintercept = 0) +
-  xlab("Latency (s)") +
-  ylab("Count")
-
-
-
-### lines
-gp_hist8 <- gp_hist8 +
-  ### median
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = median,
-      xend = median,
-      y = y_max + 7,
-      yend = y_max + 18
-    ),
-    size = 1
-  ) +
-
-  ### data range
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = quantile25 - 1.5 * IQR,
-      xend = quantile25,
-      y = y_max + 12.5,
-      yend = y_max + 12.5
-    )
-  ) +
-
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
-  ) +
-
-  ### IQR (box)
-  geom_rect(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
-    color = "red",
-    alpha = 0,
-    inherit.aes = F
-  ) +
-
-  ### mean
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = mean, y = y_max + 4), size = 2
-  ) +
-
-  ### peak
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42", "GV_47"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = peak, y = y_max + 4),
-    shape = 25,
-    size = 2,
-    fill = "red"
-  ) +
-
-  expand_limits(y = c(0, 75)) +
-  theme(
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(size = 12),
-    axis.text = element_text(size = 12),
-    axis.text.y = element_text(angle = 90),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black")
-  )
-```
-
-### PSTH \@ 20 Hz cortical activation
-
-```{r echo=FALSE, fig.width=10, fig.height=8, message=FALSE, warning=FALSE}
-### main plot
-
-### set PSTH range: see earlier (calculating hist stats chunk)
-
-### select frequency to plot (1, 8, 18)
-freq_to_plot <- 18 %>% as.character()
-
-gp_hist18 <- ggplot(
-  data = STIM_RESULTS %>%
-    dplyr::filter(
-      first_ap_reltimes > PSTH_range[1],
-      first_ap_reltimes < PSTH_range[2],
-      freq == freq_to_plot,
-      # animal_id %!in% c("GV_40", "GV_42")
-      animal_id == "GII_21"
-    ),
-  mapping = aes(x = first_ap_reltimes)
-) +
-  xlim(PSTH_range[1], PSTH_range[2]) +
-  geom_histogram(
-    # aes(fill = animal_id),
-    binwidth = 0.001
-  ) +
-  scale_fill_brewer(
-    palette = "Set3",
-    name = "Animal"
-    # guide = FALSE
-  ) +
-  facet_wrap(~animal_id, ncol = 3) +
-  geom_vline(xintercept = 0) +
-  xlab("Latency (s)") +
-  ylab("Count")
-
-
-
-### lines
-gp_hist18 <- gp_hist18 +
-  ### median
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = median,
-      xend = median,
-      y = y_max + 7,
-      yend = y_max + 18
-    ),
-    size = 1
-  ) +
-
-  ### data range
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(
-      x = quantile25 - 1.5 * IQR,
-      xend = quantile25,
-      y = y_max + 12.5,
-      yend = y_max + 12.5
-    )
-  ) +
-
-  geom_segment(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = quantile75, xend = quantile75 + 1.5 * IQR, y = y_max + 12.5, yend = y_max + 12.5)
-  ) +
-
-  ### IQR (box)
-  geom_rect(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
-    color = "red",
-    alpha = 0,
-    inherit.aes = F
-  ) +
-
-  ### mean
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = mean, y = y_max + 4), size = 2
-  ) +
-
-  ### peak
-  geom_point(
-    data = hist_stats %>%
-      dplyr::filter(
-        freq == freq_to_plot,
-        animal_id %!in% c("GV_40", "GV_42"),
-        animal_id == "GII_21"
-      ) %>%
-      dplyr::group_by(animal_id),
-    mapping = aes(x = peak, y = y_max + 4),
-    shape = 25,
-    size = 2,
-    fill = "red"
-  ) +
-
-  expand_limits(y = c(0, 75)) +
-  theme(
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(size = 12),
-    axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black")
-  )
-```
 
 ```{r}
+CreatePSTHPlot <- function(freq_to_plot) {
+  gp <- ggplot(
+    data = STIM_RESULTS %>%
+      dplyr::filter(
+        first_ap_reltimes > PSTH_range[1],
+        first_ap_reltimes < PSTH_range[2],
+        freq == freq_to_plot,
+        animal_id == "GII_21"
+      ),
+    mapping = aes(x = first_ap_reltimes)
+  ) +
+    xlim(PSTH_range[1], PSTH_range[2]) +
+    geom_histogram(binwidth = 0.001) +
+    geom_vline(xintercept = 0) +
+    xlab("Latency (s)") +
+    ylab("Count") +
+    facet_wrap(~animal_id, ncol = 3) +
+    expand_limits(y = c(0, 75))
+
+  # Add lines
+  gp <- gp +
+    geom_segment(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(
+        x = median,
+        xend = median,
+        y = y_max + 7,
+        yend = y_max + 18
+      ),
+      size = 1
+    ) +
+    geom_segment(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(
+        x = quantile25 - 1.5 * IQR,
+        xend = quantile25,
+        y = y_max + 12.5,
+        yend = y_max + 12.5
+      )
+    ) +
+    geom_segment(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(
+        x = quantile75,
+        xend = quantile75 + 1.5 * IQR,
+        y = y_max + 12.5,
+        yend = y_max + 12.5
+      )
+    ) +
+    geom_rect(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(xmin = quantile25, xmax = quantile75, ymin = y_max + 7, ymax = y_max + 18),
+      color = "red",
+      alpha = 0,
+      inherit.aes = F
+    ) +
+    geom_point(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(x = mean, y = y_max + 4),
+      size = 2
+    ) +
+    geom_point(
+      data = hist_stats %>%
+        dplyr::filter(
+          freq == freq_to_plot,
+          animal_id == "GII_21"
+        ) %>%
+        dplyr::group_by(animal_id),
+      mapping = aes(x = peak, y = y_max + 4),
+      shape = 25,
+      size = 2,
+      fill = "red"
+    )
+
+  # Apply consistent theme
+  gp <- gp +
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 12),
+      axis.text.y = element_text(angle = 90),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black")
+    )
+
+  return(gp)
+}
+
+# Create plots for different frequencies
+gp_hist1 <- CreatePSTHPlot(1)
+gp_hist8 <- CreatePSTHPlot(8)
+gp_hist18 <- CreatePSTHPlot(18)
+
+# Combine plots
 cowplot::plot_grid(gp_hist1, gp_hist8, gp_hist18, nrow = 1)
+
 ```
+
+
 
 ### Response probability and latency
 
