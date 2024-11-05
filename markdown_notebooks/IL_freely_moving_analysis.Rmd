@@ -779,7 +779,7 @@ plt1_angle
 
 ## Figure 7/B
 
-```{r message=FALSE, fig.height=5, fig.width=15, echo = FALSE}
+```{r message=FALSE, echo = FALSE}
 plt1_angle <- corrected_anglesIL_population %>%
   dplyr::filter(
     !is.na(condition_grp),
