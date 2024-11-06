@@ -1293,8 +1293,8 @@ corrected_angles_population %>%
     body_part == "head",
     stim_categ != "no stim",
   ) %>%
-  dplyr::filter(intensity %in% c(SELECTED_INTENSITIES, "15 mW")) %>%
-  # dplyr::filter(intensity == "10 mW") %>%
+  # dplyr::filter(intensity %in% c(SELECTED_INTENSITIES, "15 mW")) %>%
+  dplyr::filter(intensity == "10 mW") %>%
   
   dplyr::group_by(animal_grp, stim_side, stim_categ) %>%
   dplyr::summarise(
