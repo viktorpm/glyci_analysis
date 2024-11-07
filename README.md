@@ -1,4 +1,4 @@
-This repository contains the analysis for the Glyci project.
+This repository contains the analysis code for *"A cortico-subcortical loop for motor control via the pontine reticular formation"*
 
 ### Folder Structure
 
