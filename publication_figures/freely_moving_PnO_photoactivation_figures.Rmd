@@ -923,7 +923,7 @@ plt_taject_ctrl_wrap <- coords %>%
   )
 ```
 
-### Figure 7/E & S6/G
+### Figure 6/E & S7/G - Trajectories
 Baseline trajectory: only before and after the stimulus, not the whole session
 
 ```{r fig.width=15}
@@ -1439,7 +1439,8 @@ corrected_angles_population <- coords %>%
 ```
 
 
-### Figure 7/F & S6/J
+### Figure 6/F & S7/J - Rotation angle by intensity (stimulus and control) 
+
 Mean/sum rotation angle by intensity (stimulus and control)
 
 ```{r message=FALSE, fig.height=12, fig.width=15, echo = FALSE}
@@ -1608,7 +1609,7 @@ cowplot::plot_grid(
 #     median(((mean_ang * 25)  %>% abs()) /360))
 ```
 
-### Figure 7/H
+### Figure 6/H - Rotation (before, stim, after)
 
 
 ```{r}
@@ -1874,7 +1875,7 @@ coords_1s_window %>%
 ```
 
 
-### Figure S6/A, H
+### Figure S7/A, H - Traveled distance by intensity (stimulus and control)
 
 Combining 1 sec before stim and stim division to 1st and last 9 sec tables. In control cases if I normalize with the period length the "last_part" drops. The reason is that the animal moves at a constant rate so dividing the mean traveled distance will decrease the mean.
 

@@ -777,7 +777,7 @@ plt1_angle <- corrected_anglesIL_population %>%
 plt1_angle
 ``` 
 
-## Figure 7/B
+## Figure 6/B - Rotatition
 
 ```{r message=FALSE, echo = FALSE}
 plt1_angle <- corrected_anglesIL_population %>%

@@ -1285,7 +1285,7 @@ corrected_angles_population <- coords_halo %>%
   )
 ```
 
-### Figure S7/B
+### Figure S8/B - Rotation by stimulus period
 
 ```{r}
 corrected_angles_population %>%
@@ -1347,7 +1347,7 @@ corrected_angles_population %>%
   )
 ```
 
-### Figure S7/C
+### Figure S8/C - Rotation by intensity
 
 Mean/sum rotation angle by intensity (stimulus and control)
 
@@ -1786,7 +1786,7 @@ cowplot::plot_grid(
   )
 ```
 
-### Figure S7/E
+### Figure S8/E - Traveled distance by intensity
 
 ```{r fig.width=15}
   bind_rows(
