@@ -9,6 +9,8 @@ formation"* in **Cell Reports**
     generate figures.
 -   `publication_figures`: Contains the code for generating figures
     along with detailed explanations and tests.
+    -   `figure_data`: Subdirectory containing Excel datasheets with
+        the figure data.
 -   `supplementary_functions`: Custom-written functions used for the
     analysis.
 -   `useful_to_load`: Color matrix for figures. Not utilized; can be
